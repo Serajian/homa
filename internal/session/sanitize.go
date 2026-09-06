@@ -1,6 +1,7 @@
 package session
 
 import (
+	"path/filepath"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -58,6 +59,36 @@ func sanitizeNick(s string) string {
 		return "unknown"
 	}
 	return truncateRunes(s, MaxNickLen)
+}
+
+// safeFileName turns a peer-supplied name into something safe to create on
+// this machine.
+//
+// The name arrives from the network, so it is an attack surface before it
+// is a convenience. filepath.Base strips any directory part, which is what
+// stops "../../.ssh/authorized_keys" from escaping the download directory.
+// Everything else here is about not creating a file whose name is a trap:
+// hidden, empty, or full of control characters.
+func safeFileName(name string) string {
+	name = filepath.Base(strings.TrimSpace(name))
+
+	name = strings.Map(func(r rune) rune {
+		switch {
+		case unicode.IsControl(r):
+			return -1
+		case r == filepath.Separator || r == '/' || r == '\\':
+			return '_'
+		}
+		return r
+	}, name)
+
+	name = strings.TrimSpace(name)
+	name = strings.TrimLeft(name, ".")
+
+	if name == "" {
+		return "received-file"
+	}
+	return truncateRunes(name, MaxFileNameLen)
 }
 
 // truncateRunes cuts s to at most n runes. Counting runes rather than bytes

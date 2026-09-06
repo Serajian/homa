@@ -41,6 +41,7 @@ type Session struct {
 	c       *proto.Conn
 	handler Handler
 	peer    Peer
+	files   fileState // zero value is ready to use
 }
 
 // Start performs the opening handshake and returns a ready session.
@@ -138,6 +139,10 @@ func (s *Session) Run(ctx context.Context) error {
 	})
 	defer stop()
 
+	// A conversation that ends mid-transfer leaves half-written files and
+	// senders waiting on a reply that will never come. Release both.
+	defer s.abortTransfers()
+
 	for {
 		f, err := s.c.Read()
 		if err != nil {
@@ -153,13 +158,15 @@ func (s *Session) Run(ctx context.Context) error {
 			return nil
 
 		case proto.TypeHello:
-			// A second greeting is meaningless but harmless.
 			logger.Debug("ignoring a repeated greeting")
 
 		default:
-			// Unknown frames are skipped rather than fatal, so a peer
-			// running a newer homa can add message types without
-			// breaking this one.
+			// File frames land here. A failure inside one transfer is
+			// reported to the person and the conversation carries on:
+			// a rejected file is no reason to hang up.
+			if s.handleFileFrame(f) {
+				continue
+			}
 			logger.Debug("ignoring an unhandled frame", "type", f.Type)
 		}
 	}
