@@ -87,7 +87,11 @@ func (in *incoming) close(keep bool) {
 // progress may be nil; when set it is called from this goroutine, not the
 // read loop, so an implementation shared with a Handler must be safe for
 // both.
-func (s *Session) SendFile(ctx context.Context, path string, progress func(sent, total int64)) error {
+func (s *Session) SendFile(
+	ctx context.Context,
+	path string,
+	progress func(sent, total int64),
+) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("session: opening %s: %w", path, err)
@@ -395,7 +399,8 @@ func (s *Session) onDone(f proto.Frame) {
 		in.close(false)
 		if hasHandler {
 			fh.OnFileError(in.name, fmt.Errorf(
-				"session: %s arrived incomplete: %d of %d bytes", in.name, in.got, in.size))
+				"session: %s arrived incomplete: %d of %d bytes", in.name, in.got, in.size,
+			))
 		}
 		return
 	}
@@ -408,7 +413,8 @@ func (s *Session) onDone(f proto.Frame) {
 		in.close(false)
 		if hasHandler {
 			fh.OnFileError(in.name, fmt.Errorf(
-				"session: %s failed its checksum and was discarded", in.name))
+				"session: %s failed its checksum and was discarded", in.name,
+			))
 		}
 		return
 	}
