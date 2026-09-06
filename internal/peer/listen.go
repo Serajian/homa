@@ -32,9 +32,12 @@ type Listener struct {
 // stream down.
 type heldConn struct {
 	net.Conn
+	key         string
 	release     chan struct{}
 	releaseOnce sync.Once
 }
+
+func (h *heldConn) remoteKey() string { return h.key }
 
 func (h *heldConn) Close() error {
 	err := h.Conn.Close()
@@ -80,20 +83,19 @@ func Listen(id *Identity) (*Listener, error) {
 // handle runs on tailcat's goroutine for one incoming connection. It hands the
 // connection to Accept and then waits, because returning would close it.
 func (l *Listener) handle(c net.Conn) {
-	h := &heldConn{Conn: c, release: make(chan struct{})}
+	h := &heldConn{
+		Conn:    c,
+		key:     lookupKey(l.srv, c),
+		release: make(chan struct{}),
+	}
 
 	select {
 	case l.conns <- h:
-		logger.Debug("incoming connection accepted")
+		logger.Debug("incoming connection accepted", "known_key", h.key != "")
 		<-h.release
 		logger.Debug("incoming connection finished")
 	case <-l.closed:
-		// Shutting down, and nobody is left to take it.
-		err := c.Close()
-		if err != nil {
-			logger.Error("close connection failed", "err", err)
-			return
-		}
+		_ = c.Close()
 	}
 }
 

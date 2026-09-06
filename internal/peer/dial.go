@@ -15,7 +15,10 @@ import (
 type dialedConn struct {
 	net.Conn
 	client *tailcat.Client
+	key    string
 }
+
+func (d *dialedConn) remoteKey() string { return d.key }
 
 func (d *dialedConn) Close() error {
 	err := d.Conn.Close()
@@ -40,6 +43,13 @@ func Dial(ctx context.Context, id *Identity, addr string) (net.Conn, error) {
 		return nil, err
 	}
 
+	// The address encodes who we are calling, so on this side the peer's
+	// key needs no lookup at all.
+	info, err := tailcat.ParseAddr(a)
+	if err != nil {
+		return nil, fmt.Errorf("peer: reading the address: %w", err)
+	}
+
 	logger.Info("dialing peer")
 
 	c := tailcat.NewClient(a)
@@ -53,7 +63,11 @@ func Dial(ctx context.Context, id *Identity, addr string) (net.Conn, error) {
 	}
 
 	logger.Info("connected to peer")
-	return &dialedConn{Conn: conn, client: c}, nil
+	return &dialedConn{
+		Conn:   conn,
+		client: c,
+		key:    info.ServerPublic.String(),
+	}, nil
 }
 
 // ParseAddr checks that s looks like a peer address, so a typo is caught the
