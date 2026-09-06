@@ -14,9 +14,13 @@ import (
 	"github.com/tailscale/tailcat"
 
 	"github.com/Serajian/homa/internal/logx"
+	"github.com/Serajian/homa/internal/paths"
 )
 
 var logger = logx.For("peer")
+
+// KeyPath reports where the identity is stored, for messages to the user.
+func KeyPath() string { return paths.Display(keyFile) }
 
 // Identity is this machine's permanent name on the network: a private key
 // plus the relay it can be reached through. It is opaque on purpose, so the
@@ -31,7 +35,7 @@ type Identity struct {
 // one on first run. Creation reaches the network to measure relay latency,
 // so ctx should allow for that; later runs read only from disk.
 func LoadOrCreateIdentity(ctx context.Context) (*Identity, error) {
-	p, err := keyPath()
+	p, err := paths.File(keyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +91,7 @@ func create(ctx context.Context, p string) (*Identity, error) {
 
 	// WriteFile creates the file with filePerm from the start, so the key is
 	// never momentarily world-readable.
-	if err := os.WriteFile(p, b, filePerm); err != nil {
+	if err := os.WriteFile(p, b, paths.FilePerm); err != nil {
 		return nil, fmt.Errorf("peer: writing %s: %w", p, err)
 	}
 

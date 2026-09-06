@@ -9,9 +9,7 @@ const Port uint16 = 7777
 
 // File layout of the config directory.
 const (
-	dirPerm  = 0o700 // only the owner may even list the directory
-	filePerm = 0o600 // only the owner may read the key
-	keyFile  = "key.json"
+	keyFile = "key.json"
 )
 
 // regionPickTimeout bounds the one-time latency probe across DERP relays.

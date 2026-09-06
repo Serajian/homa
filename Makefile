@@ -228,7 +228,7 @@ precommit: deps lint-fix lint build ## [Lint] Pre-commit pipeline (deps + format
 	@echo "$(COLOR_GREEN)Pre-commit checks passed.$(COLOR_RESET)"
 
 .PHONY: prepush
-prepush: deps golines-changed lint-fix lint test-race ## [Lint] Pre-push pipeline (+ race tests)
+prepush: deps golines-changed lint-fix lint test-race clean ## [Lint] Pre-push pipeline (+ race tests)
 	@echo "$(COLOR_GREEN)Pre-push checks passed.$(COLOR_RESET)"
 
 # ==================================================================================== #

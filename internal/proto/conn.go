@@ -32,7 +32,12 @@ func NewConn(rw io.ReadWriter) *Conn {
 // Write emits one frame. Concurrent calls are safe.
 func (c *Conn) Write(t Type, payload []byte) error {
 	if len(payload) > MaxPayload {
-		return fmt.Errorf("proto: %s payload of %d bytes exceeds max %d", t, len(payload), MaxPayload)
+		return fmt.Errorf(
+			"proto: %s payload of %d bytes exceeds max %d",
+			t,
+			len(payload),
+			MaxPayload,
+		)
 	}
 
 	var hdr [headerSize]byte
@@ -93,7 +98,11 @@ func (c *Conn) Read() (Frame, error) {
 
 	n := binary.BigEndian.Uint32(hdr[:4])
 	if n > MaxPayload {
-		return Frame{}, fmt.Errorf("proto: peer announced %d bytes, over the %d limit", n, MaxPayload)
+		return Frame{}, fmt.Errorf(
+			"proto: peer announced %d bytes, over the %d limit",
+			n,
+			MaxPayload,
+		)
 	}
 
 	f := Frame{Type: Type(hdr[4])}
