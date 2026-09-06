@@ -9,9 +9,6 @@ import (
 	"sync"
 )
 
-// readBufSize lets several small frames arrive in one syscall.
-const readBufSize = 64 * 1024
-
 // Conn reads and writes frames on a stream.
 //
 // Writes are serialized by a mutex: several goroutines (the chat loop and a

@@ -41,23 +41,6 @@ func (t Type) String() string {
 	}
 }
 
-// headerSize is the fixed prefix on every frame: a 4-byte big-endian payload
-// length followed by a 1-byte type.
-//
-//	+----------+--------+------------------+
-//	| 4 bytes  | 1 byte |   N bytes        |
-//	| N (BE)   |  type  |   payload        |
-//	+----------+--------+------------------+
-const headerSize = 5
-
-// MaxPayload caps a single frame's payload. Without a cap, a peer could
-// announce a huge length and make us allocate that much in one read.
-const MaxPayload = 1 << 20 // 1 MiB
-
-// ChunkSize is how much file data one FILE_CHUNK frame carries. Small enough
-// that chat messages slip between chunks without a noticeable pause.
-const ChunkSize = 32 * 1024
-
 // Frame is one decoded message off the wire.
 type Frame struct {
 	Type    Type

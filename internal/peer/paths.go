@@ -6,12 +6,6 @@ import (
 	"path/filepath"
 )
 
-const (
-	dirPerm  = 0o700 // only the owner may even list the directory
-	filePerm = 0o600 // only the owner may read the key
-	keyFile  = "key.json"
-)
-
 // ConfigDir returns homa's configuration directory, creating it if needed.
 // It honours XDG_CONFIG_HOME and falls back to the platform default:
 // ~/.config/homa on Linux, ~/Library/Application Support/homa on macOS.

@@ -6,10 +6,6 @@ import (
 	"fmt"
 )
 
-// Version is the protocol version announced in Hello. Peers running different
-// versions may still connect; each side can warn its user.
-const Version = 1
-
 // Hello introduces a peer. Nick is self-declared and therefore not proof of
 // identity: the node key underneath the tunnel is what actually identifies
 // the other side.

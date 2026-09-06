@@ -4,15 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/tailscale/tailcat"
 	"tailscale.com/tailcfg"
 )
-
-// regionPickTimeout bounds the one-time latency probe across DERP relays.
-// It runs once, on first launch, so a generous bound is fine.
-const regionPickTimeout = 30 * time.Second
 
 // pickRegion measures the DERP relays and returns the nearest one.
 //
