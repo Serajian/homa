@@ -4,6 +4,10 @@
 //
 // A name is local. Two people may know the same peer by different names,
 // and nothing is exchanged over the network about them.
+//
+// A Book is safe for concurrent use. homa reads it from the goroutine that
+// answers calls while the person edits it from the menu, so the lock lives
+// here rather than in each caller: a shared thing guards itself.
 package contacts
 
 import (
@@ -13,6 +17,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/Serajian/homa/internal/logx"
 	"github.com/Serajian/homa/internal/paths"
@@ -44,7 +49,12 @@ type Contact struct {
 
 // Book is the whole address book, kept sorted by name so menus are stable
 // between runs.
+//
+// Every exported method takes mu. The unexported helpers do not: they are
+// only ever called with it already held, and taking it twice would
+// deadlock.
 type Book struct {
+	mu   sync.RWMutex
 	list []Contact
 }
 
@@ -74,6 +84,7 @@ func Load() (*Book, error) {
 			"fix it by hand, or delete it to start a fresh address book", p, err)
 	}
 
+	// The book is not shared yet, so no lock is needed here.
 	book := &Book{list: list}
 	if err := book.validate(); err != nil {
 		return nil, fmt.Errorf("contacts: %s holds a bad entry: %w", p, err)
@@ -91,9 +102,12 @@ func (b *Book) Save() error {
 		return err
 	}
 
+	b.mu.RLock()
 	// Marshal a non-nil slice so an emptied book is written as [] rather
 	// than null, which would not survive a round trip as cleanly.
-	list := b.list
+	list := slices.Clone(b.list)
+	b.mu.RUnlock()
+
 	if list == nil {
 		list = []Contact{}
 	}
@@ -113,15 +127,26 @@ func (b *Book) Save() error {
 // All returns the contacts in name order. The slice is a copy: changing it
 // does not change the book.
 func (b *Book) All() []Contact {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	return slices.Clone(b.list)
 }
 
 // Len reports how many contacts are known.
-func (b *Book) Len() int { return len(b.list) }
+func (b *Book) Len() int {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return len(b.list)
+}
 
 // ByName finds a contact by nickname, ignoring letter case so a person does
 // not have to remember how they capitalized it.
 func (b *Book) ByName(name string) (Contact, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	i := b.indexByName(name)
 	if i < 0 {
 		return Contact{}, fmt.Errorf("%w: %q", ErrNotFound, name)
@@ -136,6 +161,10 @@ func (b *Book) ByPubKey(key string) (Contact, bool) {
 	if key == "" {
 		return Contact{}, false
 	}
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	for _, c := range b.list {
 		if c.PubKey == key {
 			return c, true
@@ -153,6 +182,10 @@ func (b *Book) Add(c Contact) error {
 	if err := c.validate(); err != nil {
 		return err
 	}
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b.indexByName(c.Name) >= 0 {
 		return fmt.Errorf("%w: %q", ErrExists, c.Name)
 	}
@@ -166,6 +199,9 @@ func (b *Book) Add(c Contact) error {
 
 // Remove deletes a contact by name.
 func (b *Book) Remove(name string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	i := b.indexByName(name)
 	if i < 0 {
 		return fmt.Errorf("%w: %q", ErrNotFound, name)
@@ -181,6 +217,9 @@ func (b *Book) Remove(name string) error {
 // connection from that peer can be recognized. It reports whether anything
 // changed, which tells the caller whether the book is worth saving.
 func (b *Book) SetPubKey(name, key string) (bool, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	i := b.indexByName(name)
 	if i < 0 {
 		return false, fmt.Errorf("%w: %q", ErrNotFound, name)
@@ -195,6 +234,7 @@ func (b *Book) SetPubKey(name, key string) (bool, error) {
 	return true, nil
 }
 
+// indexByName must be called with mu held.
 func (b *Book) indexByName(name string) int {
 	name = strings.TrimSpace(name)
 	return slices.IndexFunc(b.list, func(c Contact) bool {
@@ -202,6 +242,7 @@ func (b *Book) indexByName(name string) int {
 	})
 }
 
+// sort must be called with mu held.
 func (b *Book) sort() {
 	slices.SortFunc(b.list, func(x, y Contact) int {
 		return strings.Compare(strings.ToLower(x.Name), strings.ToLower(y.Name))

@@ -10,7 +10,11 @@ import (
 	"io"
 	"strings"
 	"sync"
+
+	"github.com/Serajian/homa/internal/logx"
 )
+
+var lg = logx.For("ui")
 
 // ErrCanceled means the person ended the input, usually with Ctrl+D. It is
 // not a failure: it is how someone says "stop asking".

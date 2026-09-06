@@ -21,6 +21,8 @@ func (c Contact) validate() error {
 
 // validate checks the whole book, including that no two contacts share a
 // name. A duplicate would make ByName ambiguous and a menu misleading.
+//
+// It must be called with mu held, or before the book is shared.
 func (b *Book) validate() error {
 	seen := make(map[string]struct{}, len(b.list))
 
