@@ -18,7 +18,7 @@ import (
 	"github.com/Serajian/homa/internal/paths"
 )
 
-var logger = logx.For("contacts")
+var lg = logx.For("contacts")
 
 // ErrNotFound means no contact goes by that name.
 var ErrNotFound = errors.New("contacts: no such contact")
@@ -62,7 +62,7 @@ func Load() (*Book, error) {
 	b, err := os.ReadFile(p)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		logger.Debug("no address book yet")
+		lg.Debug("no address book yet")
 		return &Book{}, nil
 	case err != nil:
 		return nil, fmt.Errorf("contacts: reading %s: %w", p, err)
@@ -80,7 +80,7 @@ func Load() (*Book, error) {
 	}
 	book.sort()
 
-	logger.Info("address book loaded", "count", len(book.list))
+	lg.Info("address book loaded", "count", len(book.list))
 	return book, nil
 }
 
@@ -106,7 +106,7 @@ func (b *Book) Save() error {
 		return err
 	}
 
-	logger.Info("address book saved", "count", len(list))
+	lg.Info("address book saved", "count", len(list))
 	return nil
 }
 
@@ -160,7 +160,7 @@ func (b *Book) Add(c Contact) error {
 	b.list = append(b.list, c)
 	b.sort()
 
-	logger.Info("contact added", "name", c.Name)
+	lg.Info("contact added", "name", c.Name)
 	return nil
 }
 
@@ -173,7 +173,7 @@ func (b *Book) Remove(name string) error {
 
 	b.list = slices.Delete(b.list, i, i+1)
 
-	logger.Info("contact removed", "name", name)
+	lg.Info("contact removed", "name", name)
 	return nil
 }
 
@@ -191,7 +191,7 @@ func (b *Book) SetPubKey(name, key string) (bool, error) {
 
 	b.list[i].PubKey = key
 
-	logger.Info("contact key recorded", "name", name)
+	lg.Info("contact key recorded", "name", name)
 	return true, nil
 }
 

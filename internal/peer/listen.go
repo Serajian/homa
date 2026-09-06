@@ -64,7 +64,7 @@ func Listen(id *Identity) (*Listener, error) {
 		ServedTCPPorts: servedPorts(),
 		OnTCP: func(port uint16) func(net.Conn) {
 			if port != Port {
-				logger.Debug("rejecting connection to unexpected port", "port", port)
+				lg.Debug("rejecting connection to unexpected port", "port", port)
 				return nil
 			}
 			return l.handle
@@ -76,7 +76,7 @@ func Listen(id *Identity) (*Listener, error) {
 	}
 	l.addr = string(l.srv.TailcatAddr())
 
-	logger.Info("listening", "region", id.pk.Public.RegionID)
+	lg.Info("listening", "region", id.pk.Public.RegionID)
 	return l, nil
 }
 
@@ -91,9 +91,9 @@ func (l *Listener) handle(c net.Conn) {
 
 	select {
 	case l.conns <- h:
-		logger.Debug("incoming connection accepted", "known_key", h.key != "")
+		lg.Debug("incoming connection accepted", "known_key", h.key != "")
 		<-h.release
-		logger.Debug("incoming connection finished")
+		lg.Debug("incoming connection finished")
 	case <-l.closed:
 		_ = c.Close()
 	}
@@ -121,7 +121,7 @@ func (l *Listener) Addr() string { return l.addr }
 func (l *Listener) Close() error {
 	l.closeOnce.Do(func() {
 		close(l.closed)
-		logger.Info("listener closing")
+		lg.Info("listener closing")
 	})
 	return l.srv.Close()
 }

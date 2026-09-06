@@ -18,13 +18,13 @@ func pickRegion(ctx context.Context) (tailcfg.DERPRegionID, error) {
 	ctx, cancel := context.WithTimeout(ctx, regionPickTimeout)
 	defer cancel()
 
-	logger.Debug("fetching relay list")
+	lg.Debug("fetching relay list")
 	dm, err := tailcat.FetchDERPMap(ctx, tailcat.ExpandForServer)
 	if err != nil {
 		return 0, fmt.Errorf("peer: fetching the relay list: %w", err)
 	}
 
-	logger.Debug("measuring relay latency", "regions", len(dm.Regions))
+	lg.Debug("measuring relay latency", "regions", len(dm.Regions))
 	region, err := tailcat.PickBestRegion(ctx, dm)
 	if err != nil {
 		return 0, fmt.Errorf("peer: measuring relays: %w", err)
@@ -34,6 +34,6 @@ func pickRegion(ctx context.Context) (tailcfg.DERPRegionID, error) {
 		return 0, errors.New("peer: no relay responded; check your connection and try again")
 	}
 
-	logger.Info("relay region chosen", "region", region)
+	lg.Info("relay region chosen", "region", region)
 	return region, nil
 }

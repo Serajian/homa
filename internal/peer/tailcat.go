@@ -16,5 +16,5 @@ func servedPorts() []filter.PortRange {
 // tailcatLogf routes the transport's chatter into our own logger at Debug
 // level, so it stays out of sight unless someone is debugging.
 func tailcatLogf(format string, args ...any) {
-	logger.Debug(fmt.Sprintf(format, args...))
+	lg.Debug(fmt.Sprintf(format, args...))
 }

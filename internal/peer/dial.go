@@ -50,7 +50,7 @@ func Dial(ctx context.Context, id *Identity, addr string) (net.Conn, error) {
 		return nil, fmt.Errorf("peer: reading the address: %w", err)
 	}
 
-	logger.Info("dialing peer")
+	lg.Info("dialing peer")
 
 	c := tailcat.NewClient(a)
 	c.Key = id.pk.Private
@@ -62,7 +62,7 @@ func Dial(ctx context.Context, id *Identity, addr string) (net.Conn, error) {
 		return nil, fmt.Errorf("peer: connecting: %w", err)
 	}
 
-	logger.Info("connected to peer")
+	lg.Info("connected to peer")
 	return &dialedConn{
 		Conn:   conn,
 		client: c,

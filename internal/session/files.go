@@ -118,7 +118,7 @@ func (s *Session) SendFile(
 	if err := s.c.WriteJSON(proto.TypeFileOffer, offer); err != nil {
 		return fmt.Errorf("session: offering %s: %w", name, err)
 	}
-	logger.Info("file offered", "name", name, "size", size)
+	lg.Info("file offered", "name", name, "size", size)
 
 	if err := waitForAnswer(ctx, reply, name); err != nil {
 		return err
@@ -199,7 +199,7 @@ func (s *Session) sendBody(
 		return fmt.Errorf("session: finishing %s: %w", name, err)
 	}
 
-	logger.Info("file sent", "name", name, "bytes", sent)
+	lg.Info("file sent", "name", name, "bytes", sent)
 	return nil
 }
 
@@ -235,14 +235,14 @@ func (s *Session) onAnswer(f proto.Frame) {
 	if f.Type == proto.TypeFileAccept {
 		var msg proto.FileAccept
 		if err := proto.DecodeJSON(f, &msg); err != nil {
-			logger.Warn("unreadable file answer", "err", err)
+			lg.Warn("unreadable file answer", "err", err)
 			return
 		}
 		id, reply = msg.ID, offerReply{accepted: true}
 	} else {
 		var msg proto.FileReject
 		if err := proto.DecodeJSON(f, &msg); err != nil {
-			logger.Warn("unreadable file answer", "err", err)
+			lg.Warn("unreadable file answer", "err", err)
 			return
 		}
 		id, reason = msg.ID, msg.Reason
@@ -250,7 +250,7 @@ func (s *Session) onAnswer(f proto.Frame) {
 	}
 
 	if !s.files.answer(id, reply) {
-		logger.Debug("answer for an unknown offer", "id", id)
+		lg.Debug("answer for an unknown offer", "id", id)
 	}
 }
 
@@ -258,7 +258,7 @@ func (s *Session) onAnswer(f proto.Frame) {
 func (s *Session) onOffer(f proto.Frame) {
 	var msg proto.FileOffer
 	if err := proto.DecodeJSON(f, &msg); err != nil {
-		logger.Warn("unreadable file offer", "err", err)
+		lg.Warn("unreadable file offer", "err", err)
 		return
 	}
 
@@ -297,7 +297,7 @@ func (s *Session) onOffer(f proto.Frame) {
 		return
 	}
 
-	logger.Info("file accepted", "name", name, "size", msg.Size)
+	lg.Info("file accepted", "name", name, "size", msg.Size)
 }
 
 // startDownload creates the partial file the chunks will be written into.
@@ -349,7 +349,7 @@ func uniquePath(path string) string {
 func (s *Session) onChunk(f proto.Frame) {
 	id, data, err := proto.DecodeChunk(f)
 	if err != nil {
-		logger.Warn("unreadable file chunk", "err", err)
+		lg.Warn("unreadable file chunk", "err", err)
 		return
 	}
 
@@ -357,7 +357,7 @@ func (s *Session) onChunk(f proto.Frame) {
 	if !ok {
 		// A chunk for a transfer we declined or already ended. Dropping
 		// it is correct: we never agreed to it.
-		logger.Debug("chunk for an unknown transfer", "id", id)
+		lg.Debug("chunk for an unknown transfer", "id", id)
 		return
 	}
 
@@ -382,13 +382,13 @@ func (s *Session) onChunk(f proto.Frame) {
 func (s *Session) onDone(f proto.Frame) {
 	var msg proto.FileDone
 	if err := proto.DecodeJSON(f, &msg); err != nil {
-		logger.Warn("unreadable end of transfer", "err", err)
+		lg.Warn("unreadable end of transfer", "err", err)
 		return
 	}
 
 	in, ok := s.files.lookup(msg.ID)
 	if !ok {
-		logger.Debug("end of an unknown transfer", "id", msg.ID)
+		lg.Debug("end of an unknown transfer", "id", msg.ID)
 		return
 	}
 	s.files.finish(msg.ID)
@@ -428,7 +428,7 @@ func (s *Session) onDone(f proto.Frame) {
 		return
 	}
 
-	logger.Info("file received", "name", in.name, "bytes", in.got)
+	lg.Info("file received", "name", in.name, "bytes", in.got)
 	if hasHandler {
 		fh.OnFileDone(in.name, in.finalPath)
 	}
@@ -439,9 +439,9 @@ func (s *Session) onDone(f proto.Frame) {
 func (s *Session) decline(id uint32, reason string) {
 	msg := proto.FileReject{ID: id, Reason: reason}
 	if err := s.c.WriteJSON(proto.TypeFileReject, msg); err != nil {
-		logger.Debug("could not send refusal", "err", err)
+		lg.Debug("could not send refusal", "err", err)
 	}
-	logger.Info("file declined", "reason", reason)
+	lg.Info("file declined", "reason", reason)
 }
 
 // failTransfer ends one download badly, cleaning up after it.
@@ -452,7 +452,7 @@ func (s *Session) failTransfer(id uint32, in *incoming, err error) {
 	if fh, ok := s.handler.(FileHandler); ok {
 		fh.OnFileError(in.name, err)
 	}
-	logger.Warn("transfer failed", "name", in.name, "err", err)
+	lg.Warn("transfer failed", "name", in.name, "err", err)
 }
 
 // abortTransfers is called when the conversation ends. It throws away

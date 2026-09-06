@@ -17,7 +17,7 @@ import (
 	"github.com/Serajian/homa/internal/proto"
 )
 
-var logger = logx.For("session")
+var lg = logx.For("session")
 
 // Handler receives what happens during a conversation. Every method is
 // called from the session's read goroutine, one at a time, so an
@@ -74,7 +74,7 @@ func Start(conn net.Conn, nick string, h Handler) (*Session, error) {
 		return nil, fmt.Errorf("session: clearing handshake deadline: %w", err)
 	}
 
-	logger.Info("session started", "peer", s.peer.Nick, "version", s.peer.Version)
+	lg.Info("session started", "peer", s.peer.Nick, "version", s.peer.Version)
 	return s, nil
 }
 
@@ -105,7 +105,7 @@ func (s *Session) handshake(nick string) error {
 	if in.Version != proto.Version {
 		// Not fatal: the frame format is stable, so an older or newer
 		// peer can still chat. The caller decides whether to warn.
-		logger.Warn("protocol version differs",
+		lg.Warn("protocol version differs",
 			"ours", proto.Version, "theirs", in.Version)
 	}
 	return nil
@@ -134,7 +134,7 @@ func (s *Session) SendText(text string) error {
 // Canceling ctx closes the connection, which is what unblocks the read.
 func (s *Session) Run(ctx context.Context) error {
 	stop := context.AfterFunc(ctx, func() {
-		logger.Debug("context canceled, closing connection")
+		lg.Debug("context canceled, closing connection")
 		_ = s.conn.Close()
 	})
 	defer stop()
@@ -154,11 +154,11 @@ func (s *Session) Run(ctx context.Context) error {
 			s.handler.OnText(sanitizeText(string(f.Payload)))
 
 		case proto.TypeBye:
-			logger.Info("peer said goodbye")
+			lg.Info("peer said goodbye")
 			return nil
 
 		case proto.TypeHello:
-			logger.Debug("ignoring a repeated greeting")
+			lg.Debug("ignoring a repeated greeting")
 
 		default:
 			// File frames land here. A failure inside one transfer is
@@ -167,7 +167,7 @@ func (s *Session) Run(ctx context.Context) error {
 			if s.handleFileFrame(f) {
 				continue
 			}
-			logger.Debug("ignoring an unhandled frame", "type", f.Type)
+			lg.Debug("ignoring an unhandled frame", "type", f.Type)
 		}
 	}
 }
@@ -177,7 +177,7 @@ func (s *Session) Run(ctx context.Context) error {
 func (s *Session) readErr(ctx context.Context, err error) error {
 	switch {
 	case errors.Is(err, io.EOF):
-		logger.Info("peer disconnected")
+		lg.Info("peer disconnected")
 		return nil
 
 	case ctx.Err() != nil:
@@ -186,7 +186,7 @@ func (s *Session) readErr(ctx context.Context, err error) error {
 		return ctx.Err()
 
 	case errors.Is(err, net.ErrClosed):
-		logger.Info("connection closed")
+		lg.Info("connection closed")
 		return nil
 
 	case errors.Is(err, io.ErrUnexpectedEOF):
@@ -202,7 +202,7 @@ func (s *Session) readErr(ctx context.Context, err error) error {
 // for closing is often that the connection already broke.
 func (s *Session) Close() error {
 	if err := s.c.WriteBye(); err != nil {
-		logger.Debug("could not send goodbye", "err", err)
+		lg.Debug("could not send goodbye", "err", err)
 	}
 	return s.conn.Close()
 }

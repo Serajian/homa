@@ -14,7 +14,7 @@ import (
 	"github.com/Serajian/homa/internal/paths"
 )
 
-var logger = logx.For("config")
+var lg = logx.For("config")
 
 // ErrNotFound means homa has not been set up on this machine yet, and the
 // caller should ask the first-run questions.
@@ -73,7 +73,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("config: %s holds bad settings: %w", p, err)
 	}
 
-	logger.Info("settings loaded", "nick", c.Nick, "auto_listen", c.AutoListen)
+	lg.Info("settings loaded", "nick", c.Nick, "auto_listen", c.AutoListen)
 	return &c, nil
 }
 
@@ -96,7 +96,7 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	logger.Info("settings saved", "path", p)
+	lg.Info("settings saved", "path", p)
 	return nil
 }
 

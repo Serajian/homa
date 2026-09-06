@@ -40,7 +40,7 @@ func (i *Identity) PublicKey() string {
 func lookupKey(srv *tailcat.Server, conn net.Conn) string {
 	ap, err := netip.ParseAddrPort(conn.RemoteAddr().String())
 	if err != nil {
-		logger.Debug("unparsable remote address", "addr", conn.RemoteAddr())
+		lg.Debug("unparsable remote address", "addr", conn.RemoteAddr())
 		return ""
 	}
 
@@ -60,6 +60,6 @@ func lookupKey(srv *tailcat.Server, conn net.Conn) string {
 		}
 	}
 
-	logger.Debug("no key found for connection", "addr", ap.Addr())
+	lg.Debug("no key found for connection", "addr", ap.Addr())
 	return ""
 }

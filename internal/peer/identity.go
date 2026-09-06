@@ -17,7 +17,7 @@ import (
 	"github.com/Serajian/homa/internal/paths"
 )
 
-var logger = logx.For("peer")
+var lg = logx.For("peer")
 
 // KeyPath reports where the identity is stored, for messages to the user.
 func KeyPath() string { return paths.Display(keyFile) }
@@ -45,7 +45,7 @@ func LoadOrCreateIdentity(ctx context.Context) (*Identity, error) {
 	case err == nil:
 		return load(b, p)
 	case errors.Is(err, os.ErrNotExist):
-		logger.Info("no identity on disk, creating one", "path", p)
+		lg.Info("no identity on disk, creating one", "path", p)
 		return create(ctx, p)
 	default:
 		return nil, fmt.Errorf("peer: reading %s: %w", p, err)
@@ -62,7 +62,7 @@ func load(b []byte, p string) (*Identity, error) {
 		return nil, fmt.Errorf("peer: %s has no relay region; delete it to start over", p)
 	}
 
-	logger.Info("identity loaded", "path", p, "region", pk.Public.RegionID)
+	lg.Info("identity loaded", "path", p, "region", pk.Public.RegionID)
 	return &Identity{pk: &pk}, nil
 }
 
@@ -80,7 +80,7 @@ func create(ctx context.Context, p string) (*Identity, error) {
 	// without it, whoever runs the relay could join the tunnel. NewPrivateKey
 	// is expected to set it, but the docs do not promise so.
 	if pk.Public.PresharedKey.IsZero() {
-		logger.Warn("generated identity had no pre-shared key, adding one")
+		lg.Warn("generated identity had no pre-shared key, adding one")
 		pk.Public.PresharedKey = tailcat.NewPresharedKey()
 	}
 
@@ -95,6 +95,6 @@ func create(ctx context.Context, p string) (*Identity, error) {
 		return nil, fmt.Errorf("peer: writing %s: %w", p, err)
 	}
 
-	logger.Info("identity created", "path", p, "region", region)
+	lg.Info("identity created", "path", p, "region", region)
 	return &Identity{pk: pk}, nil
 }
