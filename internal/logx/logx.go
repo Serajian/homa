@@ -29,7 +29,7 @@ func Set(h slog.Handler) {
 
 // Silence discards all homa logging. This is the startup default.
 func Silence() {
-	var h slog.Handler = slog.NewTextHandler(io.Discard, nil)
+	h := slog.DiscardHandler
 	current.Store(&h)
 }
 
@@ -83,6 +83,7 @@ func (p *proxy) Enabled(ctx context.Context, l slog.Level) bool {
 	return p.resolve().Enabled(ctx, l)
 }
 
+//nolint:gocritic // the signature is fixed by slog.Handler; Record is passed by value by design
 func (p *proxy) Handle(ctx context.Context, r slog.Record) error {
 	return p.resolve().Handle(ctx, r)
 }

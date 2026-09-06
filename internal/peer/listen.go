@@ -97,7 +97,7 @@ func (l *Listener) handle(c net.Conn) {
 	}
 }
 
-// Accept blocks until a peer connects, ctx is cancelled, or the listener is
+// Accept blocks until a peer connects, ctx is canceled, or the listener is
 // closed. The caller owns the returned connection and must Close it.
 func (l *Listener) Accept(ctx context.Context) (net.Conn, error) {
 	select {

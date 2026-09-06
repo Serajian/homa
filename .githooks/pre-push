@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#
+# homa pre-push hook.
+#
+# Runs the slower checks before code leaves this machine: line wrapping on
+# changed files, lint, and the tests under the race detector.
+#
+# Skip it for one push with:  git push --no-verify
+
+set -euo pipefail
+
+echo "pre-push: running make prepush"
+
+if ! make prepush; then
+	echo
+	echo "pre-push FAILED. Fix the problems above, or push with --no-verify to skip." >&2
+	exit 1
+fi
+
+# prepush may have reformatted files. Pushing a tree that differs from what
+# was tested is how a green local run turns into a red CI run, so stop and
+# let the change be committed first.
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+	echo
+	echo "pre-push: formatting changed files that are not committed:" >&2
+	git status --short --untracked-files=no >&2
+	echo "Commit them, then push again." >&2
+	exit 1
+fi
+
+echo "pre-push: ok"

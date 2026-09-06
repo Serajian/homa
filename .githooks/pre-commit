@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# homa pre-commit hook.
+#
+# Runs the fast checks: dependency sync, formatting, lint, build. A commit
+# happens many times a day, so this stays in the seconds range; the slow
+# checks live in pre-push.
+#
+# Skip it for one commit with:  git commit --no-verify
+
+set -euo pipefail
+
+echo "pre-commit: running make precommit"
+
+if ! make precommit; then
+	echo
+	echo "pre-commit FAILED. Fix the problems above, or commit with --no-verify to skip." >&2
+	exit 1
+fi
+
+# Formatting may have rewritten files that were already staged. Re-stage the
+# ones git already knows about, so what gets committed is what was checked.
+# Files you never staged are left alone.
+staged=$(git diff --cached --name-only --diff-filter=d -- '*.go' || true)
+if [ -n "$staged" ]; then
+	printf '%s\n' "$staged" | tr '\n' '\0' | xargs -0 git add --
+fi
+
+echo "pre-commit: ok"

@@ -22,10 +22,12 @@ type FileOffer struct {
 	Size int64  `json:"size"`
 }
 
+// FileAccept agrees to receive the offered file.
 type FileAccept struct {
 	ID uint32 `json:"id"`
 }
 
+// FileReject declines the offered file, optionally saying why.
 type FileReject struct {
 	ID     uint32 `json:"id"`
 	Reason string `json:"reason,omitempty"`

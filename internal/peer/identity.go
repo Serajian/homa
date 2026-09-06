@@ -11,8 +11,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Serajian/homa/internal/logx"
 	"github.com/tailscale/tailcat"
+
+	"github.com/Serajian/homa/internal/logx"
 )
 
 var logger = logx.For("peer")

@@ -7,6 +7,7 @@ import "fmt"
 // Type identifies what a frame carries.
 type Type uint8
 
+// The frame types homa exchanges.
 const (
 	TypeHello      Type = 0x01
 	TypeText       Type = 0x02

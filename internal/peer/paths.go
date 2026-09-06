@@ -7,7 +7,7 @@ import (
 )
 
 // ConfigDir returns homa's configuration directory, creating it if needed.
-// It honours XDG_CONFIG_HOME and falls back to the platform default:
+// It honors XDG_CONFIG_HOME and falls back to the platform default:
 // ~/.config/homa on Linux, ~/Library/Application Support/homa on macOS.
 func ConfigDir() (string, error) {
 	base, err := os.UserConfigDir()

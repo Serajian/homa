@@ -7,7 +7,7 @@ import (
 )
 
 // servedPorts restricts the packet filter to homa's own port, so traffic to
-// any other port is dropped before it ever reaches OnTCP. Defence in depth:
+// any other port is dropped before it ever reaches OnTCP. Defense in depth:
 // OnTCP already refuses them, this stops them one layer earlier.
 func servedPorts() []filter.PortRange {
 	return []filter.PortRange{{First: Port, Last: Port}}

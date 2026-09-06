@@ -21,6 +21,7 @@ type Conn struct {
 	mu sync.Mutex // guards writes to w
 }
 
+// NewConn wraps a stream so frames can be read from and written to it.
 func NewConn(rw io.ReadWriter) *Conn {
 	return &Conn{
 		r: bufio.NewReaderSize(rw, readBufSize),
@@ -105,8 +106,8 @@ func (c *Conn) Read() (Frame, error) {
 	return f, nil
 }
 
-//io.Reader = «از این می‌توانم byte بخوانم»
-//io.Writer = «در این می‌توانم byte بنویسم»
-//io.ReadWriter = «هم می‌توانم بخوانم، هم بنویسم»
-//bufio.Reader = «یک Reader دارم، ولی جلویش یک buffer گذاشته‌ام تا خواندن راحت‌تر/کارآمدتر شود»
-//io.ReadFull=«تا وقتی تعداد byte موردنظر کامل نشده، برنگرد»
+// io.Reader = «از این می‌توانم byte بخوانم»
+// io.Writer = «در این می‌توانم byte بنویسم»
+// io.ReadWriter = «هم می‌توانم بخوانم، هم بنویسم»
+// bufio.Reader = «یک Reader دارم، ولی جلویش یک buffer گذاشته‌ام تا خواندن راحت‌تر/کارآمدتر شود»
+// io.ReadFull=«تا وقتی تعداد byte موردنظر کامل نشده، برنگرد»

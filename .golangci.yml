@@ -1,0 +1,102 @@
+version: "2"
+
+run:
+  timeout: 2m
+  tests: true
+
+linters:
+  # standard is errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  enable:
+    # correctness
+    - errorlint      # errors compared with == instead of errors.Is
+    - nilerr         # returns nil where err is non-nil
+    - bodyclose      # HTTP response bodies left unclosed
+    - noctx          # network calls without a context
+    - durationcheck  # two durations multiplied together
+    - makezero       # make([]T, n) then append, silently leaving zeros
+    - wastedassign   # values assigned then overwritten before use
+
+    # style and clarity
+    - revive         # the maintained replacement for golint
+    - gocritic       # a broad catch-all of small smells
+    - unconvert      # pointless type conversions
+    - misspell
+    - goconst        # the same string literal repeated
+    - predeclared    # shadowing builtins like len, cap, new
+
+    # logging: we log with slog everywhere
+    - sloglint
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+
+    govet:
+      enable-all: true
+      disable:
+        # fieldalignment reorders structs for a few bytes and hurts
+        # readability more than it helps here.
+        - fieldalignment
+
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - disableStutteringCheck
+        - name: package-comments
+        - name: indent-error-flow
+        - name: error-strings
+        - name: error-naming
+        - name: context-as-argument
+        - name: unreachable-code
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        # both fight the plain style used in this codebase
+        - ifElseChain
+        - singleCaseSwitch
+
+    sloglint:
+      # log.Info("msg", "key", value) rather than mixing in slog.String(...)
+      kv-only: true
+      # every message lower case and without punctuation, so lines line up
+      msg-style: lowercased
+      no-raw-keys: false
+      static-msg: false
+
+    goconst:
+      min-len: 3
+      min-occurrences: 4
+
+    misspell:
+      locale: US
+
+  exclusions:
+    generated: lax
+    rules:
+      # tests get some slack: fixtures repeat strings and skip error checks
+      - path: _test\.go
+        linters:
+          - errcheck
+          - goconst
+          - gosec
+
+formatters:
+  enable:
+    - gofumpt
+    - gci
+  settings:
+    gofumpt:
+      group-params: true
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/Serajian/homa)
+      custom-order: true
