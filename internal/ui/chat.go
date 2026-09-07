@@ -32,38 +32,75 @@ func (a *App) startChat(ctx context.Context, conn net.Conn, name string) {
 	// a person agreed to, and saying "talking to ..." here is what used to
 	// announce a conversation moments before it was refused.
 	//
-	// A countdown only where there is something to count: an older peer
-	// never signals, so WaitAccepted returns at once and there is nothing
-	// to wait through.
-	stop := func() {}
-	if s.SignalsAcceptance() {
-		// Counted against the same figure the other side is shown, not
-		// the longer one this side actually waits: the grace on top is
-		// for a message in flight, and putting it on screen would only
-		// invite somebody to sit through it.
-		deadline := time.Now().Add(callAnswerTimeout)
-
-		stop = a.ui.countdown(deadline, func(left time.Duration) string {
-			return fmt.Sprintf("%swaiting for %s to answer... %s", markInfo, name, left)
-		})
-	}
-
-	err = s.WaitAccepted(ctx)
-	stop()
-
-	// Left on screen rather than erased: how long it waited is worth seeing
-	// next to whatever happened. A no-op when there was no countdown.
-	a.ui.EndPrompt()
-
-	if err != nil {
-		_ = s.Close()
-		a.ui.Warn("%s", trimSessionPrefix(err))
+	// An older peer never signals, so there is nothing to wait through and
+	// nothing to give up on: its handshake is all the agreement there is.
+	if s.SignalsAcceptance() && !a.awaitAccept(ctx, s, name) {
 		return
 	}
 
 	// The name is one this machine gave: a contact was picked from the
 	// menu to get here.
 	a.runChat(ctx, conn, s, h, name, true)
+}
+
+// awaitAccept waits for the other person to take the call, and lets this one
+// give up on it. It reports whether the conversation may start; when it may
+// not, it has already said why and closed the session.
+//
+// Waiting on the keyboard as well as on the connection is the whole point.
+// Before this, the only key that did anything while a call rang was Ctrl+C,
+// which closes homa: changing your mind about one call cost the program.
+//
+// The read runs in a goroutine because it cannot be selected on directly, and
+// its channel is buffered so that giving up leaves nothing blocked on a send
+// that nobody will receive.
+func (a *App) awaitAccept(ctx context.Context, s *session.Session, name string) bool {
+	deadline := time.Now().Add(callAnswerTimeout)
+
+	stop := a.ui.countdown(deadline, func(left time.Duration) string {
+		return fmt.Sprintf("%swaiting for %s to answer... %s  (Enter to give up)",
+			markInfo, name, left)
+	})
+
+	waited := make(chan error, 1)
+	go func() { waited <- s.WaitAccepted(ctx) }()
+
+	var (
+		err    error
+		gaveUp bool
+	)
+
+	// Shutting down needs no case of its own: WaitAccepted watches the same
+	// context and answers on the channel when it is canceled.
+	select {
+	case err = <-waited:
+	case <-a.ui.Lines():
+		// Any line, including an empty one. The person is being asked to
+		// press something, not to spell anything.
+		gaveUp = true
+	}
+
+	stop()
+
+	// Left on screen rather than erased: how long it waited is worth seeing
+	// next to whatever happened.
+	a.ui.EndPrompt()
+
+	if gaveUp {
+		// Close rather than drop: the goodbye is a frame the far side
+		// already knows how to read.
+		_ = s.Close()
+		a.ui.Info("you stopped calling %s.", name)
+		return false
+	}
+
+	if err != nil {
+		_ = s.Close()
+		a.ui.Warn("%s", trimSessionPrefix(err))
+		return false
+	}
+
+	return true
 }
 
 // runChat runs one conversation until either side leaves.

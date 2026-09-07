@@ -97,10 +97,17 @@ func (u *UI) pump(in *bufio.Reader) {
 
 // Lines is the stream of typed lines, closed when the input ends.
 //
-// It is here for the one caller that has to wait on the keyboard and on
-// something else at the same time: the menu, which answers a call the
-// moment it arrives rather than at the next keypress. Everything else wants
+// It is here for callers that have to wait on the keyboard and on something
+// else at the same time, which a function call cannot do: the menu, which
+// takes a call the moment it arrives rather than at the next keypress, and a
+// caller waiting to be let in, who can give up on it. Everything else wants
 // ReadLine.
+//
+// Two goroutines reading this would each get some of the lines, and neither
+// would get all of them. That is not prevented here; it is avoided by the two
+// callers never waiting at the same time, because homa is either at the menu
+// or placing a call and never both. A third caller, or a menu that stays live
+// during a call, would break that and would have to be given something else.
 func (u *UI) Lines() <-chan string { return u.lines }
 
 // ReadLine waits for one line the person typed, with the surrounding

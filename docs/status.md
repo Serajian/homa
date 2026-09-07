@@ -9,8 +9,9 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   caller told why, and a call nobody answers hung up on inside a minute with
   both sides told
 - a caller who waits to be let in rather than being told they are talking
-  before anyone agreed, and who still works against a peer speaking version 1
-  of the protocol
+  before anyone agreed, can give up on the wait with a keypress without
+  leaving homa, and still works against a peer speaking version 1 of the
+  protocol
 - a caller you have saved shown by your name for them, one you have not shown
   by the name they chose, marked so the two cannot be confused
 - text chat with slash commands, and a way to wipe the screen from either
