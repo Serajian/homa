@@ -122,7 +122,7 @@ run: ## [Run] Run the app locally
 	@go run $(MAIN)
 
 .PHONY: brun
-brun: build ## [Run] Build and run the binary
+brun: clean build ## [Run] Build and run the binary
 	@./$(BUILD_DIR)/$(APP_NAME)
 
 # ==================================================================================== #
@@ -383,19 +383,19 @@ TEST_C   := /tmp/homa-c
 TEST_FILE := /tmp/homa-test-10m.bin
 
 .PHONY: run-a
-run-a: build ## [Test] Run instance A in its own sandbox
+run-a: clean build ## [Test] Run instance A in its own sandbox
 	@mkdir -p $(TEST_A)
 	@echo "$(COLOR_BLUE)A: config in $(TEST_A), log in /tmp/a.log$(COLOR_RESET)"
 	@HOME=$(TEST_A) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/a.log -debug
 
 .PHONY: run-b
-run-b: build ## [Test] Run instance B in its own sandbox
+run-b: clean build ## [Test] Run instance B in its own sandbox
 	@mkdir -p $(TEST_B)
 	@echo "$(COLOR_BLUE)B: config in $(TEST_B), log in /tmp/b.log$(COLOR_RESET)"
 	@HOME=$(TEST_B) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/b.log -debug
 
 .PHONY: run-c
-run-c: build ## [Test] Run instance C, for testing a busy line
+run-c: clean build ## [Test] Run instance C, for testing a busy line
 	@mkdir -p $(TEST_C)
 	@echo "$(COLOR_BLUE)C: config in $(TEST_C), log in /tmp/c.log$(COLOR_RESET)"
 	@HOME=$(TEST_C) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/c.log -debug

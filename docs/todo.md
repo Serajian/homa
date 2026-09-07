@@ -81,25 +81,41 @@ number, and `/send <path>` still works as before.
 
 ## 2. Expire a parked call
 
+**More pressing than it was.** A call is no longer put through on its own: it
+waits for the person to answer `take the call from X?`. Nothing bounds that
+wait, so a caller can hold an open line indefinitely against somebody who has
+walked away from the keyboard.
+
 ### The symptom
 
-If nobody answers, a call waits forever. The caller sits in a conversation with
-somebody who is not there.
+If nobody answers, a call waits forever. The caller sits in what looks to them
+like a conversation with somebody who is not there.
 
-Less pressing now that calls are answered as they arrive, but a call still
-parks whenever the person is inside another conversation or a prompt, and that
-one has no deadline.
+There are two waits now, and both need the deadline:
+
+- the question is on screen and nobody types an answer
+- the call is parked behind another conversation or another prompt, and never
+  reaches the question at all
 
 ### What to build
 
-Give a parked call a deadline of about a minute. When it passes:
+Give a parked call a deadline of about a minute, counted from when it arrived
+rather than from when it is put to the person, since the caller has been
+waiting the whole time. When it passes:
 
-- take it out of `a.incoming`
+- take it out of `a.incoming`, or abandon the question if that is what is on
+  screen
 - tell the caller: `no answer`
 - close it
 - tell this side too, so the announcement does not sit on screen as a lie
 
 Say the limit in the announcement: `bob is calling (expires in 60s)`.
+
+The awkward part is the question itself. `Confirm` blocks on `ReadLine`, and
+what unblocks a read is its context being canceled, so the deadline wants to be
+a context with a timeout around the `offer` call. A canceled `Confirm` already
+returns `ErrCanceled` and `offer` already declines on it, so most of this is
+choosing where the context is made rather than new machinery.
 
 Put the timeout in `internal/ui/const.go` next to `dialTimeout`.
 
@@ -109,12 +125,186 @@ Put the timeout in `internal/ui/const.go` next to `dialTimeout`.
 
 ### Done when
 
-An unanswered call closes itself, and the caller is told why rather than being
-left in an empty conversation.
+An unanswered call closes itself whether it was parked or sitting on the
+question, the caller is told why rather than being left in an empty
+conversation, and the notice on the answering side does not outlive the call it
+describes.
 
 ---
 
-## 3. A clear command
+## 3. Tell the caller when they have actually been let in
+
+**A protocol change.** Read [architecture.md](architecture.md) and the framing
+section of the README before starting: this adds a frame type and bumps
+`proto.Version`, and both sides have to keep working with peers that have
+neither.
+
+### The symptom
+
+The caller is told they are in a conversation before anyone has agreed to it:
+
+```
+  calling aa...
+
+  talking to aa (they call themselves "alice")
+  /help for commands, /quit to leave
+
+[aa] they are not taking calls right now
+  aa left the conversation.
+```
+
+The middle line is the refusal, shown as though the peer had said it in a
+conversation that never happened.
+
+### The cause
+
+The handshake carries two meanings that used to be the same thing and are not
+any more: *the machines are connected*, and *the person agreed to talk*. The
+first is automatic. The second is now a question on the receiver's screen. The
+caller cannot tell them apart, because only one signal arrives.
+
+### What to build
+
+**A frame that means "yes".** `proto.TypeAccept = 0x09`, no payload; `0x08` is
+the last one taken. `proto.Version` goes to 2.
+
+**The receiver sends it when the person says yes**, in `App.offer`, before
+`answer`. Refusal needs no frame of its own: the text reason and the close
+already say it, in words a person can read, and a type that exists only to
+duplicate that is a type to keep working forever.
+
+**The caller waits for it.** A new `session.WaitAccepted(ctx)`, called by the
+dialing side between `Start` and `runChat`, and by nothing else. It reads until
+one of:
+
+- `TypeAccept` — return, and the conversation begins
+- `TypeBye` — they hung up; return an error saying the call was not taken
+- `TypeText` — the refusal reason. Keep it, and report it with the error that
+  follows
+- a read error, or the context ending
+
+It goes in `session` because that is where framing lives, and it is a separate
+call rather than part of `Start` because only one side of a call ever waits.
+
+**The screen** says `waiting for them to answer...` while it waits, and prints
+`talking to ...` only afterwards.
+
+### Staying compatible
+
+`Hello` already carries a version, and `Session.Peer().Version` already exposes
+it, so this needs no guessing and no timeout to detect an old peer:
+
+| caller | receiver | what happens |
+| --- | --- | --- |
+| new | new | the caller waits, the accept arrives, nothing is claimed early |
+| new | old (version 1) | the caller sees `Version < 2` and skips the wait entirely, behaving exactly as today |
+| old | new | the accept frame is an unknown type and is skipped, as `session.Run` already does with anything it does not know; the caller claims early, which is today's behaviour and no worse |
+
+Do not make a version mismatch fatal. `decisions.md` says why, and this is the
+first change that puts it to use.
+
+### The wait needs a bound
+
+The caller now waits on a person rather than on a machine, so `WaitAccepted`
+takes a context and the dialing side gives it a deadline. Item 2 puts the same
+deadline on the receiver's side of that wait; the two are one wait seen from
+both ends, and they should agree on how long it is. Put the value in
+`internal/proto/const.go` if both sides must agree on it, or in
+`internal/ui/const.go` if it is only a local patience.
+
+### Files
+
+- `internal/proto/frame.go`, `internal/proto/const.go`: the type, its `String`, the version
+- `internal/session/session.go`: `WaitAccepted`, and whatever sends the frame
+- `internal/ui/menu.go`: `offer` sends the accept when the person agrees
+- `internal/ui/chat.go`: `startChat` waits, and says so on screen
+- `README.md`: the frame table, and "How a call is answered"
+- `docs/decisions.md`: what the two signals mean and why they were separated
+
+### Done when
+
+A refused caller sees `waiting for them to answer...` and then that they were
+not taken, never `talking to`; an accepted one sees the conversation start only
+after the other person agreed; and a version 1 peer on either end still holds a
+conversation.
+
+---
+
+## 4. A contacts screen
+
+### The symptom
+
+The address book can be added to and called from, and nothing else. A name typed
+in a hurry is a name forever: there is no way to change it, and no way to remove
+a contact who is gone. The main menu lists every contact as a line of its own,
+which is fine for three and unreadable for thirty.
+
+### What to build
+
+`c) contacts` in the menu, opening a screen of its own that lists the address
+book, numbered. Picking a number picks a contact, and then asks what to do with
+them:
+
+```
+> c
+
+  contacts
+   1) BB          tcpGFwWCD2eo...
+   2) babak       tcpGFwWCA74k...
+> choice: 1
+
+  BB
+   c) call
+   r) rename
+   a) show their address
+   f) forget
+   b) back
+> choice:
+```
+
+**rename** is the one that has to be built carefully. It changes the local name
+and nothing else: the address and the key stay, because they are what the
+contact *is*. That rules out remove-then-add, which would drop the key and make
+the next call from them arrive as a stranger. `contacts.Book` needs a `Rename`
+that moves the name and keeps the rest, refusing a name already taken the same
+way `Add` refuses one.
+
+The name is yours, not theirs. Somebody who calls themselves `babak` is worth
+renaming `BB` to `babak` for, but that is a decision the person makes, not
+something homa does on their behalf: a peer who could rename their own entry in
+your address book could rename it to anything.
+
+**call** is `dial`, which already exists. This is a second way to reach it, not
+a second copy of it.
+
+**forget** removes the contact. Ask first, and say what is lost: the key goes
+with the name, so their next call arrives as `~` and whatever they call
+themselves, and reaching them again means pasting the address again.
+
+### An open question
+
+The main menu still lists contacts as `1) call BB`. Nothing here asks for that
+to change, and quick dialling is worth keeping, but with a contacts screen in
+place the numbered list at the top has an obvious second home. Decide it when
+the screen exists rather than now.
+
+### Files
+
+- `internal/ui/contacts.go`: new. The screen is its own responsibility, and
+  `menu.go` is already the longest file in the package
+- `internal/ui/menu.go`: the `c` entry, and routing to it
+- `internal/contacts/contacts.go`: `Rename`
+
+### Done when
+
+A contact can be renamed and keeps their key, called from the contacts screen,
+and forgotten after confirming; renaming to a name already in the book is
+refused rather than silently merging two contacts; and a renamed contact's next
+call still arrives under the new name rather than as a stranger.
+
+---
+
+## 5. A clear command
 
 ### What to build
 
@@ -138,7 +328,7 @@ Redraw the menu afterwards, so the screen is not left blank.
 
 ---
 
-## 4. Drop input that is only control characters
+## 6. Drop input that is only control characters
 
 ### The symptom
 
@@ -165,7 +355,7 @@ Real line editing, including history on the up arrow, is phase 3.
 
 ---
 
-## 5. A reset
+## 7. A reset
 
 ### What to build
 
@@ -223,7 +413,7 @@ still has everything they had.
 
 ---
 
-## 6. Tests
+## 8. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 phase 2 adds rooms, which means more concurrency and more to get wrong.
@@ -283,7 +473,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 7. Install with brew and apt
+## 9. Install with brew and apt
 
 ### The symptom
 
@@ -332,6 +522,27 @@ what ships this week.
 A tag produces a release with binaries, a `.deb` and a formula; `brew install`
 works from a clean machine; the documented Debian route works from a clean
 machine; and `homa -version` prints the tag.
+
+---
+
+## 10. Security
+
+Not yet specified. The heading is here because the work is wanted; what it
+covers will be written down before anything is built.
+
+Whoever fills this in: the ground it starts from is
+[decisions.md](decisions.md), which already records what homa relies on and
+what it deliberately does not claim.
+
+- the tunnel authenticates, not the nick a peer announces, and not the address
+  book, which only chooses a label
+- an address is a secret and a capability: whoever holds it can call you, and
+  it can be forwarded to anyone
+- everything arriving from the network is sanitized before it is printed, and
+  `session/sanitize.go` is the only place that happens
+- a file name from a peer goes through `filepath.Base`, and a file is renamed
+  into place only after its digest matches
+- a frame is capped at 1 MiB so a peer cannot make homa allocate on request
 
 ---
 

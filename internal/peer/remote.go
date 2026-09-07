@@ -74,27 +74,6 @@ func lookupKey(srv *tailcat.Server, conn net.Conn) string {
 	return ""
 }
 
-// addrKeyBytes is how much of a peer's key its tunnel address carries.
-//
-// tailcat addresses run fd7a:115c:a1e0 followed by the start of the key, so
-// ten of the sixteen bytes are the key's own. Measured rather than assumed:
-// a contact stored as
-//
-//	nodekey:cbbc522530057d33c1bf5de665b8be09690c90af37d8a19d1919e59a096ebd06
-//
-// called in from
-//
-//	fd7a:115c:a1e0:cbbc:5225:3005:7d33:c1bf
-const addrKeyBytes = 10
-
-// keyMark is the marker a tailscale key string carries. RemoteKey returns
-// keys wearing it, so a prefix built here has to wear it too or nothing
-// would ever compare equal.
-const keyMark = "nodekey:"
-
-// addrPrefix is the range tailcat hands its tunnel addresses out of.
-var addrPrefix = netip.MustParsePrefix("fd7a:115c:a1e0::/48")
-
 // RemoteKeyPrefix returns the start of the remote peer's key, read out of
 // the tunnel address the connection carries. It is empty when the address
 // is not one of tailcat's.

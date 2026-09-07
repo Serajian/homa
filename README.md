@@ -183,19 +183,25 @@ saved the old one can no longer reach you.
 homa listens from the moment it starts, so either side can call the other. The
 greeting is completed the moment a call arrives, so the caller is connected
 rather than waiting on a handshake, and the menu waits on the keyboard and on
-arriving calls together. A call is answered without pressing anything.
+arriving calls together, so the question reaches you as the call lands.
+
+Then it asks. Having your address is not the same as being welcome to talk to
+you, so nothing is put through until you say yes. Refusing is the default, and a
+refused caller is told rather than dropped.
 
 A call still waits when you are already in a conversation or answering a
-question, and is picked up as soon as you are free.
+question, and is put to you as soon as you are free.
 
 ```mermaid
 flowchart TD
     A[call arrives] --> B{someone already waiting?}
     B -- no --> C[complete the greeting, announce it]
     C --> D{is the person free?}
-    D -- yes --> E[conversation starts]
     D -- no --> I[wait until they are]
-    I --> E
+    I --> D
+    D -- yes --> J{do they take the call?}
+    J -- yes --> E[conversation starts]
+    J -- no --> K["tell them: not taking calls right now"]
     B -- yes --> F[complete the greeting]
     F --> G["tell them: busy, another call is waiting"]
     G --> H[hang up]
@@ -208,14 +214,23 @@ than being told.
 
 A peer announces a name during the handshake, but a name is just text they
 typed. What actually identifies them is the key underneath the tunnel, which the
-WireGuard handshake proved. homa names an incoming call by that key alone:
+WireGuard handshake proved. So homa decides what to call somebody by key, never
+by what they say:
 
-- a name from your address book, if the key matches one
-- "someone not in your contacts", if it does not
-- "someone unrecognized", if the key could not be determined
+- **a name from your address book**, when the key matches one. The first time
+  you reach a contact their key is recorded, so their next call arrives under
+  the name you gave them.
+- **`~` and the name they announced**, when it matches nothing. Their own name
+  is more use than "someone not in your contacts" on every line, and the `~`
+  is what keeps the two apart: contact names never carry it, so a caller who
+  names themselves `BB` shows up as `~BB` and cannot pass for the `BB` you
+  saved.
 
-The first time you reach a contact, their key is recorded, so their next call
-arrives under the name you gave them.
+A call that arrives brings no key, only the tunnel address it came from, whose
+last ten bytes are the first ten of the caller's key. That is enough to pick one
+contact out of an address book, and a prefix matching two contacts names
+neither. It chooses a label and nothing more: what authenticates a peer is the
+tunnel, and no address book adds to or subtracts from that.
 
 ## The wire protocol
 

@@ -5,7 +5,10 @@ Working today:
 - first-run setup, saved settings, a saved identity with a stable address
 - an address book: add, list, call by name, keys learned on first contact
 - listening and dialing at the same time, an incoming call greeted as it
-  arrives and answered without a keypress, a busy caller told why
+  arrives and put through only when you agree to take it, a refused or busy
+  caller told why
+- a caller you have saved shown by your name for them, one you have not shown
+  by the name they chose, marked so the two cannot be confused
 - text chat with slash commands
 - file transfer in both directions, with confirmation, progress, a digest check,
   no overwriting, and cleanup of partial files

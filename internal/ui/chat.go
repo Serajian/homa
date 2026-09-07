@@ -26,7 +26,9 @@ func (a *App) startChat(ctx context.Context, conn net.Conn, name string) {
 		return
 	}
 
-	a.runChat(ctx, conn, s, h, name)
+	// The name is one this machine gave: a contact was picked from the
+	// menu to get here.
+	a.runChat(ctx, conn, s, h, name, true)
 }
 
 // runChat runs one conversation until either side leaves.
@@ -44,6 +46,7 @@ func (a *App) runChat(
 	s *session.Session,
 	h *chatHandler,
 	name string,
+	known bool,
 ) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -68,7 +71,14 @@ func (a *App) runChat(
 	}()
 
 	a.ui.Blank()
-	a.ui.Info("talking to %s (they call themselves %q)", name, s.Peer().Nick)
+	if known {
+		a.ui.Info("talking to %s (they call themselves %q)", name, s.Peer().Nick)
+	} else {
+		// The label already is their nick, so repeating it would say
+		// nothing. What is worth saying is where it came from.
+		a.ui.Info("talking to %s, which is what they call themselves.", name)
+		a.ui.Info("they are not in your contacts, so that name is theirs, not yours.")
+	}
 	a.ui.Info("/help for commands, /quit to leave")
 	a.ui.Blank()
 

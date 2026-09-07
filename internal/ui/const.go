@@ -31,6 +31,16 @@ const selfNick = "me"
 // erases somebody's conversation.
 const clearLine = "\r\033[K"
 
+// unknownMark goes in front of a name a peer chose for themselves, so it
+// cannot be read as a name you gave them.
+//
+// A nick is text the far side typed. Without a mark, somebody could call
+// themselves "BB" and appear on your screen exactly as the contact you saved
+// under that name. Contact names never carry this prefix, so an unmarked
+// label is always one of yours. What actually identifies a peer is the key
+// the tunnel proved; see peer.RemoteKeyPrefix.
+const unknownMark = "~"
+
 // maxInputLen bounds one typed line. Generous for a message, small enough
 // that a stuck paste cannot exhaust memory.
 const maxInputLen = 8 * 1024

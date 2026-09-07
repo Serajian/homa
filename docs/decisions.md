@@ -11,13 +11,21 @@ written into `key.json`.
 **Both peers are equal.** homa listens from the moment it starts. There is no
 "host" and no coordination about who waits.
 
-**A call is greeted the moment it arrives, and answered without a keypress.**
-The handshake happens in the accept goroutine, so a caller is connected while
-they wait rather than timing out after fifteen seconds. The menu then waits on
-the keyboard and on the channel of arrived calls together, in one select, and
-takes whichever comes first. A call still waits when the person is already in a
-conversation or answering a prompt; that is the only case left where anything
-is parked.
+**A call is greeted the moment it arrives, and put through only when the person
+says so.** The handshake happens in the accept goroutine, so a caller is
+connected while they wait rather than timing out after fifteen seconds. The menu
+waits on the keyboard and on the channel of arrived calls together, in one
+select, so the question appears as the call lands rather than at the next
+keypress.
+
+Answering the telephone is the person's decision. Having somebody's address is
+not the same as being welcome to talk to them, and an address is a string that
+can be forwarded to anyone. Refusing is the default: a keypress left over from
+the menu must not be able to let a stranger in, and a call refused by accident
+can be made again while one accepted by accident cannot be taken back.
+
+A refused caller is told, in the same way a caller finding the line busy is
+told, rather than having the connection dropped on them to puzzle over.
 
 **A second caller is told why they are turned away.** The greeting completes, a
 message says "busy: another call is already waiting", then the connection
@@ -27,6 +35,13 @@ closes. Guessing why a connection died is worse than being told.
 handshake is text they typed. `peer.RemoteKey` returns what the WireGuard
 handshake proved. The interface behind it is unexported so no other package can
 fabricate a connection that claims to know its remote key.
+
+A peer the address book does not know is still shown by the name they announced,
+because "someone not in your contacts" on every line tells the reader nothing
+they cannot see from its absence elsewhere. It is prefixed with `~`, and contact
+names never carry that prefix, so a caller who names themselves `BB` appears as
+`~BB` and cannot be mistaken for the `BB` you saved. The mark is the whole
+defence: without it the two are the same string.
 
 **An incoming caller is named from the start of their key, carried in the
 tunnel address.** A dialed connection knows the peer's key, because the address

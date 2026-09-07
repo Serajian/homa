@@ -42,6 +42,7 @@ type App struct {
 type call struct {
 	conn    net.Conn
 	name    string
+	known   bool // the name came from the address book, not from the caller
 	session *session.Session
 	handler *chatHandler
 }
@@ -120,7 +121,7 @@ func (a *App) acceptLoop(ctx context.Context) {
 // greet completes the handshake on an incoming connection and parks it for
 // the person to pick up.
 func (a *App) greet(ctx context.Context, conn net.Conn) {
-	name := a.describe(conn)
+	name, known := a.describe(conn)
 	handler := newChatHandler(a.ui, a.downloadDir, name)
 
 	s, err := session.Start(conn, a.nick(), handler)
@@ -132,7 +133,17 @@ func (a *App) greet(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	c := call{conn: conn, name: name, session: s, handler: handler}
+	// A caller the address book does not know is shown by the name they
+	// announced, marked so it cannot pass for one of yours. The nick is
+	// only available once the handshake is done, which is why this is not
+	// settled in describe. Writing it here is safe: the handler is not
+	// read from until Run starts, and that is later still.
+	if !known {
+		name = unknownMark + s.Peer().Nick
+		handler.name = name
+	}
+
+	c := call{conn: conn, name: name, known: known, session: s, handler: handler}
 
 	select {
 	case a.incoming <- c:
@@ -171,7 +182,7 @@ func (a *App) menuLoop(ctx context.Context) error {
 		// as in the select keeps the menu from being printed and then
 		// replaced a moment later.
 		if c, ok := a.takeIncoming(); ok {
-			a.answer(ctx, c)
+			a.offer(ctx, c)
 			continue
 		}
 
@@ -183,7 +194,7 @@ func (a *App) menuLoop(ctx context.Context) error {
 
 		select {
 		case c := <-a.incoming:
-			a.answer(ctx, c)
+			a.offer(ctx, c)
 
 		case line, ok := <-a.ui.Lines():
 			if !ok {
@@ -296,10 +307,52 @@ func (a *App) dial(ctx context.Context, c contacts.Contact) {
 	a.startChat(ctx, conn, c.Name)
 }
 
-// answer joins a call that was greeted and parked by the accept goroutine.
+// offer asks before putting a call through. Answering the telephone is the
+// person's decision, not the program's: a stranger having your address is
+// not the same as being welcome to talk.
+//
+// The greeting has already happened, so the caller is connected and not
+// timing out while the question sits on screen. What they are not yet is
+// listened to.
+//
+// Refusing is the default. A keypress left over from the menu should not be
+// able to let somebody in, and a call refused by accident can be made again,
+// while one accepted by accident cannot be taken back.
+func (a *App) offer(ctx context.Context, c call) {
+	a.ui.Blank()
+
+	take, err := a.ui.Confirm(ctx, fmt.Sprintf("take the call from %s?", c.name), false)
+	if err != nil {
+		// Shutting down, or the input ended. Neither is an answer, so
+		// the caller is told rather than left holding an open line.
+		a.decline(c, "no answer")
+		return
+	}
+
+	if !take {
+		a.decline(c, "they are not taking calls right now")
+		return
+	}
+
+	a.answer(ctx, c)
+}
+
+// decline hangs up on a caller and says why, in the same words the caller
+// would hear if the line were busy. Guessing why a call died is worse than
+// being told.
+func (a *App) decline(c call, reason string) {
+	if err := c.session.SendText(reason); err != nil {
+		lg.Debug("could not tell a caller they were turned down", "err", err)
+	}
+	_ = c.session.Close()
+
+	a.ui.Info("the call from %s was not taken.", c.name)
+}
+
+// answer joins a call that was greeted, parked, and agreed to.
 func (a *App) answer(ctx context.Context, c call) {
 	a.ui.Info("connected to %s", c.name)
-	a.runChat(ctx, c.conn, c.session, c.handler, c.name)
+	a.runChat(ctx, c.conn, c.session, c.handler, c.name, c.known)
 }
 
 // takeIncoming returns a parked call if there is one, without waiting.
@@ -315,12 +368,12 @@ func (a *App) takeIncoming() (call, bool) {
 // describe names whoever is on a connection, using the key rather than
 // anything they claim. An unknown key is said plainly, because "someone" is
 // honest and a made-up name would not be.
-func (a *App) describe(conn net.Conn) string {
+func (a *App) describe(conn net.Conn) (name string, known bool) {
 	if key := peer.RemoteKey(conn); key != "" {
 		if c, ok := a.book.ByPubKey(key); ok {
-			return c.Name
+			return c.Name, true
 		}
-		return "someone not in your contacts"
+		return "", false
 	}
 
 	// An accepted call brings no key, only the tunnel address it came from,
@@ -328,12 +381,11 @@ func (a *App) describe(conn net.Conn) string {
 	// peer.RemoteKeyPrefix for what a prefix does and does not prove.
 	if prefix := peer.RemoteKeyPrefix(conn); prefix != "" {
 		if c, ok := a.book.ByPubKeyPrefix(prefix); ok {
-			return c.Name
+			return c.Name, true
 		}
-		return "someone not in your contacts"
 	}
 
-	return "someone unrecognized"
+	return "", false
 }
 
 // rememberKey records a contact's key the first time we see it.
