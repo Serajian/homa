@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/Serajian/homa/internal/config"
 	"github.com/Serajian/homa/internal/contacts"
@@ -30,7 +32,7 @@ type App struct {
 	// incoming holds a call that arrived while the person was at the
 	// menu. It holds one, because a second caller while one is already
 	// waiting has nowhere sensible to queue.
-	incoming chan call
+	incoming chan *call
 }
 
 // call is a conversation that has been greeted but not yet joined.
@@ -45,7 +47,21 @@ type call struct {
 	known   bool // the name came from the address book, not from the caller
 	session *session.Session
 	handler *chatHandler
+
+	// deadline is when the caller stops being made to wait, counted from
+	// when the call arrived.
+	deadline time.Time
+
+	// claimed is how the person and the deadline avoid both taking the same
+	// call. Whoever swaps it first owns it; the other finds it gone.
+	claimed atomic.Bool
 }
+
+// claim takes ownership of a call, reporting whether it was still available.
+//
+// A call is passed by pointer from here on. Two goroutines race for it, so
+// there is one of each call and not a copy per holder.
+func (c *call) claim() bool { return c.claimed.CompareAndSwap(false, true) }
 
 // NewApp assembles the program. It does not start anything.
 func NewApp(
@@ -61,7 +77,7 @@ func NewApp(
 		book:     book,
 		id:       id,
 		listener: l,
-		incoming: make(chan call, 1),
+		incoming: make(chan *call, 1),
 	}
 }
 
@@ -143,12 +159,20 @@ func (a *App) greet(ctx context.Context, conn net.Conn) {
 		handler.name = name
 	}
 
-	c := call{conn: conn, name: name, known: known, session: s, handler: handler}
+	c := &call{
+		conn:     conn,
+		name:     name,
+		known:    known,
+		session:  s,
+		handler:  handler,
+		deadline: time.Now().Add(callAnswerTimeout),
+	}
 
 	select {
 	case a.incoming <- c:
 		a.ui.Blank()
-		a.ui.Info("%s is calling.", name)
+		a.ui.Info("%s is calling (expires in %s).", name, callAnswerTimeout)
+		go a.expire(ctx, c)
 
 	case <-ctx.Done():
 		_ = s.Close()
@@ -156,6 +180,27 @@ func (a *App) greet(ctx context.Context, conn net.Conn) {
 	default:
 		a.ui.Warn("%s called while another call was waiting", name)
 		a.turnAway(s)
+	}
+}
+
+// expire hangs up on a call nobody got to in time.
+//
+// It runs for every parked call, because the person may be in a conversation
+// that outlasts the caller's patience and never see the question at all. The
+// call value stays in the channel either way; whoever picks it up afterwards
+// finds it already claimed and passes over it.
+func (a *App) expire(ctx context.Context, c *call) {
+	t := time.NewTimer(time.Until(c.deadline))
+	defer t.Stop()
+
+	select {
+	case <-t.C:
+		if !c.claim() {
+			return // somebody was already dealing with it
+		}
+		a.decline(c, "no answer", "the call from %s ran out of time while you were busy.")
+
+	case <-ctx.Done():
 	}
 }
 
@@ -318,19 +363,41 @@ func (a *App) dial(ctx context.Context, c contacts.Contact) {
 // Refusing is the default. A keypress left over from the menu should not be
 // able to let somebody in, and a call refused by accident can be made again,
 // while one accepted by accident cannot be taken back.
-func (a *App) offer(ctx context.Context, c call) {
+func (a *App) offer(ctx context.Context, c *call) {
+	if !c.claim() {
+		return // it ran out of time while it sat in the channel
+	}
+
+	// The question gets the deadline; the conversation must not. People
+	// talk for longer than they take to answer a telephone, so this is a
+	// context of its own rather than a narrowing of the one passed in.
+	//
+	// The deadline is the same one the caller is counting against, and what
+	// it counts from is why the call carries it rather than starting here.
+	askCtx, cancel := context.WithDeadline(ctx, c.deadline)
+	defer cancel()
+
 	a.ui.Blank()
 
-	take, err := a.ui.Confirm(ctx, fmt.Sprintf("take the call from %s?", c.name), false)
+	take, err := a.ui.ConfirmBy(askCtx,
+		fmt.Sprintf("take the call from %s?", c.name), false, c.deadline)
 	if err != nil {
-		// Shutting down, or the input ended. Neither is an answer, so
-		// the caller is told rather than left holding an open line.
-		a.decline(c, "no answer")
+		// The deadline passed, or homa is shutting down, or the input
+		// ended. None of them is an answer, so the caller is told rather
+		// than left holding an open line.
+		a.decline(c, "no answer", "the call from %s went unanswered.")
 		return
 	}
 
 	if !take {
-		a.decline(c, "they are not taking calls right now")
+		a.decline(c, "they are not taking calls right now", "the call from %s was not taken.")
+		return
+	}
+
+	if err := c.session.SendAccept(); err != nil {
+		// They went while the question was on screen. Nothing to join.
+		a.ui.Warn("%s went before the call could be connected", c.name)
+		_ = c.session.Close()
 		return
 	}
 
@@ -340,28 +407,34 @@ func (a *App) offer(ctx context.Context, c call) {
 // decline hangs up on a caller and says why, in the same words the caller
 // would hear if the line were busy. Guessing why a call died is worse than
 // being told.
-func (a *App) decline(c call, reason string) {
+//
+// It says so on this side too, with format taking the caller's name, so an
+// announcement of a call does not sit on the screen outliving the call.
+func (a *App) decline(c *call, reason, format string) {
 	if err := c.session.SendText(reason); err != nil {
 		lg.Debug("could not tell a caller they were turned down", "err", err)
 	}
 	_ = c.session.Close()
 
-	a.ui.Info("the call from %s was not taken.", c.name)
+	a.ui.Info(format, c.name)
 }
 
-// answer joins a call that was greeted, parked, and agreed to.
-func (a *App) answer(ctx context.Context, c call) {
+// answer joins a call that was greeted, parked, agreed to, and told so.
+//
+// ctx here is the one offer put a deadline on, and the conversation must not
+// inherit it: people talk for longer than they take to answer the telephone.
+func (a *App) answer(ctx context.Context, c *call) {
 	a.ui.Info("connected to %s", c.name)
 	a.runChat(ctx, c.conn, c.session, c.handler, c.name, c.known)
 }
 
 // takeIncoming returns a parked call if there is one, without waiting.
-func (a *App) takeIncoming() (call, bool) {
+func (a *App) takeIncoming() (*call, bool) {
 	select {
 	case c := <-a.incoming:
 		return c, true
 	default:
-		return call{}, false
+		return nil, false
 	}
 }
 

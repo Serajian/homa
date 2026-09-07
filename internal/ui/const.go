@@ -1,6 +1,10 @@
 package ui
 
-import "time"
+import (
+	"time"
+
+	"github.com/Serajian/homa/internal/session"
+)
 
 // The marks that begin a line, so a reader can tell at a glance where a
 // line came from without any color.
@@ -48,6 +52,21 @@ const maxInputLen = 8 * 1024
 // dialTimeout bounds how long a call attempt waits. Reaching a peer can
 // take a while when a direct path has to be negotiated through a relay.
 const dialTimeout = 60 * time.Second
+
+// callAnswerTimeout is how long a call waits to be taken. It is
+// session.AnswerWindow rather than a number of its own, because the caller is
+// relying on the same figure: a deadline only this side knew about would hang
+// up on somebody who was told they had longer.
+//
+// It runs from when the call arrived, not from when the question reaches the
+// screen. The caller has been waiting the whole time either way, and a call
+// parked behind a conversation has already spent some of it.
+const callAnswerTimeout = session.AnswerWindow
+
+// countdownStep is how often a line showing the time left is redrawn. Once a
+// second is what a person expects of a countdown, and anything faster is a
+// line that flickers for no information.
+const countdownStep = time.Second
 
 // addrPreviewLen is how much of an address to show in a header. The whole
 // thing is a secret and two hundred characters long; a dozen is enough to

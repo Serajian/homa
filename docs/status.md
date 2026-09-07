@@ -6,7 +6,11 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
 - an address book: add, list, call by name, keys learned on first contact
 - listening and dialing at the same time, an incoming call greeted as it
   arrives and put through only when you agree to take it, a refused or busy
-  caller told why
+  caller told why, and a call nobody answers hung up on inside a minute with
+  both sides told
+- a caller who waits to be let in rather than being told they are talking
+  before anyone agreed, and who still works against a peer speaking version 1
+  of the protocol
 - a caller you have saved shown by your name for them, one you have not shown
   by the name they chose, marked so the two cannot be confused
 - text chat with slash commands

@@ -17,6 +17,7 @@ const (
 	TypeFileChunk  Type = 0x06
 	TypeFileDone   Type = 0x07
 	TypeBye        Type = 0x08
+	TypeAccept     Type = 0x09
 )
 
 func (t Type) String() string {
@@ -37,6 +38,8 @@ func (t Type) String() string {
 		return "FILE_DONE"
 	case TypeBye:
 		return "BYE"
+	case TypeAccept:
+		return "ACCEPT"
 	default:
 		return fmt.Sprintf("UNKNOWN(0x%02x)", uint8(t))
 	}

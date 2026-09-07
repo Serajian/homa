@@ -389,13 +389,13 @@ run-a: clean build ## [Test] Run instance A in its own sandbox
 	@HOME=$(TEST_A) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/a.log -debug
 
 .PHONY: run-b
-run-b: clean build ## [Test] Run instance B in its own sandbox
+run-b: build ## [Test] Run instance B in its own sandbox
 	@mkdir -p $(TEST_B)
 	@echo "$(COLOR_BLUE)B: config in $(TEST_B), log in /tmp/b.log$(COLOR_RESET)"
 	@HOME=$(TEST_B) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/b.log -debug
 
 .PHONY: run-c
-run-c: clean build ## [Test] Run instance C, for testing a busy line
+run-c: build ## [Test] Run instance C, for testing a busy line
 	@mkdir -p $(TEST_C)
 	@echo "$(COLOR_BLUE)C: config in $(TEST_C), log in /tmp/c.log$(COLOR_RESET)"
 	@HOME=$(TEST_C) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/c.log -debug

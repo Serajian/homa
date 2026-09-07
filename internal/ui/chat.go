@@ -3,9 +3,11 @@ package ui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/Serajian/homa/internal/paths"
 	"github.com/Serajian/homa/internal/session"
@@ -23,6 +25,39 @@ func (a *App) startChat(ctx context.Context, conn net.Conn, name string) {
 	if err != nil {
 		_ = conn.Close()
 		a.ui.Warn("could not start the conversation: %v", err)
+		return
+	}
+
+	// A finished handshake means two programs are talking. It does not mean
+	// a person agreed to, and saying "talking to ..." here is what used to
+	// announce a conversation moments before it was refused.
+	//
+	// A countdown only where there is something to count: an older peer
+	// never signals, so WaitAccepted returns at once and there is nothing
+	// to wait through.
+	stop := func() {}
+	if s.SignalsAcceptance() {
+		// Counted against the same figure the other side is shown, not
+		// the longer one this side actually waits: the grace on top is
+		// for a message in flight, and putting it on screen would only
+		// invite somebody to sit through it.
+		deadline := time.Now().Add(callAnswerTimeout)
+
+		stop = a.ui.countdown(deadline, func(left time.Duration) string {
+			return fmt.Sprintf("%swaiting for %s to answer... %s", markInfo, name, left)
+		})
+	}
+
+	err = s.WaitAccepted(ctx)
+	stop()
+
+	// Left on screen rather than erased: how long it waited is worth seeing
+	// next to whatever happened. A no-op when there was no countdown.
+	a.ui.EndPrompt()
+
+	if err != nil {
+		_ = s.Close()
+		a.ui.Warn("%s", trimSessionPrefix(err))
 		return
 	}
 
@@ -97,7 +132,7 @@ func (a *App) runChat(
 		// The conversation is over, so take the input prompt down before
 		// saying so. Otherwise the notice is followed by a "[me] " that
 		// nothing will ever read a line into.
-		a.ui.EndPrompt()
+		a.ui.ErasePrompt()
 
 		if err != nil {
 			a.ui.Warn("the conversation ended: %v", trimSessionPrefix(err))
@@ -127,7 +162,7 @@ func (a *App) chatInput(
 ) {
 	// The prompt belongs to this loop and goes when it does, so the menu is
 	// not printed with a "[me] " hanging off it.
-	defer a.ui.EndPrompt()
+	defer a.ui.ErasePrompt()
 
 	for {
 		// The label goes up before the read, not after the send, so what

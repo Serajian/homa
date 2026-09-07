@@ -27,6 +27,39 @@ can be made again while one accepted by accident cannot be taken back.
 A refused caller is told, in the same way a caller finding the line busy is
 told, rather than having the connection dropped on them to puzzle over.
 
+**A finished handshake means two programs are talking, not that a person
+agreed.** They used to be the same event, and reading one as the other is what
+told a caller they were in a conversation moments before being turned away from
+it. So the side that was called sends a frame of its own, `TypeAccept`, at the
+moment the person says yes, and the caller waits for it before claiming
+anything. Refusal needs no frame: the reason and the close already say it in
+words a person can read.
+
+Version 2 of the protocol is that frame. A peer announcing version 1 never
+sends it, and a caller seeing version 1 does not wait — their handshake is all
+the agreement there is, which is exactly how homa behaved before. A version 1
+peer skips the frame as an unknown type, which the framing has always allowed.
+
+**A call is answered inside a minute or it is hung up on.** A person who has
+walked away from the keyboard should not hold somebody's line open, and a
+caller should not be left guessing. The window is counted from when the call
+arrived rather than from when the question reaches the screen, because a call
+parked behind a conversation has already spent some of it and the caller has
+been waiting the whole time.
+
+Both sides use the same figure: `proto.AnswerTimeout` is what the receiver
+promises and what the caller relies on, with a grace period on top of the
+caller's wait so the receiver's own message normally arrives first. It is an
+agreement between peers, so it lives with the protocol rather than in settings.
+
+Both sides also watch it run down. A deadline nobody can see is a deadline that
+arrives as a surprise, so the question and the caller's waiting line each redraw
+themselves once a second with the time left. The receiver pays for this: the
+question is a prompt being rewritten, so a `y` already typed leaves the screen
+while staying in the terminal's buffer. Those characters cannot be read back to
+redraw them, which is the same limitation the full-screen interface removes by
+owning the input line.
+
 **A second caller is told why they are turned away.** The greeting completes, a
 message says "busy: another call is already waiting", then the connection
 closes. Guessing why a connection died is worse than being told.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Ask asks a question and returns the answer. An empty answer takes def,
@@ -31,36 +32,6 @@ func (u *UI) Ask(ctx context.Context, question, def string) (string, error) {
 		}
 
 		u.Warn("an answer is needed")
-	}
-}
-
-// Confirm asks a yes or no question. def is what Enter alone means, and is
-// shown capitalized in the hint the way command line tools have done for
-// decades: [Y/n] or [y/N].
-func (u *UI) Confirm(ctx context.Context, question string, def bool) (bool, error) {
-	hint := "y/N"
-	if def {
-		hint = "Y/n"
-	}
-
-	for {
-		u.Printf("%s%s [%s]: ", markPrompt, question, hint)
-
-		answer, err := u.ReadLine(ctx)
-		if err != nil {
-			return false, err
-		}
-
-		switch strings.ToLower(answer) {
-		case "":
-			return def, nil
-		case "y", "yes":
-			return true, nil
-		case "n", "no":
-			return false, nil
-		}
-
-		u.Warn("answer y or n")
 	}
 }
 
@@ -116,4 +87,55 @@ func (u *UI) ShowMenu(question string, keys, labels []string) error {
 
 	u.Printf("%schoice: ", markPrompt)
 	return nil
+}
+
+// ConfirmBy asks a yes or no question that runs out, showing the time left and
+// redrawing it every second.
+//
+// Unlike Confirm it draws with Prompt rather than Printf, so the countdown
+// replaces itself and the answer is typed on the same line as the question.
+// The cost is that anything already typed leaves the screen on each redraw: it
+// is still in the terminal's buffer and will still be sent, but a person who
+// typed "y" and waited a second no longer sees it. Nothing in Go can read those
+// characters back to redraw them; a full-screen interface owns the input line
+// and is what fixes it.
+//
+// When the deadline passes the caller's ctx is what ends the read, and the
+// question is left on the screen rather than erased, so it is clear what ran
+// out.
+func (u *UI) ConfirmBy(
+	ctx context.Context,
+	question string,
+	def bool,
+	deadline time.Time,
+) (bool, error) {
+	hint := "y/N"
+	if def {
+		hint = "Y/n"
+	}
+
+	for {
+		stop := u.countdown(deadline, func(left time.Duration) string {
+			return fmt.Sprintf("%s%s [%s] [%s]: ", markPrompt, question, left, hint)
+		})
+
+		answer, err := u.ReadLine(ctx)
+		stop()
+
+		if err != nil {
+			u.EndPrompt()
+			return false, err
+		}
+
+		switch strings.ToLower(answer) {
+		case "":
+			return def, nil
+		case "y", "yes":
+			return true, nil
+		case "n", "no":
+			return false, nil
+		}
+
+		u.Warn("answer y or n")
+	}
 }

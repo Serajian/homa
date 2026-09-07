@@ -114,6 +114,100 @@ func (s *Session) handshake(nick string) error {
 // Peer reports what the far side announced about itself.
 func (s *Session) Peer() Peer { return s.peer }
 
+// AnswerWindow is how long the person being called may take to answer. It is
+// re-exported so the interface can put the same deadline on its question that
+// the caller puts on its waiting, without reaching past this package into the
+// wire protocol.
+const AnswerWindow = proto.AnswerTimeout
+
+// ErrNotTaken means the call was never picked up: refused, hung up on, or left
+// unanswered. It is not a failure of the connection, so callers report it to
+// the person rather than as an error.
+var ErrNotTaken = errors.New("session: the call was not taken")
+
+// SignalsAcceptance reports whether the peer is new enough to say when their
+// side actually took the call. An older peer never will, so there is nothing
+// to wait for and nothing to tell the person about waiting.
+func (s *Session) SignalsAcceptance() bool {
+	return s.peer.Version >= proto.VersionAccept
+}
+
+// SendAccept tells the caller that the person took the call. The side that
+// was called sends it once, when they agree.
+func (s *Session) SendAccept() error {
+	if err := s.c.WriteAccept(); err != nil {
+		return fmt.Errorf("session: accepting the call: %w", err)
+	}
+	return nil
+}
+
+// WaitAccepted blocks until the far side says a person took the call, and is
+// called by the side that dialed, once, before Run.
+//
+// It exists because a completed handshake only means two programs are
+// talking. Treating it as agreement is what used to tell a caller they were
+// in a conversation moments before being turned away from it.
+//
+// A peer older than proto.VersionAccept never sends an acceptance, so for
+// them this returns at once: their handshake is all the agreement there is,
+// which is exactly how homa behaved before this frame existed.
+//
+// It returns ErrNotTaken when the call was refused, hung up on, or not
+// answered in time, wrapping whatever the far side said so the person can be
+// told which it was.
+func (s *Session) WaitAccepted(ctx context.Context) error {
+	if !s.SignalsAcceptance() {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, proto.AnswerTimeout+proto.AnswerGrace)
+	defer cancel()
+
+	// The read is what has to be interrupted, and closing the connection is
+	// the only thing that interrupts it. Run does the same.
+	stop := context.AfterFunc(ctx, func() {
+		lg.Debug("giving up on waiting for the call to be taken")
+		_ = s.conn.Close()
+	})
+	defer stop()
+
+	// Anything the far side says before hanging up is the reason they gave,
+	// and it is worth more to the person than "the call was not taken".
+	var said string
+
+	for {
+		f, err := s.c.Read()
+		if err != nil {
+			if ctx.Err() != nil {
+				return fmt.Errorf("%w: no answer", ErrNotTaken)
+			}
+			if said != "" {
+				return fmt.Errorf("%w: %s", ErrNotTaken, said)
+			}
+			return fmt.Errorf("%w: they hung up", ErrNotTaken)
+		}
+
+		switch f.Type {
+		case proto.TypeAccept:
+			return nil
+
+		case proto.TypeText:
+			said = sanitizeText(string(f.Payload))
+
+		case proto.TypeBye:
+			if said != "" {
+				return fmt.Errorf("%w: %s", ErrNotTaken, said)
+			}
+			return fmt.Errorf("%w: they hung up", ErrNotTaken)
+
+		default:
+			// Nothing else is meaningful before a call is taken, and a
+			// peer sending it is not a reason to drop the call.
+			lg.Debug("ignoring a frame sent before the call was taken", "type", f.Type)
+		}
+	}
+}
+
 // SendText sends a chat message. Empty messages are dropped rather than
 // sent, so a stray Enter does not put a blank line on the peer's screen.
 func (s *Session) SendText(text string) error {
@@ -159,6 +253,12 @@ func (s *Session) Run(ctx context.Context) error {
 
 		case proto.TypeHello:
 			lg.Debug("ignoring a repeated greeting")
+
+		case proto.TypeAccept:
+			// WaitAccepted consumed the one that mattered. A second is
+			// a peer being careless, not a reason to end a conversation
+			// that is already running.
+			lg.Debug("ignoring a repeated acceptance")
 
 		default:
 			// File frames land here. A failure inside one transfer is

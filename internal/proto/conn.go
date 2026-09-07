@@ -88,6 +88,13 @@ func (c *Conn) WriteBye() error {
 	return c.Write(TypeBye, nil)
 }
 
+// WriteAccept says the person took the call. It is sent once, by the side
+// that was called, at the moment they agree: the handshake means the machines
+// are talking, and this means a person is.
+func (c *Conn) WriteAccept() error {
+	return c.Write(TypeAccept, nil)
+}
+
 // Read blocks until a whole frame arrives. It returns io.EOF when the peer
 // closed the stream, and io.ErrUnexpectedEOF if it vanished mid-frame.
 func (c *Conn) Read() (Frame, error) {

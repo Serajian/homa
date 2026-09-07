@@ -189,19 +189,31 @@ Then it asks. Having your address is not the same as being welcome to talk to
 you, so nothing is put through until you say yes. Refusing is the default, and a
 refused caller is told rather than dropped.
 
+The caller waits to be let in. A finished handshake means two programs are
+talking, not that a person agreed, so the side being called sends a frame of its
+own the moment you say yes, and until then the caller is told they are waiting
+rather than that they are talking.
+
 A call still waits when you are already in a conversation or answering a
-question, and is put to you as soon as you are free.
+question, and is put to you as soon as you are free — but not forever. A minute
+after it arrived, counted from then rather than from when it reaches you, it is
+hung up on and both sides are told why. Both sides watch the same clock run
+down: the question you are being asked carries the time left, and so does the
+line the caller is waiting on.
 
 ```mermaid
 flowchart TD
     A[call arrives] --> B{someone already waiting?}
     B -- no --> C[complete the greeting, announce it]
     C --> D{is the person free?}
-    D -- no --> I[wait until they are]
+    D -- no --> I[wait, up to a minute from arrival]
     I --> D
+    I -- time is up --> L["tell them: no answer"]
     D -- yes --> J{do they take the call?}
-    J -- yes --> E[conversation starts]
+    J -- yes --> M[send ACCEPT]
+    M --> E[conversation starts]
     J -- no --> K["tell them: not taking calls right now"]
+    J -- no answer in time --> L
     B -- yes --> F[complete the greeting]
     F --> G["tell them: busy, another call is waiting"]
     G --> H[hang up]
@@ -255,6 +267,13 @@ a length, a type, and a payload:
 | `0x06` | FILE_CHUNK | 4-byte id + raw bytes | a piece of a file |
 | `0x07` | FILE_DONE | JSON | id, sha256 |
 | `0x08` | BYE | empty | I am leaving |
+| `0x09` | ACCEPT | empty | the person took your call |
+
+ACCEPT is version 2 of the protocol, and the only frame a caller waits for. A
+peer announcing version 1 never sends it, so a caller seeing version 1 does not
+wait; a version 1 peer receiving it skips it as an unknown type, which is what
+the framing has always done with anything it does not recognise. A version
+mismatch is never fatal.
 
 Metadata is JSON because it is readable and extensible. File chunks are raw
 bytes with a four byte id, because base64 inside JSON would add a third to every

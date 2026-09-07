@@ -175,13 +175,21 @@ func (u *UI) Prompt(format string, args ...any) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
+	// A prompt replaces a prompt. That is what lets one redraw itself once
+	// a second with a countdown in it, and it costs nothing when there was
+	// none there to begin with.
+	if u.prompt != "" {
+		_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+	}
+
 	_, _ = fmt.Fprint(u.out, p) //nolint:errcheck // there is nowhere to report this
 	u.prompt = p
 }
 
-// EndPrompt takes the prompt off the screen. Whoever put one up with Prompt
-// takes it down, so the menu is not printed with a chat prompt trailing it.
-func (u *UI) EndPrompt() {
+// ErasePrompt takes the prompt off the screen, as though it had never been put
+// there. Whoever put one up with Prompt takes it down, so the menu is not
+// printed with a chat prompt trailing it.
+func (u *UI) ErasePrompt() {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
@@ -190,6 +198,21 @@ func (u *UI) EndPrompt() {
 	}
 
 	_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+	u.prompt = ""
+}
+
+// EndPrompt leaves the prompt where it is and moves past it. It is for a
+// question answered by time rather than by a person: the reader should still
+// be able to see what was on the screen when it ran out.
+func (u *UI) EndPrompt() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	if u.prompt == "" {
+		return
+	}
+
+	_, _ = fmt.Fprint(u.out, "\n") //nolint:errcheck // there is nowhere to report this
 	u.prompt = ""
 }
 
