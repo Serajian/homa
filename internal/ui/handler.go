@@ -23,6 +23,26 @@ type chatHandler struct {
 	mu       sync.Mutex
 	offer    *pendingOffer
 	lastStep map[string]int
+
+	// files is the last directory shown with /files. It is under the same
+	// lock as the rest, which costs nothing and saves having to reason
+	// about which goroutine reaches it.
+	files *listing
+}
+
+// setListing records what /files just showed.
+func (h *chatHandler) setListing(l *listing) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.files = l
+}
+
+// listed returns the nth entry of the last listing, or false if there was no
+// listing or no such number.
+func (h *chatHandler) listed(n int) (string, entry, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.files.path(n)
 }
 
 // pendingOffer is a file offer waiting for an answer.

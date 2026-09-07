@@ -32,64 +32,7 @@ The first release: two people, text, files, contacts, a line-based interface
 that is worth looking at, tests under it, and a way to install it that is not
 "clone the repository".
 
-## 1. Make sending a file bearable
-
-### The symptom
-
-`/send` needs a full path, typed by hand, with no completion and no listing:
-
-```
-/send ./docs/architecture.md
-```
-
-Tab completion needs raw terminal mode, which is version 2 work. Something useful
-can be built now without it.
-
-### What to build
-
-Two commands that work together.
-
-**`/files [dir]`** lists what is in a directory, numbered, defaulting to the
-working directory:
-
-```
-/files ~/Documents
-  1) notes.md          4.2 KB
-  2) poster.png        1.1 MB
-  3) archive/          dir
-```
-
-**`/send <number>`** sends an entry from that listing, alongside the existing
-`/send <path>`. A number is a number; anything else is a path.
-
-Remember the listed directory on the handler, so `/files archive` then
-`/send 2` reads naturally.
-
-Rules worth keeping:
-
-- Do not recurse. One directory at a time.
-- Show directories, so `/files` can be used to walk into them, but refuse to
-  send one: the existing "send an archive instead" message already covers that.
-- Cap the listing (say 50 entries) and say how many were hidden. A `/files ~`
-  on a full home directory should not flood the screen.
-- Sort directories first, then files, both by name.
-- Size in the same human form `humanBytes` already produces.
-
-### Files
-
-- `internal/ui/chat.go`: the `/files` command, and the number branch in `/send`
-- `internal/ui/handler.go` or a new small file: the remembered directory and the
-  last listing
-- `internal/ui/format.go`: reuse `humanBytes`
-
-### Done when
-
-A file can be sent without typing a path, by listing a directory and picking a
-number, and `/send <path>` still works as before.
-
----
-
-## 2. A contacts screen
+## 1. A contacts screen
 
 ### The symptom
 
@@ -163,7 +106,7 @@ call still arrives under the new name rather than as a stranger.
 
 ---
 
-## 3. Drop input that is only control characters
+## 2. Drop input that is only control characters
 
 ### The symptom
 
@@ -190,7 +133,7 @@ Real line editing, including history on the up arrow, is version 2.
 
 ---
 
-## 4. Tests
+## 3. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 version 3 adds rooms, which means more concurrency and more to get wrong.
@@ -250,7 +193,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 5. Install with brew and apt
+## 4. Install with brew and apt
 
 ### The symptom
 
@@ -303,7 +246,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 6. Make it look like something
+## 5. Make it look like something
 
 ### What this is
 
@@ -364,7 +307,7 @@ clever.
 
 ---
 
-## 7. A README worth arriving at
+## 6. A README worth arriving at
 
 ### The symptom
 
@@ -415,7 +358,7 @@ output matches what the program prints today.
 
 ---
 
-## 8. Diagrams that show the real thing
+## 7. Diagrams that show the real thing
 
 ### The symptom
 
@@ -463,7 +406,7 @@ lands.
 
 ---
 
-## 9. Security
+## 8. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it
@@ -504,6 +447,10 @@ Not to be started while version 1 is open. Detailed in
 - **a sound when a call arrives**, so homa can be left in a window nobody is
   watching. The terminal bell is the whole mechanism; anything richer costs a
   dependency this project should not take. A setting decides whether it rings
+- **commands offered as they are typed**: `/` showing what can follow it, and
+  narrowing as more is typed. Impossible without raw mode, and nearly free once
+  the full-screen interface owns the input line. Version 1 answers a lone `/`
+  on Enter, which is what can be done from a line-based interface
 - **`/store`**, saving the conversation you have been having, typed at any point
   in it. Working at any point is the whole difficulty: it means homa keeps every
   conversation as it happens, whether or not it is ever asked to save one, and

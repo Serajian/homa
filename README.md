@@ -130,14 +130,34 @@ other.
 
 | Command | What it does |
 | --- | --- |
+| `/files [dir]` | list a directory, numbered |
 | `/send <path>` | offer a file |
+| `/send <n>` | offer one from the last listing |
 | `/accept` | take the file being offered |
 | `/reject` | refuse it |
 | `/who` | who you are talking to |
+| `/clear` | wipe the screen |
 | `/help` | this list |
-| `/quit` | leave the conversation |
+| `/quit` | leave the conversation, not homa |
 
 Anything not starting with `/` is a message.
+
+Typing a path exactly right, with no completion and nothing to look at, is not
+a thing to ask of somebody mid-conversation. `/files` shows a directory and
+`/send` takes a number out of it:
+
+```
+[me] /files ~/Downloads
+  /Users/mohsen/Downloads
+    1) archive/              dir
+    2) gozaresh nahayi.pdf   4.2 KB
+    3) poster.png            1.1 MB
+[me] /send 2
+```
+
+A number is a number and anything else is a path, so a file actually named `2`
+is sent as `/send ./2`. Tab completion needs the terminal in raw mode and waits
+for the full-screen interface.
 
 A file is never written without you accepting it, and an accepted file never
 overwrites one already there: `poster.png` becomes `poster (2).png`.

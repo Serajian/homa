@@ -18,6 +18,8 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   the menu or a conversation
 - file transfer in both directions, with confirmation, progress, a digest check,
   no overwriting, and cleanup of partial files
+- a file picked by listing a directory and choosing a number, rather than by
+  typing a path exactly right with no help
 - a reset that throws away the identity, address book and settings, guarded by
   having to type the word rather than a letter
 - a help page at the menu, saying what the menu cannot say for itself: which

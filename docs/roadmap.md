@@ -62,6 +62,24 @@ may depend on it having been heard. And it is written unconditionally like
 `clearLine`, so redirected output gets the byte — the same wart, to be settled
 in the same place when terminal detection is added.
 
+## Version 2: commands offered as they are typed
+
+Typing `/` should show what can be typed after it, and typing `/se` should
+narrow that to `/send`. Neither is possible today for the same reason tab
+completion is not: the terminal collects a whole line and hands it over on
+Enter, so homa never sees a keystroke and cannot answer one.
+
+Version 1 does what can be done without that — a lone `/` lists the commands
+when it is entered, and an unrecognised one lists them rather than saying to
+go and look. This item is the live version, and it belongs to the full-screen
+interface rather than beside it: once that owns the input line it has every
+keystroke already, and offering commands is a small thing on top rather than a
+reason to go into raw mode.
+
+Worth deciding then: whether it filters as more is typed, whether it takes
+arrows and Enter to pick one, and whether the same thing offers contacts after
+`/send` — the listing from `/files` is already a numbered set of candidates.
+
 ## Version 2: `/store`
 
 Save the conversation you have been having, by typing `/store` at any point in

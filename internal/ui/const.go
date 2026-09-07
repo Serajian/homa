@@ -54,6 +54,11 @@ const unknownMark = "~"
 // nothing that arrived over the network is ever formatted into one.
 const clearScreen = "\033[2J\033[H"
 
+// maxListing bounds how many entries /files shows at once. A home directory
+// can hold thousands, and a listing longer than the screen is one nobody can
+// pick a number out of.
+const maxListing = 50
+
 // maxInputLen bounds one typed line. Generous for a message, small enough
 // that a stuck paste cannot exhaust memory.
 const maxInputLen = 8 * 1024

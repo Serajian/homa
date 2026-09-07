@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -244,6 +245,54 @@ func (a *App) chatInput(
 	}
 }
 
+// showCommands lists what can be typed in a conversation.
+//
+// One Printf rather than a line each, so a message arriving cannot land in
+// the middle of the list.
+func (a *App) showCommands() {
+	const commands = `  /files [dir]  list a directory, numbered
+  /send <path>  offer a file
+  /send <n>     offer one from the last listing
+  /accept       take the file being offered
+  /reject       refuse it
+  /who          who you are talking to
+  /clear        wipe the screen
+  /quit         leave the conversation, not homa`
+
+	a.ui.Printf("%s", commands)
+}
+
+// resolveSend turns what was typed after /send into a path.
+//
+// A number means a line from the last listing; anything else is a path. So a
+// file actually named "2" cannot be sent as "/send 2" — "/send ./2" is how,
+// and that is the price of not needing a flag to tell the two apart.
+//
+// It returns an empty path with no error when it has already said what was
+// wrong, which is the case for a number that names nothing or names a
+// directory.
+func (a *App) resolveSend(h *chatHandler, arg string) (string, error) {
+	n, err := strconv.Atoi(arg)
+	if err != nil {
+		return paths.ExpandHome(arg)
+	}
+
+	path, e, ok := h.listed(n)
+	if !ok {
+		a.ui.Warn("there is no %d in the last listing; /files to make one", n)
+		return "", nil
+	}
+
+	if e.isDir {
+		// The same answer the layer below gives for a path, said here
+		// because a number reaches it before anything is opened.
+		a.ui.Warn("%s is a directory; send an archive instead", e.name)
+		return "", nil
+	}
+
+	return path, nil
+}
+
 // command runs a slash command, reporting whether the person is leaving.
 func (a *App) command(ctx context.Context, s *session.Session, h *chatHandler, line string) bool {
 	cmd, arg, _ := strings.Cut(strings.TrimSpace(line), " ")
@@ -253,13 +302,13 @@ func (a *App) command(ctx context.Context, s *session.Session, h *chatHandler, l
 	case "/quit", "/q":
 		return true
 
-	case "/help", "/h":
-		a.ui.Info("/send <path>  offer a file")
-		a.ui.Info("/accept       take the file being offered")
-		a.ui.Info("/reject       refuse it")
-		a.ui.Info("/who          who you are talking to")
-		a.ui.Info("/clear        wipe the screen")
-		a.ui.Info("/quit         leave the conversation")
+	// A lone slash is somebody reaching for the list. It cannot be
+	// answered as they type it — the terminal hands over a whole line and
+	// not a keystroke, which is the same wall tab completion is behind —
+	// so the next best thing is to answer it on Enter rather than tell
+	// them it is not a command.
+	case "/help", "/h", "/":
+		a.showCommands()
 
 	case "/clear":
 		a.ui.Clear()
@@ -277,11 +326,17 @@ func (a *App) command(ctx context.Context, s *session.Session, h *chatHandler, l
 			a.ui.Warn("%v", errNoOffer)
 		}
 
+	case "/files", "/ls":
+		a.showFiles(h, arg)
+
 	case "/send":
-		a.sendFile(ctx, s, arg)
+		a.sendFile(ctx, s, h, arg)
 
 	default:
-		a.ui.Warn("unknown command %q, try /help", cmd)
+		// Show them rather than send them somewhere: they have already
+		// guessed once and being told to guess again is not help.
+		a.ui.Warn("no such command: %q", cmd)
+		a.showCommands()
 	}
 
 	return false
@@ -289,16 +344,19 @@ func (a *App) command(ctx context.Context, s *session.Session, h *chatHandler, l
 
 // sendFile offers a file in the background, so the conversation carries on
 // while it transfers.
-func (a *App) sendFile(ctx context.Context, s *session.Session, path string) {
-	if path == "" {
-		a.ui.Warn("which file? /send <path>")
+func (a *App) sendFile(ctx context.Context, s *session.Session, h *chatHandler, arg string) {
+	if arg == "" {
+		a.ui.Warn("which file? /send <path>, or /send <number> after /files")
 		return
 	}
 
-	full, err := paths.ExpandHome(path)
+	full, err := a.resolveSend(h, arg)
 	if err != nil {
-		a.ui.Warn("%v", err)
+		a.ui.Warn("%v", trimUIPrefix(err))
 		return
+	}
+	if full == "" {
+		return // already explained
 	}
 
 	a.ui.Info("offering %s, waiting for them to accept...", full)
