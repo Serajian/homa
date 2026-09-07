@@ -53,7 +53,10 @@ func (h *chatHandler) OnText(text string) {
 // OnFileOffer announces the offer and waits for the person to answer it in
 // the chat. It blocks the read goroutine on purpose: the sender is waiting
 // anyway, and nothing else from them should slip in front of the question.
-func (h *chatHandler) OnFileOffer(name string, size int64) (dir string, accept bool, reason string) {
+func (h *chatHandler) OnFileOffer(
+	name string,
+	size int64,
+) (dir string, accept bool, reason string) {
 	reply := make(chan bool, 1)
 
 	h.mu.Lock()
