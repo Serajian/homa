@@ -37,6 +37,49 @@ A frame's payload is capped at 1 MiB, so a peer cannot announce a huge length
 and make homa allocate it. The largest frame homa itself produces is a 32 KiB
 chunk.
 
+## Setting up a call
+
+The frames above in the order they are actually sent, from the menu to the first
+message. The point of it is the gap between `HELLO` and `ACCEPT`: the first means
+two programs are talking, the second means a person agreed.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor caller as Caller
+    participant dial as homa · ui.dial
+    participant tunnel as tailcat · WireGuard
+    participant answer as homa · ui.greet
+    actor callee as Callee
+
+    caller->>dial: pick a contact
+    dial->>tunnel: peer.Dial, 60s limit
+    tunnel->>answer: listener.Accept
+    dial->>answer: HELLO {nick, version 2}
+    answer-->>dial: HELLO {nick, version 2}
+    Note over dial,answer: the machines are talking.<br/>Nobody has agreed to anything.
+    answer->>callee: ~sara is calling (expires in 1m0s)
+    dial-->>caller: waiting for them to answer... 56s
+    callee->>answer: y
+    answer->>dial: ACCEPT 0x09
+    dial-->>caller: talking to server-b
+    answer-->>callee: connected to ~sara
+    dial->>answer: TEXT, both ways
+```
+
+The same thing, pannable and searchable, is in
+[assets/call-setup.html](assets/call-setup.html). GitHub will not render that
+file in a page; open it from a clone.
+
+**The three other endings.** Refused, and the caller is sent the reason before
+the line closes. Unanswered, and it is hung up on a minute after it arrived,
+counted from arrival rather than from when the question reached the screen. Or
+the caller gives up with a keypress and stays in homa.
+
+**An older peer** never sends `ACCEPT`. The caller reads the version out of
+`HELLO` and does not wait for one, and a version 1 peer skips the frame it does
+not recognise. See [decisions.md](decisions.md).
+
 ## A transfer
 
 ```mermaid

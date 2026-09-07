@@ -146,55 +146,7 @@ clever.
 
 ---
 
-## 3. Diagrams that show the real thing
-
-### The symptom
-
-The architecture is an ASCII tree in [architecture.md](architecture.md) and six
-mermaid blocks in the README. The tree carries the most important fact in the
-codebase — that dependencies point one way and `internal/peer` is the only
-package that imports tailcat — in a form nobody can see at a glance.
-
-### What to build
-
-Diagrams for the four things worth drawing, and nothing else:
-
-- ~~**the package graph**~~ — drawn, in [architecture.md](architecture.md),
-  alongside startup and shutdown
-- **setting up a call**, end to end: dial, handshake, the greeting on the
-  accepting side, the question, the accept, the conversation. This is the path
-  that has changed three times and is the hardest to hold in your head
-- **a file transfer**, offer to digest check to rename, including where a
-  `.part` file lives and when it is discarded
-- ~~**a frame**~~ — the ASCII drawing moved to [protocol.md](protocol.md) with
-  the rest of the wire format, and ASCII is the right answer there
-
-### What must stay true
-
-**A diagram that has drifted from the code is worse than no diagram**, because
-it is believed. Two ways to keep that from happening, and the choice matters
-more than the drawing: generate them from the code, or keep them few enough and
-load-bearing enough that anyone changing that code will notice them. Four
-diagrams is the second answer.
-
-**They have to render where they are read.** GitHub renders mermaid natively and
-`docs/` is read on GitHub, so mermaid costs nothing and needs no build step.
-Anything richer is a file to maintain and a build to remember.
-
-### Files
-
-`docs/architecture.md`, `README.md`, and any assets, which live in `docs/assets/`.
-Nothing under `internal/`.
-
-### Done when
-
-The dependency rule can be seen rather than read, the call-setup path is on one
-page from dial to conversation, and every diagram matches the code the day it
-lands.
-
----
-
-## 4. Security
+## 3. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it

@@ -110,4 +110,7 @@ The reading goroutine is left blocked on input the process is about to abandon.
 That is one goroutine for the life of the program, and it is the price of a read
 that cannot be interrupted.
 
+How a call crosses these packages, end to end, is drawn in
+[protocol.md](protocol.md#setting-up-a-call).
+
 The reasoning behind these boundaries is in [decisions.md](decisions.md).

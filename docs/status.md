@@ -28,6 +28,8 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   quit leaves the program and which leaves a conversation, what the marks on a
   name mean, and that the address is a secret
 - graceful shutdown from either screen
+- documentation with the four diagrams that matter drawn in mermaid, which
+  GitHub renders, and the call-setup one also as a pannable page
 - `make lint` clean, hooks wired, Makefile covering build, format, lint, test,
   cross-compile
 

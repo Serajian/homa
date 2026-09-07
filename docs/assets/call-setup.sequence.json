@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Setting up a call in homa",
+    "output": "docs/assets/call-setup.html",
+    "viewBox": [
+      1000,
+      560
+    ],
+    "quality_profile": "showcase",
+    "column_fit": "spread"
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "external",
+      "label": "Caller",
+      "sublabel": "the person dialing"
+    },
+    {
+      "id": "dial",
+      "type": "frontend",
+      "label": "homa",
+      "sublabel": "ui.dial, ui.startChat"
+    },
+    {
+      "id": "tunnel",
+      "type": "security",
+      "label": "tailcat",
+      "sublabel": "WireGuard, via a relay"
+    },
+    {
+      "id": "answer",
+      "type": "frontend",
+      "label": "homa",
+      "sublabel": "ui.greet, ui.offer"
+    },
+    {
+      "id": "callee",
+      "type": "external",
+      "label": "Callee",
+      "sublabel": "the person called"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 238,
+      "label": "Reach the machine"
+    },
+    {
+      "from": 252,
+      "to": 320,
+      "label": "Greet"
+    },
+    {
+      "from": 334,
+      "to": 430,
+      "label": "Ask the person"
+    },
+    {
+      "from": 444,
+      "to": 512,
+      "label": "Talk"
+    }
+  ],
+  "messages": [
+    {
+      "id": "pick",
+      "from": "caller",
+      "to": "dial",
+      "y": 172,
+      "label": "pick a contact",
+      "variant": "default"
+    },
+    {
+      "id": "dialout",
+      "from": "dial",
+      "to": "tunnel",
+      "y": 200,
+      "label": "peer.Dial, 60s limit",
+      "variant": "emphasis"
+    },
+    {
+      "id": "accept",
+      "from": "tunnel",
+      "to": "answer",
+      "y": 228,
+      "label": "listener.Accept",
+      "variant": "emphasis"
+    },
+    {
+      "id": "hello-out",
+      "from": "dial",
+      "to": "answer",
+      "y": 268,
+      "label": "HELLO {nick, version 2}",
+      "variant": "default"
+    },
+    {
+      "id": "hello-back",
+      "from": "answer",
+      "to": "dial",
+      "y": 302,
+      "label": "HELLO {nick, version 2}",
+      "variant": "return"
+    },
+    {
+      "id": "ring",
+      "from": "answer",
+      "to": "callee",
+      "y": 350,
+      "label": "~sara is calling (expires in 1m0s)",
+      "variant": "default"
+    },
+    {
+      "id": "waiting",
+      "from": "dial",
+      "to": "caller",
+      "y": 378,
+      "label": "waiting for them to answer... 56s",
+      "variant": "return"
+    },
+    {
+      "id": "yes",
+      "from": "callee",
+      "to": "answer",
+      "y": 400,
+      "label": "y",
+      "variant": "emphasis"
+    },
+    {
+      "id": "accepted",
+      "from": "answer",
+      "to": "dial",
+      "y": 418,
+      "label": "ACCEPT 0x09",
+      "variant": "security"
+    },
+    {
+      "id": "talking",
+      "from": "dial",
+      "to": "caller",
+      "y": 458,
+      "label": "talking to server-b",
+      "variant": "return"
+    },
+    {
+      "id": "connected",
+      "from": "answer",
+      "to": "callee",
+      "y": 458,
+      "label": "connected to ~sara",
+      "variant": "return"
+    },
+    {
+      "id": "text",
+      "from": "dial",
+      "to": "answer",
+      "y": 476,
+      "label": "TEXT, both ways",
+      "variant": "default"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "dial",
+      "from": 194,
+      "to": 480,
+      "type": "frontend"
+    },
+    {
+      "participant": "tunnel",
+      "from": 196,
+      "to": 480,
+      "type": "security"
+    },
+    {
+      "participant": "answer",
+      "from": 222,
+      "to": 480,
+      "type": "frontend"
+    },
+    {
+      "participant": "callee",
+      "from": 344,
+      "to": 406,
+      "type": "external"
+    }
+  ]
+}
