@@ -265,12 +265,13 @@ func (a *App) menuEntries() (keys, labels []string, list []contacts.Contact) {
 		labels = append(labels, "call "+c.Name)
 	}
 
-	keys = append(keys, "n", "a", "s", "q")
+	keys = append(keys, "n", "a", "s", "c", "q")
 	labels = append(labels,
 		"add a contact",
 		"show my address",
 		"settings",
-		"quit",
+		"clear the screen",
+		"quit homa",
 	)
 
 	return keys, labels, list
@@ -285,6 +286,13 @@ func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (
 	}
 
 	switch choice {
+	case "c", "clear":
+		// The word as well as the letter: it is what somebody who has
+		// used a shell will type, and it costs one case.
+		//
+		// The menu is drawn again by the loop this returns to, so this
+		// only has to take away what was above it.
+		a.ui.Clear()
 	case "n":
 		a.addContact(ctx)
 	case "a":

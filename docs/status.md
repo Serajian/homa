@@ -13,7 +13,8 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   of the protocol
 - a caller you have saved shown by your name for them, one you have not shown
   by the name they chose, marked so the two cannot be confused
-- text chat with slash commands
+- text chat with slash commands, and a way to wipe the screen from either
+  the menu or a conversation
 - file transfer in both directions, with confirmation, progress, a digest check,
   no overwriting, and cleanup of partial files
 - graceful shutdown from either screen

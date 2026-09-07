@@ -62,6 +62,55 @@ may depend on it having been heard. And it is written unconditionally like
 `clearLine`, so redirected output gets the byte — the same wart, to be settled
 in the same place when terminal detection is added.
 
+## Version 2: `/store`
+
+Save the conversation you have been having, by typing `/store` at any point in
+it.
+
+**Working at any point is the whole of the problem.** homa prints a message and
+forgets it: `chatHandler` hands each line to the interface and keeps nothing.
+For `/store` to save what was said before it was typed, every conversation has
+to be kept as it happens, whether or not it is ever saved.
+
+That is a change in what homa is, not a feature bolted to the side of it, and it
+should be decided as one. Today the program remembers nothing: no history, no
+log of who said what, nothing on disk but settings, contacts and a key. After
+this it holds every conversation in memory for as long as the conversation
+lasts, and writes one to disk on request. Both are new.
+
+**What has to be settled first**
+
+- **whether it is always on.** Keeping every conversation so that one can be
+  saved is the cost of the feature working the way it was asked for. A setting
+  that turns the keeping off is the honest alternative to deciding for people,
+  and it has to be off-by-default or on-by-default, which is the same kind of
+  choice as the ringing in the item above
+- **how much is kept.** An unbounded buffer is a leak on a long conversation.
+  A cap by lines or by bytes, and what happens when it is reached: drop the
+  oldest, or stop keeping and say so. Silently losing the start of what somebody
+  is about to save is the one answer that is wrong
+- **what a stored conversation contains.** The messages, certainly, in the form
+  they were shown, with the labels that say who was speaking and the `~` on a
+  name a peer chose. Whether it also carries the notices — files offered, a
+  peer leaving — and whether it carries times, which are not kept today either
+
+**What must stay true**
+
+Store the sanitized text, never what arrived on the wire. `session/sanitize.go`
+is where network content stops being dangerous, and a transcript is a file
+somebody will open in something other than a terminal.
+
+A stored conversation is plaintext on disk, made from something that was
+encrypted end to end. That is the person's decision to make, but the interface
+should say it plainly at the moment they make it, once, rather than in
+documentation nobody reads.
+
+**Where it fits**
+
+The full-screen interface is in this same version and will own a scrollback
+buffer of its own. That is the same data, and building the two without noticing
+would mean keeping every conversation twice.
+
 ## Version 3: rooms
 
 One person hosts a room; several guests join. This is the first thing that

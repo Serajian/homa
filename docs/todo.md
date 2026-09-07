@@ -179,11 +179,13 @@ A `h) help` entry at the menu, printing a short page:
     n           add a contact
     a           show your address, which is how people reach you
     s           settings
+    c           wipe the screen
     h           this
     q           quit homa
 
   in a conversation
     /help       the commands available there
+    /clear      wipe the screen
     /quit       leave the conversation, not homa
 
   anywhere
@@ -226,12 +228,12 @@ which is fine for three and unreadable for thirty.
 
 ### What to build
 
-`c) contacts` in the menu, opening a screen of its own that lists the address
-book, numbered. Picking a number picks a contact, and then asks what to do with
+`b) contacts` in the menu, opening a screen of its own that lists the address
+book, numbered. Not `c`: that is the screen wipe, which already exists. Picking a number picks a contact, and then asks what to do with
 them:
 
 ```
-> c
+> b
 
   contacts
    1) BB          tcpGFwWCD2eo...
@@ -289,31 +291,7 @@ call still arrives under the new name rather than as a stranger.
 
 ---
 
-## 5. A clear command
-
-### What to build
-
-`clear` at the menu and `/clear` in a conversation, both wiping the screen.
-
-```go
-// Clear wipes the screen. The sequence is the usual one: erase everything
-// and move the cursor home. It is written to a terminal we control, never
-// built from anything that arrived over the network.
-func (u *UI) Clear() {
-    u.Printf("\033[2J\033[H")
-}
-```
-
-Redraw the menu afterwards, so the screen is not left blank.
-
-### Files
-
-`internal/ui/ui.go` (the method), `internal/ui/menu.go` and
-`internal/ui/chat.go` (the commands), `/help` gains a line.
-
----
-
-## 6. Drop input that is only control characters
+## 5. Drop input that is only control characters
 
 ### The symptom
 
@@ -340,7 +318,7 @@ Real line editing, including history on the up arrow, is version 2.
 
 ---
 
-## 7. A reset
+## 6. A reset
 
 ### What to build
 
@@ -398,7 +376,7 @@ still has everything they had.
 
 ---
 
-## 8. Tests
+## 7. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 version 3 adds rooms, which means more concurrency and more to get wrong.
@@ -458,7 +436,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 9. Install with brew and apt
+## 8. Install with brew and apt
 
 ### The symptom
 
@@ -511,7 +489,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 10. Make it look like something
+## 9. Make it look like something
 
 ### What this is
 
@@ -572,7 +550,7 @@ clever.
 
 ---
 
-## 11. A README worth arriving at
+## 10. A README worth arriving at
 
 ### The symptom
 
@@ -623,7 +601,7 @@ output matches what the program prints today.
 
 ---
 
-## 12. Diagrams that show the real thing
+## 11. Diagrams that show the real thing
 
 ### The symptom
 
@@ -671,7 +649,7 @@ lands.
 
 ---
 
-## 13. Security
+## 12. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it
@@ -712,6 +690,10 @@ Not to be started while version 1 is open. Detailed in
 - **a sound when a call arrives**, so homa can be left in a window nobody is
   watching. The terminal bell is the whole mechanism; anything richer costs a
   dependency this project should not take. A setting decides whether it rings
+- **`/store`**, saving the conversation you have been having, typed at any point
+  in it. Working at any point is the whole difficulty: it means homa keeps every
+  conversation as it happens, whether or not it is ever asked to save one, and
+  today homa remembers nothing
 
 # Version 3
 

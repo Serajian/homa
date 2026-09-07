@@ -45,6 +45,15 @@ const clearLine = "\r\033[K"
 // the tunnel proved; see peer.RemoteKeyPrefix.
 const unknownMark = "~"
 
+// clearScreen erases the screen and puts the cursor back at the top left: the
+// ANSI "erase in display, everything" followed by "cursor home". Both are
+// needed — erasing without moving leaves the cursor wherever it was, writing
+// the next line into the middle of a blank screen.
+//
+// Like clearLine it is a constant homa writes to a terminal it owns, and
+// nothing that arrived over the network is ever formatted into one.
+const clearScreen = "\033[2J\033[H"
+
 // maxInputLen bounds one typed line. Generous for a message, small enough
 // that a stuck paste cannot exhaust memory.
 const maxInputLen = 8 * 1024

@@ -216,6 +216,25 @@ func (u *UI) EndPrompt() {
 	u.prompt = ""
 }
 
+// Clear wipes the screen and puts the cursor back at the top.
+//
+// It writes the escape itself rather than going through Printf, which would
+// add a newline and undo the cursor being sent home, and would erase a prompt
+// that is about to be wiped anyway.
+//
+// A prompt on the screen is drawn again afterwards. Otherwise this package
+// would go on believing a line is there that a person can no longer see.
+func (u *UI) Clear() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	_, _ = fmt.Fprint(u.out, clearScreen) //nolint:errcheck // there is nowhere to report this
+
+	if u.prompt != "" {
+		_, _ = fmt.Fprint(u.out, u.prompt) //nolint:errcheck // there is nowhere to report this
+	}
+}
+
 // Info states something that happened.
 func (u *UI) Info(format string, args ...any) {
 	u.Printf(markInfo+format, args...)

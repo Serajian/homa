@@ -221,7 +221,11 @@ func (a *App) command(ctx context.Context, s *session.Session, h *chatHandler, l
 		a.ui.Info("/accept       take the file being offered")
 		a.ui.Info("/reject       refuse it")
 		a.ui.Info("/who          who you are talking to")
+		a.ui.Info("/clear        wipe the screen")
 		a.ui.Info("/quit         leave the conversation")
+
+	case "/clear":
+		a.ui.Clear()
 
 	case "/who":
 		a.ui.Info("%s, calling themselves %q", h.name, s.Peer().Nick)
