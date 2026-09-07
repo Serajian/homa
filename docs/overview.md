@@ -24,7 +24,7 @@ surveyed before starting:
   fought NAT traversal for years. homa borrows that layer instead of building it.
 - **croc** and **magic-wormhole** have the best "just connect" experience,
   built on a short human-readable code rather than a long key. Worth stealing
-  later; see Phase 5 in [roadmap.md](roadmap.md).
+  later; see the unplaced work in [roadmap.md](roadmap.md).
 - **chat-tails** is a terminal chat over Tailscale, but requires everyone to be
   in the same tailnet, is centralized around one host, and has no file transfer.
   homa's whole point is that two people share nothing beforehand.

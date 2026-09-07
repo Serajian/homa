@@ -1,7 +1,11 @@
 # homa: outstanding work
 
-Everything below was found by testing phase 1 end to end. Each item says what
-is wrong, why, what to build, which files to touch, and how to know it is done.
+Work is grouped by version. **Version 1** is everything the first release needs,
+and every numbered item below belongs to it. Versions 2 and 3 are at the bottom,
+named but not detailed, so the boundary is visible rather than assumed.
+
+Each item says what is wrong, why, what to build, which files to touch, and how
+to know it is done.
 
 Read [working-agreement.md](working-agreement.md), [architecture.md](architecture.md)
 and [conventions.md](conventions.md) first: they apply to every item here. In
@@ -22,6 +26,12 @@ their notes have been brought up to date.
 
 ---
 
+# Version 1
+
+The first release: two people, text, files, contacts, a line-based interface
+that is worth looking at, tests under it, and a way to install it that is not
+"clone the repository".
+
 ## 1. Make sending a file bearable
 
 ### The symptom
@@ -32,7 +42,7 @@ their notes have been brought up to date.
 /send ./docs/architecture.md
 ```
 
-Tab completion needs raw terminal mode, which is phase 3 work. Something useful
+Tab completion needs raw terminal mode, which is version 2 work. Something useful
 can be built now without it.
 
 ### What to build
@@ -347,7 +357,7 @@ In `chatInput`, after reading a line, drop it silently if it contains no
 printable characters. Do not warn: the person pressed a key that does nothing,
 and a warning would be more annoying than the silence.
 
-Real line editing, including history on the up arrow, is phase 3.
+Real line editing, including history on the up arrow, is version 2.
 
 ### Files
 
@@ -416,7 +426,7 @@ still has everything they had.
 ## 8. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
-phase 2 adds rooms, which means more concurrency and more to get wrong.
+version 3 adds rooms, which means more concurrency and more to get wrong.
 
 Two kinds are wanted, and they catch different things. Write the unit tests
 first: they are cheap, they need no network, and they cover the two places a
@@ -480,7 +490,8 @@ or in the goroutines the input pump and each session start.
 There is no way to install homa except to clone the repository and build it.
 Anyone who is not already a Go developer cannot run it at all.
 
-The roadmap has this under Phase 5. It is here because it is wanted now.
+The roadmap had this after everything else. It is in version 1 because a
+release nobody can install is not a release.
 
 ### What to build
 
@@ -559,7 +570,7 @@ feature that quietly breaks it: a nick styled by interpolating it into a colour
 code is a nick that can carry its own codes. Style around network text, never
 through it.
 
-**Phase 3 is a full-screen interface** built on bubbletea and lipgloss; see
+**Version 2 is a full-screen interface** built on bubbletea and lipgloss; see
 [roadmap.md](roadmap.md). Time spent hand-rolling ANSI now is time that may be
 thrown away, and a palette and a set of rules about what is emphasised are not.
 Worth knowing which half is being built.
@@ -586,7 +597,110 @@ clever.
 
 ---
 
-## 11. Security
+## 11. A README worth arriving at
+
+### The symptom
+
+The README is 460 lines of prose and the first thing anyone sees. It is
+accurate, and it reads like documentation rather than an introduction: sixteen
+headings, no picture above the fold, and the reader has to get four screens down
+before anything shows them what homa looks like in use.
+
+It is also the only page most people will ever read. `docs/` is where depth
+lives; this is where somebody decides whether to care.
+
+### What to build
+
+Not a rewrite. The prose is good and was argued over — this is about what a
+reader meets first and how they move through it.
+
+- **Above the fold**: what homa is in one line, what it looks like running, and
+  how to install it. Right now `Install` is at line 88 and the sample
+  conversation at line 20, which is the one thing already in the right place
+- **Something to look at.** A terminal recording or a still of a real
+  conversation. GitHub renders SVG, and a hand-made SVG is a file that has to
+  be maintained; a recording is a file that ages. Pick knowingly
+- **The long middle belongs in `docs/`.** The wire protocol, the architecture,
+  the security notes and the file layout are all reference material with a home
+  already. Link to them and keep the summary
+- **Both themes.** GitHub renders light and dark, and an asset that assumes one
+  is unreadable in the other
+
+### What must stay true
+
+**Every sample is a transcript, not an illustration.** The sample conversation
+has been wrong twice already this month, once when the `[me]` label arrived and
+once when it changed shape. If it is on the page it has to be what the program
+actually prints, and it has to be checked whenever the interface moves.
+
+**Nothing claims more than homa does.** No badge for a test suite that does not
+exist yet, no "production ready", no benchmark nobody ran.
+
+### Files
+
+`README.md`, and whatever assets it needs. Nothing under `internal/`.
+
+### Done when
+
+Somebody who has never heard of homa can tell what it is, see it working, and
+install it without scrolling past a protocol table; and every line of sample
+output matches what the program prints today.
+
+---
+
+## 12. Diagrams that show the real thing
+
+### The symptom
+
+The architecture is an ASCII tree in [architecture.md](architecture.md) and six
+mermaid blocks in the README. The tree carries the most important fact in the
+codebase — that dependencies point one way and `internal/peer` is the only
+package that imports tailcat — in a form nobody can see at a glance.
+
+### What to build
+
+Diagrams for the four things worth drawing, and nothing else:
+
+- **the package graph**, showing the one-way dependency and the two rules that
+  hold the shape: peer is the only tailcat importer, and session knows nothing
+  about terminals
+- **setting up a call**, end to end: dial, handshake, the greeting on the
+  accepting side, the question, the accept, the conversation. This is the path
+  that has changed three times and is the hardest to hold in your head
+- **a file transfer**, offer to digest check to rename, including where a
+  `.part` file lives and when it is discarded
+- **a frame**, which the README already draws in ASCII and which is the one
+  place ASCII is arguably right
+
+### What must stay true
+
+**A diagram that has drifted from the code is worse than no diagram**, because
+it is believed. Two ways to keep that from happening, and the choice matters
+more than the drawing: generate them from the code, or keep them few enough and
+load-bearing enough that anyone changing that code will notice them. Four
+diagrams is the second answer.
+
+**They have to render where they are read.** GitHub renders mermaid natively and
+`docs/` is read on GitHub, so mermaid costs nothing and needs no build step.
+Anything richer is a file to maintain and a build to remember.
+
+### Files
+
+`docs/architecture.md`, `README.md`, and any assets. Nothing under `internal/`.
+
+### Done when
+
+The dependency rule can be seen rather than read, the call-setup path is on one
+page from dial to conversation, and every diagram matches the code the day it
+lands.
+
+---
+
+## 13. Security
+
+**Version 1**, and last in it only because it has no content yet: an item
+without requirements cannot be ordered against items that have them. Placing it
+is the point of describing it.
 
 Not yet specified. The heading is here because the work is wanted; what it
 covers will be written down before anything is built.
@@ -607,12 +721,32 @@ what it deliberately does not claim.
 
 ---
 
-## Not in this list, on purpose
+# Version 2
 
-These belong to later phases in [roadmap.md](roadmap.md) and should not be
-started here:
+Not to be started while version 1 is open. Detailed in
+[roadmap.md](roadmap.md).
 
-- rooms and broadcast (phase 2)
-- a full-screen interface, line editing, history (phase 3)
-- Android (phase 4)
-- packaging, short invite codes, self-hosted relays (phase 5)
+- **a full-screen interface**, on bubbletea and lipgloss: a chat pane, a
+  separate input line, a contact list. It removes the two warts version 1 lives
+  with, because input stops being a line the terminal owns. Only `internal/ui`
+  should change; if anything below it has to, something has leaked and that is
+  the bug to fix first
+- **Android**: `gomobile bind` over the lower packages and a Compose interface.
+  It is plausible at all because tailcat needs no VPN permission, and it is the
+  reason `proto`, `peer` and `session` must stay free of any desktop assumption
+
+# Version 3
+
+- **rooms**: one host, several guests, join requests, broadcast, and rate
+  limiting per guest. The first thing that breaks the two-equal-peers model, so
+  it wants care and it wants the tests from version 1 already in place
+
+# Still unplaced
+
+Named in the roadmap and belonging to no version yet:
+
+- a short human-readable invite code that resolves to an address, so nobody has
+  to paste two hundred characters. The single biggest usability win still on
+  the table
+- a self-hosted DERP relay, so a group can run homa without touching
+  Tailscale's

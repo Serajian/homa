@@ -437,15 +437,18 @@ sides disagree on any of them would break the connection with no useful error.
 
 ## Roadmap
 
-- [x] **Phase 1** two people, text, files, contacts, a line-based interface
-- [ ] **Phase 2** rooms: one host, several guests, join requests
-- [ ] **Phase 3** a full-screen interface, which also fixes the two warts phase 1
-      lives with: a message arriving while you type is printed over your
-      half-finished line, and a line typed but not sent when the peer leaves is
-      dropped
-- [ ] **Phase 4** an Android build. The lower three packages are already free of
-      any terminal assumption, so roughly seventy percent of the code carries
-      over
+- [ ] **Version 1** two people, text, files, contacts, a line-based interface
+      worth looking at, tests under it, and installation through brew and apt.
+      Most of it works; what is left is listed in `docs/todo.md`
+- [ ] **Version 2** a full-screen interface, which also fixes the two warts
+      version 1 lives with — a message arriving while you type is printed over
+      your half-finished line, and a line typed but not sent when the peer
+      leaves is dropped — and an Android build. The lower three packages are
+      already free of any terminal assumption, so roughly seventy percent of the
+      code carries over
+- [ ] **Version 3** rooms: one host, several guests, join requests. It breaks
+      the two-equal-peers model everything else rests on, which is why it is
+      last rather than first
 
 ## Name
 
