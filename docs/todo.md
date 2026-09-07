@@ -89,7 +89,133 @@ number, and `/send <path>` still works as before.
 
 ---
 
-## 2. A contacts screen
+## 2. Give up on a call you are waiting on
+
+### The symptom
+
+You call somebody, the countdown starts, and there is nothing you can do but
+watch it. The only key that does anything is Ctrl+C, which closes homa. Changing
+your mind about one call should not cost you the program.
+
+### What to build
+
+While `startChat` waits, read the keyboard as well. The input pump makes this
+possible: `WaitAccepted` runs in a goroutine of its own and the wait becomes a
+select over three things — the acceptance arriving, a line being typed, and the
+context ending.
+
+Any line gives up, and the countdown says so:
+
+```
+  waiting for alice to answer... 47s  (Enter to give up)
+```
+
+Give up by closing the session, which sends the goodbye a peer already knows how
+to read, and return to the menu. Say so on screen, because a call that vanishes
+without a word is indistinguishable from one that failed.
+
+### The part that is not free
+
+`UI.Lines` says in its own comment that it exists for the one caller that has to
+wait on the keyboard and on something else at once. There would now be two, and
+two goroutines reading that channel means each gets some of the lines. They are
+never waiting at the same time today — the menu is not on screen while a call is
+being placed — but that is a property of the current flow rather than of the
+type, and the comment should say which it is relying on.
+
+### What the other side sees, and what to do about it
+
+Nothing, for up to a minute. The person being called is inside `ConfirmBy`, and
+nothing is reading their connection until the conversation starts, so a caller
+hanging up does not reach them: they go on being asked about somebody who has
+gone until the deadline runs out.
+
+Two ways, and the second is smaller than it looks:
+
+1. Read the connection while asking, which means something has to consume frames
+   before `Run` starts and hand back whatever it consumed. That is a second
+   reader on a connection that already has careful ownership rules
+2. Let the deadline handle it. It already does, and the question already carries
+   a countdown, so the cost is a minute of asking about a ghost
+
+Take 2 unless it turns out to be worse in practice than it sounds.
+
+### Files
+
+`internal/ui/chat.go`, `internal/ui/ui.go` (the comment on `Lines`)
+
+### Done when
+
+A call can be abandoned with a keypress, the caller lands back at the menu with
+homa still running, and the person who was called sees the line close rather
+than a conversation that never starts.
+
+---
+
+## 3. A menu that explains itself
+
+### The symptom
+
+The menu lists what it can do and explains none of it. Two things in particular
+are not obvious and one of them is the kind of mistake people only make once:
+
+- **what leaves homa, and what leaves a conversation.** `q` at the menu and
+  Ctrl+C anywhere close the program. `/quit` inside a conversation closes only
+  the conversation. The two are one letter apart in a person's head
+- **what the interface is telling them.** A `~` in front of a name means the
+  peer chose it and it is not from the address book. `> choice:` takes a letter
+  or a number. Nothing on screen says either
+
+### What to build
+
+A `h) help` entry at the menu, printing a short page:
+
+```
+  homa is a direct connection between two people. Nobody else is
+  involved and nothing is stored on a server.
+
+  at the menu
+    a number    call that contact
+    n           add a contact
+    a           show your address, which is how people reach you
+    s           settings
+    h           this
+    q           quit homa
+
+  in a conversation
+    /help       the commands available there
+    /quit       leave the conversation, not homa
+
+  anywhere
+    Ctrl+C      quit homa
+
+  a name in [brackets] is what you call them. A ~ in front means it is
+  what they call themselves, and they are not in your contacts.
+
+  your address is a secret: whoever has it can call you.
+```
+
+Keep it to a screen. A guide nobody reads is worse than none, because it makes
+the thing it failed to explain look explained.
+
+The menu's own line for quitting should say what it quits: `q) quit homa`,
+against `/quit` in a conversation, which already says it leaves the conversation.
+
+### Files
+
+`internal/ui/help.go`: new, because a page of text is its own responsibility and
+`menu.go` is already the longest file in the package.
+`internal/ui/menu.go`: the entry, and the wording of `q`.
+
+### Done when
+
+Somebody who has never used homa can find out from inside it how to reach
+somebody, what the marks on the screen mean, and how to leave without guessing
+which kind of quit they are about to do.
+
+---
+
+## 4. A contacts screen
 
 ### The symptom
 
@@ -163,7 +289,7 @@ call still arrives under the new name rather than as a stranger.
 
 ---
 
-## 3. A clear command
+## 5. A clear command
 
 ### What to build
 
@@ -187,7 +313,7 @@ Redraw the menu afterwards, so the screen is not left blank.
 
 ---
 
-## 4. Drop input that is only control characters
+## 6. Drop input that is only control characters
 
 ### The symptom
 
@@ -214,7 +340,7 @@ Real line editing, including history on the up arrow, is version 2.
 
 ---
 
-## 5. A reset
+## 7. A reset
 
 ### What to build
 
@@ -272,7 +398,7 @@ still has everything they had.
 
 ---
 
-## 6. Tests
+## 8. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 version 3 adds rooms, which means more concurrency and more to get wrong.
@@ -332,7 +458,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 7. Install with brew and apt
+## 9. Install with brew and apt
 
 ### The symptom
 
@@ -385,7 +511,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 8. Make it look like something
+## 10. Make it look like something
 
 ### What this is
 
@@ -446,7 +572,7 @@ clever.
 
 ---
 
-## 9. A README worth arriving at
+## 11. A README worth arriving at
 
 ### The symptom
 
@@ -497,7 +623,7 @@ output matches what the program prints today.
 
 ---
 
-## 10. Diagrams that show the real thing
+## 12. Diagrams that show the real thing
 
 ### The symptom
 
@@ -545,7 +671,7 @@ lands.
 
 ---
 
-## 11. Security
+## 13. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it
