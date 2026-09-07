@@ -90,6 +90,18 @@ neither. Nothing about who may connect is decided here: the tunnel already
 completed a WireGuard handshake with whoever holds the private half of that key,
 and an address book adds nothing to that.
 
+**Tests live in the package they test, not beside it.** The rule about testing
+only a public API is for libraries with users outside the repository, and homa
+has none: every package is under `internal/`. What it does have is a deliberately
+small exported surface, which puts the things most worth testing out of reach of
+an external test package — `sanitizeText`, `sanitizeNick` and `safeFileName` are
+the security boundary and none of them is exported.
+
+The cost is that a test can pin an implementation rather than a promise, and
+then a harmless refactor breaks it. That is answered by discipline rather than
+by structure: test what a function promises, which is what its comment says, and
+not how it currently does it.
+
 **Everything from the network is sanitized before it is printed.** A terminal
 obeys what it is given: an escape sequence could clear the screen, a carriage
 return could repaint earlier lines and forge messages. `session/sanitize.go` is

@@ -20,3 +20,12 @@
   and it is usually a bug being planted.
 - **Files are split by responsibility**, not by size. When a file grows a second
   reason to change, split it.
+- **Tests live in the package they test.** Every package here is under
+  `internal/`, so there is no public API to write against, and the things most
+  worth testing are unexported by design. See [decisions.md](decisions.md).
+- **A test that has never failed proves nothing.** When a test is written for a
+  guard, take the guard out and watch it go red before trusting it. That is how
+  the `filepath.Base` case turned out to be covered by a second guard rather
+  than by the test.
+- **Anything needing the network goes behind the `live` tag**, in `test/live`.
+  `make test` has to stay quick and hermetic or people stop running it.

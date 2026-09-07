@@ -32,67 +32,7 @@ The first release: two people, text, files, contacts, a line-based interface
 that is worth looking at, tests under it, and a way to install it that is not
 "clone the repository".
 
-## 1. Tests
-
-**The largest gap in the project.** There is no test file in the repository, and
-version 3 adds rooms, which means more concurrency and more to get wrong.
-
-Two kinds are wanted, and they catch different things. Write the unit tests
-first: they are cheap, they need no network, and they cover the two places a
-mistake is most expensive.
-
-### Unit tests
-
-**`internal/proto`** is the easiest and the most valuable. It is pure functions
-over an `io.ReadWriter`, so a `net.Pipe` or a `bytes.Buffer` is the whole
-fixture. Test: a round trip of every frame type; a frame arriving in pieces; a
-declared length over `MaxPayload`; a truncated frame; concurrent writers not
-interleaving.
-
-**`internal/session/sanitize.go`** is a security boundary and a pure function,
-which is the ideal combination. Test: escape sequences stripped; carriage
-returns stripped; invalid UTF-8 replaced; truncation by runes rather than bytes;
-`safeFileName` refusing `../`, absolute paths, empty names, and control
-characters.
-
-**`internal/contacts` and `internal/config`** with a temporary `XDG_CONFIG_HOME`
-or `HOME`: save and load, a duplicate name refused, a corrupt file reported
-clearly, an atomic write surviving a replaced file.
-
-**`internal/ui`** is testable now that input arrives on a channel. `ui.New`
-takes any `io.Reader`, so a pipe stands in for a keyboard: a line delivered, a
-`ReadLine` returning `ErrCanceled` the moment its context is canceled, input
-ending mid-prompt, a line longer than `maxInputLen` truncated.
-
-### Integration tests
-
-**`internal/session` end to end over `net.Pipe`**: two sessions, a handshake, a
-message each way, a file offer accepted, a file offer rejected, a checksum
-mismatch discarding the file, a connection dropped mid-transfer leaving no
-`.part` behind. No network is involved, so this belongs in the normal test run.
-
-**Two whole instances, over the real transport.** This is the layer with no
-tests at all, and every claim about it has so far been checked by hand. Two
-processes, each with its own `HOME`, standard input on a pipe:
-
-- one calls the other and the conversation starts with no keypress
-- the caller leaves, and the answering side returns to its menu on its own
-- `SIGINT` at the menu exits at once, and `SIGINT` inside a conversation makes
-  the peer see a goodbye
-- a second caller is told the line is busy
-- a file sent and received, with the digest checked at both ends
-
-These need the network and a relay, so keep them behind a build tag or
-`testing.Short`, and out of the normal `make test`. `make test-race` on
-everything else must stay fast enough that nobody skips it.
-
-The race detector is the point of `make test-race`: it is the only thing that
-will catch a mistake in the locking around the address book and the settings,
-or in the goroutines the input pump and each session start.
-
----
-
-## 2. Install with brew and apt
+## 1. Install with brew and apt
 
 ### The symptom
 
@@ -145,7 +85,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 3. Make it look like something
+## 2. Make it look like something
 
 ### What this is
 
@@ -206,7 +146,7 @@ clever.
 
 ---
 
-## 4. A README worth arriving at
+## 3. A README worth arriving at
 
 ### The symptom
 
@@ -257,7 +197,7 @@ output matches what the program prints today.
 
 ---
 
-## 5. Diagrams that show the real thing
+## 4. Diagrams that show the real thing
 
 ### The symptom
 
@@ -305,7 +245,7 @@ lands.
 
 ---
 
-## 6. Security
+## 5. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it

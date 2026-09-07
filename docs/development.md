@@ -8,6 +8,8 @@ make lint
 make build
 make run
 make doc        # the public API of every internal package
+make test       # hermetic, with the race detector: no network, no relay
+make test-live  # whole processes over the real transport; needs the network
 ```
 
 Testing across two machines: `make build-linux`, copy the binary to the second

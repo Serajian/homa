@@ -43,6 +43,7 @@ escape sequences dropped into the line rather than actions — though what they
 leave behind is now removed before anybody sees it. A full-screen interface
 owns the line instead; see [roadmap.md](roadmap.md).
 
-Not yet built: tests. There is no test file in the repository. That is the
-largest gap in the project and should be closed before rooms, in version 3,
-add concurrency.
+Tests: `make test` runs them, with the race detector, and they are hermetic —
+no network, no relay, nothing outside a temporary directory. `make test-live`
+runs the other kind: whole homa processes reaching each other through a relay,
+behind the `live` build tag so the ordinary run stays quick.

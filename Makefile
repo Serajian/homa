@@ -246,6 +246,12 @@ test-race: ## [Test] Run race-detector tests across all packages (used by prepus
 	@go test -race -timeout=$(TEST_TIMEOUT) ./...
 	@echo "$(COLOR_GREEN)Race tests passed.$(COLOR_RESET)"
 
+.PHONY: test-live
+test-live: build ## [Test] Run the tests that need two processes and a relay
+	@echo "$(COLOR_BLUE)Running live tests (these need the network)...$(COLOR_RESET)"
+	@go test -tags live -count=1 -timeout=15m ./test/live/
+	@echo "$(COLOR_GREEN)Live tests passed.$(COLOR_RESET)"
+
 .PHONY: test-short
 test-short: ## [Test] Run only short tests
 	@go test -short -race ./...
