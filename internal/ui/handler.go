@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"time"
 )
@@ -35,6 +36,18 @@ func (h *chatHandler) setListing(l *listing) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.files = l
+}
+
+// listedDir is the directory the last listing came from, or empty if there
+// has not been one.
+func (h *chatHandler) listedDir() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if h.files == nil {
+		return ""
+	}
+	return h.files.dir
 }
 
 // listed returns the nth entry of the last listing, or false if there was no
@@ -95,7 +108,7 @@ func (h *chatHandler) OnFileOffer(
 
 	h.ui.Blank()
 	h.ui.Info("%s wants to send %q (%s)", h.name, name, humanBytes(size))
-	h.ui.Info("type /accept or /reject")
+	h.ui.Info("y to accept, n to reject")
 
 	select {
 	case ok := <-reply:
@@ -117,6 +130,37 @@ func (h *chatHandler) OnFileOffer(
 
 // answerOffer delivers the person's decision. It reports whether there was
 // anything waiting for one.
+// answerShorthand takes a bare yes or no as the answer to a file offer,
+// reporting whether it was one and there was an offer waiting.
+//
+// A file offer used to be answerable only by /accept, because it arrives on
+// the session's goroutine while another one is reading the keyboard, and the
+// two could not both prompt. The input pump ended that: there is one reader
+// now, and this is it deciding that the line in its hand is an answer rather
+// than a message.
+//
+// It is only ever consulted while an offer is waiting, so a message that is
+// nothing but "y" is lost only in the moment somebody is being asked a yes or
+// no question. That is the cost, and it is why nothing shorter than a whole
+// word counts as anything else.
+func (h *chatHandler) answerShorthand(line string) bool {
+	h.mu.Lock()
+	waiting := h.offer != nil
+	h.mu.Unlock()
+
+	if !waiting {
+		return false
+	}
+
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "y", "yes":
+		return h.answerOffer(true)
+	case "n", "no":
+		return h.answerOffer(false)
+	}
+	return false
+}
+
 func (h *chatHandler) answerOffer(accept bool) bool {
 	h.mu.Lock()
 	offer := h.offer

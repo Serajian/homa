@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Serajian/homa/internal/paths"
 	"github.com/Serajian/homa/internal/session"
 )
 
@@ -231,6 +230,13 @@ func (a *App) chatInput(
 			continue
 		}
 
+		// A yes or no while a file offer is waiting answers it. Checked
+		// before anything else, so the answer to a question on the
+		// screen is never sent to the peer as a message instead.
+		if h.answerShorthand(line) {
+			continue
+		}
+
 		if strings.HasPrefix(line, "/") {
 			if quit := a.command(ctx, s, h, line); quit {
 				return
@@ -251,10 +257,11 @@ func (a *App) chatInput(
 // the middle of the list.
 func (a *App) showCommands() {
 	const commands = `  /files [dir]  list a directory, numbered
+  /files <n>    list one from the last listing, .. included
   /send <path>  offer a file
   /send <n>     offer one from the last listing
-  /accept       take the file being offered
-  /reject       refuse it
+  /accept       take the file being offered, or just y
+  /reject       refuse it, or just n
   /who          who you are talking to
   /clear        wipe the screen
   /quit         leave the conversation, not homa`
@@ -274,7 +281,9 @@ func (a *App) showCommands() {
 func (a *App) resolveSend(h *chatHandler, arg string) (string, error) {
 	n, err := strconv.Atoi(arg)
 	if err != nil {
-		return paths.ExpandHome(arg)
+		// A name is resolved where the listing is, not where homa was
+		// started, so a line that was just shown can simply be typed.
+		return underListing(h.listedDir(), arg)
 	}
 
 	path, e, ok := h.listed(n)

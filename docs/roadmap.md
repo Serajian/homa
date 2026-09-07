@@ -17,6 +17,20 @@ Using bubbletea and lipgloss, the same tools chat-tails uses.
 - only `internal/ui` changes. If anything below has to change, something has
   leaked, and that is the bug to fix first
 
+**There is a smaller door into the same room, and it was measured rather than
+guessed.** `golang.org/x/term` is already in the module graph as an indirect
+dependency, and its `Terminal` reads lines in raw mode with history on the up
+and down arrows, cursor movement, an autocomplete callback for tab, and a
+`Write` that redraws the prompt with whatever was half-typed. That is arrow
+keys, tab completion, and both of version 1's warts, without bubbletea.
+
+It was considered for version 1 and deliberately left here. Raw mode means
+owning the terminal, including restoring it through a panic or a signal, and
+it replaces the input layer version 1 built: the prompt, its erasing and
+redrawing, and the constants behind them. Doing it twice would be the waste, so
+whoever builds the full-screen interface should decide between the two rather
+than reaching for bubbletea by default.
+
 ## Version 2: Android
 
 - `gomobile bind` over the lower packages, a Kotlin and Compose interface

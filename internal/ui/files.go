@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/Serajian/homa/internal/paths"
@@ -91,14 +92,90 @@ func readDir(dir string) (*listing, int, error) {
 		entries = entries[:maxListing]
 	}
 
+	// ".." goes on the front, after the cap, so a way back is never the
+	// thing that got cut and never has to win a sort against a name
+	// starting with punctuation. The root has no parent and gets none.
+	if parent := filepath.Dir(full); parent != full {
+		entries = append([]entry{{name: "..", isDir: true}}, entries...)
+	}
+
 	return &listing{dir: full, entries: entries}, hidden, nil
+}
+
+// underListing expands ~ and resolves a relative name against the directory
+// last listed.
+//
+// Both /files and /send go through it, and they have to: a listing that shows
+// "notes.md" is an invitation to type it, and it would be a poor one if one
+// command took it from where you are looking and the other from wherever homa
+// was started. They were briefly out of step, and homa suggested "/send
+// notes.md" as the fix for a mistake while /send could not resolve it either.
+func underListing(last, arg string) (string, error) {
+	full, err := paths.ExpandHome(arg)
+	if err != nil {
+		return "", err
+	}
+
+	if !filepath.IsAbs(full) && last != "" {
+		full = filepath.Join(last, full)
+	}
+	return full, nil
+}
+
+// resolveDir turns what was typed after /files into a directory to read.
+//
+// A relative name is resolved against the directory last listed rather than
+// against the process's working directory. Walking is the point of showing
+// directories at all, and resolving against a working directory nobody can
+// see from in here would make "/files docs" work or not depending on where
+// homa happened to be started.
+//
+// A number picks a directory out of the last listing, the same way /send
+// picks a file, so ".." is a line you can point at rather than a string you
+// have to know to type.
+func (a *App) resolveDir(h *chatHandler, arg string) (string, error) {
+	last := h.listedDir()
+
+	if arg == "" {
+		if last != "" {
+			return last, nil
+		}
+		return ".", nil
+	}
+
+	if n, err := strconv.Atoi(arg); err == nil {
+		path, e, ok := h.listed(n)
+		if !ok {
+			return "", fmt.Errorf("ui: there is no %d in the last listing", n)
+		}
+		if !e.isDir {
+			return "", fmt.Errorf("ui: %s is a file; /send %d sends it", e.name, n)
+		}
+		return path, nil
+	}
+
+	full, err := underListing(last, arg)
+	if err != nil {
+		return "", err
+	}
+
+	// Naming a file here is somebody who has just read a listing and is
+	// reaching for one of its lines. "not a directory" is true and no use;
+	// the command they wanted is one word away and worth saying.
+	if st, err := os.Stat(full); err == nil && !st.IsDir() {
+		return "", fmt.Errorf("ui: %s is a file; /send %s sends it", arg, arg)
+	}
+
+	return full, nil
 }
 
 // showFiles lists a directory and remembers it, so /send can take a number
 // from what was shown.
-func (a *App) showFiles(h *chatHandler, dir string) {
-	if dir == "" {
-		dir = "."
+func (a *App) showFiles(h *chatHandler, arg string) {
+	dir, err := a.resolveDir(h, arg)
+	if err != nil {
+		a.ui.Warn("%v", trimUIPrefix(err))
+		return
 	}
 
 	l, hidden, err := readDir(dir)

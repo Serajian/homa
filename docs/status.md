@@ -36,7 +36,10 @@ Known warts, fixed by the full-screen interface in version 2 (see
 - a message typed but not yet sent when the peer leaves is dropped silently
 
 Both are the same limitation: input is a line at a time, and the terminal owns
-the line until Enter. A full-screen interface owns it instead.
+the line until Enter. It is also why the arrow keys do nothing — they are
+escape sequences dropped into the line rather than actions — though what they
+leave behind is now removed before anybody sees it. A full-screen interface
+owns the line instead; see [roadmap.md](roadmap.md).
 
 Not yet built: tests. There is no test file in the repository. That is the
 largest gap in the project and should be closed before rooms, in version 3,

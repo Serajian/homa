@@ -131,6 +131,7 @@ other.
 | Command | What it does |
 | --- | --- |
 | `/files [dir]` | list a directory, numbered |
+| `/files <n>` | list one from the last listing, `..` included |
 | `/send <path>` | offer a file |
 | `/send <n>` | offer one from the last listing |
 | `/accept` | take the file being offered |
@@ -149,11 +150,17 @@ a thing to ask of somebody mid-conversation. `/files` shows a directory and
 ```
 [me] /files ~/Downloads
   /Users/mohsen/Downloads
-    1) archive/              dir
-    2) gozaresh nahayi.pdf   4.2 KB
-    3) poster.png            1.1 MB
-[me] /send 2
+    1) ../                   dir
+    2) archive/              dir
+    3) gozaresh nahayi.pdf   4.2 KB
+    4) poster.png            1.1 MB
+[me] /send 3
 ```
+
+Numbers work for walking as well as sending: `/files 2` goes into `archive`,
+`/files 1` comes back out. A name is resolved against the directory you are
+looking at rather than against wherever homa was started, so `/files archive`
+and `/files ..` do what they look like.
 
 A number is a number and anything else is a path, so a file actually named `2`
 is sent as `/send ./2`. Tab completion needs the terminal in raw mode and waits

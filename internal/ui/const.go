@@ -45,6 +45,14 @@ const clearLine = "\r\033[K"
 // the tunnel proved; see peer.RemoteKeyPrefix.
 const unknownMark = "~"
 
+// esc and bel are the bytes that start and end terminal escape sequences.
+// They are named because stripKeys reads them out of what a person typed,
+// where a bare 0x1b in a comparison would say nothing about why.
+const (
+	esc = 0x1b
+	bel = 0x07
+)
+
 // clearScreen erases the screen and puts the cursor back at the top left: the
 // ANSI "erase in display, everything" followed by "cursor home". Both are
 // needed — erasing without moving leaves the cursor wherever it was, writing

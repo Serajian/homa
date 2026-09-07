@@ -83,7 +83,7 @@ func (u *UI) pump(in *bufio.Reader) {
 			if len(line) > maxInputLen {
 				line = line[:maxInputLen]
 			}
-			u.lines <- strings.TrimSpace(line)
+			u.lines <- strings.TrimSpace(stripKeys(line))
 		}
 
 		if err != nil {
@@ -93,6 +93,73 @@ func (u *UI) pump(in *bufio.Reader) {
 			return
 		}
 	}
+}
+
+// stripKeys removes what a key that does nothing leaves behind.
+//
+// A terminal handing over whole lines does not act on an arrow key: it drops
+// the escape sequence into the line like any other typing, so pressing Up
+// twice and then typing puts "\x1b[A\x1b[A" in front of the message. The
+// receiving side strips the escape byte, because a terminal obeys what it is
+// given, but the letters after it are ordinary text and survive: somebody
+// reads "[A[A" and wonders what was meant.
+//
+// So the whole sequence goes, here, before anybody sees the line. It is done
+// in the pump rather than in the conversation because the menu has the same
+// problem, and because a line nobody typed on purpose should not exist as far
+// as the rest of this package is concerned.
+//
+// A line that was only arrow keys comes out empty, and every caller already
+// knows what an empty line means.
+func stripKeys(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+
+	for i := 0; i < len(s); {
+		if s[i] != esc {
+			// Anything else in the control range is dropped too, with
+			// tab spared because it is something a person can mean.
+			if r := rune(s[i]); r < ' ' && r != '\t' {
+				i++
+				continue
+			}
+			b.WriteByte(s[i])
+			i++
+			continue
+		}
+
+		i++ // the escape itself
+		if i >= len(s) {
+			break
+		}
+
+		switch s[i] {
+		case '[':
+			// A CSI sequence: parameters, then one byte that ends it.
+			// This is what every arrow key sends.
+			i++
+			for i < len(s) && (s[i] < '@' || s[i] > '~') {
+				i++
+			}
+			if i < len(s) {
+				i++
+			}
+		case ']':
+			// An OSC sequence, ended by a bell or by an escape. No
+			// keyboard sends one, and a paste can.
+			i++
+			for i < len(s) && s[i] != bel && s[i] != esc {
+				i++
+			}
+			if i < len(s) {
+				i++
+			}
+		default:
+			i++ // a two-byte escape
+		}
+	}
+
+	return b.String()
 }
 
 // Lines is the stream of typed lines, closed when the input ends.

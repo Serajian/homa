@@ -106,34 +106,7 @@ call still arrives under the new name rather than as a stranger.
 
 ---
 
-## 2. Drop input that is only control characters
-
-### The symptom
-
-Arrow keys have no meaning without line editing, so they arrive as escape
-sequences. Sanitizing strips the escapes and sends the leftovers:
-
-```
-[BB] [A[A[B
-```
-
-Nothing dangerous, the sanitizer did its job, but it is noise.
-
-### What to build
-
-In `chatInput`, after reading a line, drop it silently if it contains no
-printable characters. Do not warn: the person pressed a key that does nothing,
-and a warning would be more annoying than the silence.
-
-Real line editing, including history on the up arrow, is version 2.
-
-### Files
-
-`internal/ui/chat.go`
-
----
-
-## 3. Tests
+## 2. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 version 3 adds rooms, which means more concurrency and more to get wrong.
@@ -193,7 +166,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 4. Install with brew and apt
+## 3. Install with brew and apt
 
 ### The symptom
 
@@ -246,7 +219,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 5. Make it look like something
+## 4. Make it look like something
 
 ### What this is
 
@@ -307,7 +280,7 @@ clever.
 
 ---
 
-## 6. A README worth arriving at
+## 5. A README worth arriving at
 
 ### The symptom
 
@@ -358,7 +331,7 @@ output matches what the program prints today.
 
 ---
 
-## 7. Diagrams that show the real thing
+## 6. Diagrams that show the real thing
 
 ### The symptom
 
@@ -406,7 +379,7 @@ lands.
 
 ---
 
-## 8. Security
+## 7. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it
