@@ -30,7 +30,11 @@ func TestDirIsCreatedAndPrivate(t *testing.T) {
 		t.Fatalf("the directory was not created: %v", err)
 	}
 	if perm := st.Mode().Perm(); perm != DirPerm {
-		t.Errorf("mode = %o, want %o: everything in here is a secret or a private list", perm, DirPerm)
+		t.Errorf(
+			"mode = %o, want %o: everything in here is a secret or a private list",
+			perm,
+			DirPerm,
+		)
 	}
 }
 

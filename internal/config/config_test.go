@@ -88,7 +88,10 @@ func TestSaveRefusesSettingsItCouldNotLoadBack(t *testing.T) {
 		{"no name", Config{Nick: "", DownloadDir: "/tmp/x"}},
 		{"a name of only spaces", Config{Nick: "   ", DownloadDir: "/tmp/x"}},
 		{"a control character in the name", Config{Nick: "a\x1bb", DownloadDir: "/tmp/x"}},
-		{"a name longer than the limit", Config{Nick: strings.Repeat("a", MaxNickLen+1), DownloadDir: "/tmp/x"}},
+		{
+			"a name longer than the limit",
+			Config{Nick: strings.Repeat("a", MaxNickLen+1), DownloadDir: "/tmp/x"},
+		},
 		{"no download directory", Config{Nick: "alice", DownloadDir: ""}},
 	}
 

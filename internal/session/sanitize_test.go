@@ -196,7 +196,10 @@ func TestSafeFileNameCannotEscapeTheDownloadDirectory(t *testing.T) {
 		{"the classic", "../../.ssh/authorized_keys"},
 		{"an absolute path", "/etc/passwd"},
 		{"a parent on its own", ".."},
-		{"backslashes, for a peer that thinks it is on windows", `..\..\windows\system32\drivers\etc\hosts`},
+		{
+			"backslashes, for a peer that thinks it is on windows",
+			`..\..\windows\system32\drivers\etc\hosts`,
+		},
 		{"a trailing separator", "evil/"},
 		{"a name that is only separators", "///"},
 		{"a null byte, which some filesystems truncate on", "safe\x00/../escape"},
