@@ -31,6 +31,13 @@ type Identity struct {
 	pk *tailcat.PrivateKey
 }
 
+// RemoveIdentity deletes the saved key, so the next start makes a new one.
+//
+// This is the part of a reset that cannot be undone. A new key is a new
+// address, and everybody holding the old one loses the way to reach you. The
+// file name lives in this package, so the deleting does too.
+func RemoveIdentity() error { return paths.Remove(keyFile) }
+
 // LoadOrCreateIdentity returns this machine's identity, creating and saving
 // one on first run. Creation reaches the network to measure relay latency,
 // so ctx should allow for that; later runs read only from disk.

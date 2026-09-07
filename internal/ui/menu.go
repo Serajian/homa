@@ -265,12 +265,13 @@ func (a *App) menuEntries() (keys, labels []string, list []contacts.Contact) {
 		labels = append(labels, "call "+c.Name)
 	}
 
-	keys = append(keys, "n", "a", "s", "c", "q")
+	keys = append(keys, "n", "a", "s", "c", "r", "q")
 	labels = append(labels,
 		"add a contact",
 		"show my address",
 		"settings",
 		"clear the screen",
+		"start over: forget everything",
 		"quit homa",
 	)
 
@@ -293,6 +294,8 @@ func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (
 		// The menu is drawn again by the loop this returns to, so this
 		// only has to take away what was above it.
 		a.ui.Clear()
+	case "r":
+		return a.reset(ctx)
 	case "n":
 		a.addContact(ctx)
 	case "a":
@@ -313,6 +316,62 @@ func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (
 		a.dial(ctx, list[n-1])
 	}
 	return false
+}
+
+// reset throws away everything homa has saved, reporting whether the person
+// is leaving.
+//
+// It always leaves when it did anything. The identity is loaded once at
+// startup and the listener is bound to it, so homa cannot go on with the key
+// deleted: the address on the screen would be one nobody can reach. Starting
+// homa again is the first run, which is the whole point of the command.
+func (a *App) reset(ctx context.Context) (quit bool) {
+	a.ui.Blank()
+	a.ui.Warn("This deletes your identity, your address book and your settings.")
+	a.ui.Warn("Your address changes, and everyone who saved the old one can no")
+	a.ui.Warn("longer reach you.")
+
+	// A word rather than a yes or no. There is no undo here, and a
+	// single letter is answered by reflex; typing "reset" is not.
+	// Anything else, Enter included, leaves everything alone.
+	answer, err := a.ui.Ask(ctx, "type the word reset to confirm", "cancel")
+	if err != nil {
+		return false // shutting down, or the input ended
+	}
+	if answer != "reset" {
+		a.ui.Info("nothing was deleted.")
+		return false
+	}
+
+	// Every one is attempted even if an earlier one fails, so a reset that
+	// goes wrong halfway leaves as little behind as it can. What could not
+	// be removed is named: a person told "reset failed" does not know
+	// whether their key is still on the disk.
+	failed := false
+	for _, f := range []struct {
+		what   string
+		remove func() error
+	}{
+		{"your identity", peer.RemoveIdentity},
+		{"your address book", contacts.Remove},
+		{"your settings", config.Remove},
+	} {
+		if err := f.remove(); err != nil {
+			a.ui.Warn("could not delete %s: %v", f.what, err)
+			failed = true
+		}
+	}
+
+	a.ui.Blank()
+	if failed {
+		// Do not claim more than happened. What went is above, named.
+		a.ui.Warn("some of it is still on the disk; see above.")
+	} else {
+		a.ui.Info("your identity, your address book and your settings are gone.")
+	}
+	a.ui.Info("start homa again and it will ask the first-run questions.")
+
+	return true
 }
 
 // editSettings walks the settings questions and swaps in the result.

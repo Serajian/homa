@@ -61,6 +61,10 @@ type Book struct {
 // Path reports where the book is stored, for messages to the user.
 func Path() string { return paths.Display(contactsFile) }
 
+// Remove deletes the address book. The file name lives in this package, so
+// the deleting does too.
+func Remove() error { return paths.Remove(contactsFile) }
+
 // Load reads the address book. An empty book is a normal state, not an
 // error: a fresh install simply knows nobody yet.
 func Load() (*Book, error) {

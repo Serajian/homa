@@ -48,6 +48,11 @@ func Default() *Config {
 // Path reports where the settings are stored, for messages to the user.
 func Path() string { return paths.Display(configFile) }
 
+// Remove deletes the saved settings, so the next start asks the first-run
+// questions again. The file name lives in this package, so the deleting does
+// too.
+func Remove() error { return paths.Remove(configFile) }
+
 // Load reads the saved settings. It returns ErrNotFound, which callers
 // should check with errors.Is, when homa has not been set up yet.
 func Load() (*Config, error) {

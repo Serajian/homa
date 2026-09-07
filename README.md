@@ -176,7 +176,9 @@ The directory is `0700`. Everything in it is either a secret or a private list,
 so nothing is world readable.
 
 Deleting `key.json` gives you a new identity and a new address, and everyone who
-saved the old one can no longer reach you.
+saved the old one can no longer reach you. `r` at the menu does all three at
+once, after making you type the word `reset`: a letter is answered by reflex and
+this has no undo.
 
 ## How a call is answered
 

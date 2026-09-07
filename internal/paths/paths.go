@@ -42,6 +42,28 @@ func File(name string) (string, error) {
 	return filepath.Join(dir, name), nil
 }
 
+// Remove deletes name from the config directory. A file that is not there is
+// not an error: the caller wanted it gone, and it is.
+//
+// It takes a bare file name for the same reason File does, and goes through
+// File so a name with a separator in it is refused here rather than reaching
+// os.Remove. Deleting is the one operation where being handed the wrong path
+// cannot be undone.
+//
+// Only the file is removed, never the directory. Something else may be in
+// there, now or later, and taking it along would be a surprise.
+func Remove(name string) error {
+	path, err := File(name)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("paths: removing %s: %w", path, err)
+	}
+	return nil
+}
+
 // Display returns the path of name for showing to a person, without touching
 // the disk. It never fails, so it is safe inside an error message.
 func Display(name string) string {

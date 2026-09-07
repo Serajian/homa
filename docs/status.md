@@ -17,6 +17,8 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   the menu or a conversation
 - file transfer in both directions, with confirmation, progress, a digest check,
   no overwriting, and cleanup of partial files
+- a reset that throws away the identity, address book and settings, guarded by
+  having to type the word rather than a letter
 - graceful shutdown from either screen
 - `make lint` clean, hooks wired, Makefile covering build, format, lint, test,
   cross-compile

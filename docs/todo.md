@@ -180,6 +180,7 @@ A `h) help` entry at the menu, printing a short page:
     a           show your address, which is how people reach you
     s           settings
     c           wipe the screen
+    r           start over: forget everything and set up again
     h           this
     q           quit homa
 
@@ -318,65 +319,7 @@ Real line editing, including history on the up arrow, is version 2.
 
 ---
 
-## 6. A reset
-
-### What to build
-
-`reset` at the menu, throwing everything away so the next start is a first run
-again: settings, address book, and identity.
-
-Ask first, and say what is being lost, because one of the three cannot be
-recovered:
-
-```
-> reset
-! This deletes your identity, your address book and your settings.
-! Your address changes, and everyone who saved the old one can no
-! longer reach you.
-> type the word reset to confirm:
-```
-
-A yes-or-no `Confirm` is too easy to answer by reflex for something with no
-undo. Make the person type the word.
-
-### What it removes
-
-Everything under the config directory: `key.json`, `config.json`,
-`contacts.json`. `paths.Dir` is where they live, and each name already exists as
-a constant in the package that owns the file. Remove the files rather than the
-directory, so nothing else that happens to be in there is taken with them.
-
-### Then what
-
-The identity is loaded once at startup and the listener is bound to it, so
-homa cannot carry on with a deleted key: the address on screen would be an
-address nobody can reach. Two ways out, and the second is the one to build
-unless there is a reason not to:
-
-1. Re-run `bootstrap`. Correct, and needs the listener closed and replaced
-   while an accept goroutine is running on it. That is real concurrency work
-   for a command people will use once.
-2. Say what was deleted, then exit cleanly. Starting homa again is the first
-   run. Nothing has to be torn down mid-flight, and the person is told exactly
-   what happened.
-
-### Files
-
-- `internal/ui/menu.go`: the menu entry and the confirmation
-- `internal/paths`: removing a file from the config directory, with the same
-  care `WriteAtomic` takes putting one there
-- `internal/config`, `internal/contacts`, `internal/peer`: each already names
-  its own file; the removal should use those names rather than repeating them
-
-### Done when
-
-Running reset, confirming it, and starting homa again gives the first-run
-questions and an empty address book, and a person who refuses the confirmation
-still has everything they had.
-
----
-
-## 7. Tests
+## 6. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 version 3 adds rooms, which means more concurrency and more to get wrong.
@@ -436,7 +379,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 8. Install with brew and apt
+## 7. Install with brew and apt
 
 ### The symptom
 
@@ -489,7 +432,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 9. Make it look like something
+## 8. Make it look like something
 
 ### What this is
 
@@ -550,7 +493,7 @@ clever.
 
 ---
 
-## 10. A README worth arriving at
+## 9. A README worth arriving at
 
 ### The symptom
 
@@ -601,7 +544,7 @@ output matches what the program prints today.
 
 ---
 
-## 11. Diagrams that show the real thing
+## 10. Diagrams that show the real thing
 
 ### The symptom
 
@@ -649,7 +592,7 @@ lands.
 
 ---
 
-## 12. Security
+## 11. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it
