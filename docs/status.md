@@ -3,7 +3,9 @@
 Everything version 1 needs is listed in [todo.md](todo.md). Working today:
 
 - first-run setup, saved settings, a saved identity with a stable address
-- an address book: add, list, call by name, keys learned on first contact
+- an address book: add, list, call by name, keys learned on first contact, and
+  a screen of its own for renaming, forgetting and calling. A rename keeps the
+  key, so somebody renamed still arrives under the name you gave them
 - listening and dialing at the same time, an incoming call greeted as it
   arrives and put through only when you agree to take it, a refused or busy
   caller told why, and a call nobody answers hung up on inside a minute with

@@ -236,6 +236,49 @@ func (b *Book) Add(c Contact) error {
 	return nil
 }
 
+// Rename changes the local name of a contact and nothing else.
+//
+// The address and the key stay, because they are what the contact is: a name
+// is only what this machine calls them. Removing and adding again would look
+// the same from outside and would drop the key, and the next call from that
+// person would arrive as a stranger.
+//
+// A name already in use is refused rather than merged, the same way Add
+// refuses one. Renaming somebody onto a name that is taken would leave two
+// contacts a lookup cannot tell apart.
+//
+// Renaming to the same name, in different case, is allowed: it is how a
+// person fixes "bb" to "BB", and matching ignores case anyway.
+func (b *Book) Rename(from, to string) error {
+	to = strings.TrimSpace(to)
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	i := b.indexByName(from)
+	if i < 0 {
+		return fmt.Errorf("%w: %q", ErrNotFound, from)
+	}
+
+	// Validated as a whole contact, so a new name meets the same rules the
+	// original had to.
+	candidate := b.list[i]
+	candidate.Name = to
+	if err := candidate.validate(); err != nil {
+		return err
+	}
+
+	if j := b.indexByName(to); j >= 0 && j != i {
+		return fmt.Errorf("%w: %q", ErrExists, to)
+	}
+
+	b.list[i] = candidate
+	b.sort()
+
+	lg.Info("contact renamed", "from", from, "to", to)
+	return nil
+}
+
 // Remove deletes a contact by name.
 func (b *Book) Remove(name string) error {
 	b.mu.Lock()

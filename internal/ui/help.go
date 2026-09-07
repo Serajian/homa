@@ -24,7 +24,7 @@ func (a *App) showHelp() {
 
   to reach somebody, they give you their address and you add it with n. a
   shows yours for them to do the same. Treat it like a password: whoever
-  has it can call you.
+  has it can call you. b is the address book: renaming, forgetting, calling.
 
   q and Ctrl+C quit homa. Inside a conversation /quit leaves only the
   conversation, and /help lists what else you can do in there.

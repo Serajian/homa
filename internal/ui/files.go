@@ -174,13 +174,13 @@ func (a *App) resolveDir(h *chatHandler, arg string) (string, error) {
 func (a *App) showFiles(h *chatHandler, arg string) {
 	dir, err := a.resolveDir(h, arg)
 	if err != nil {
-		a.ui.Warn("%v", trimUIPrefix(err))
+		a.ui.Warn("%v", reason(err))
 		return
 	}
 
 	l, hidden, err := readDir(dir)
 	if err != nil {
-		a.ui.Warn("%v", trimUIPrefix(err))
+		a.ui.Warn("%v", reason(err))
 		return
 	}
 
@@ -214,13 +214,4 @@ func (a *App) showFiles(h *chatHandler, arg string) {
 	if hidden > 0 {
 		a.ui.Info("  ... and %d more, not shown", hidden)
 	}
-}
-
-// trimUIPrefix drops this package's prefix from an error before showing it,
-// the way trimSessionPrefix does for the layer below.
-func trimUIPrefix(err error) string {
-	const prefix = "ui: "
-
-	s := err.Error()
-	return strings.TrimPrefix(s, prefix)
 }

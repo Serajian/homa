@@ -265,9 +265,10 @@ func (a *App) menuEntries() (keys, labels []string, list []contacts.Contact) {
 		labels = append(labels, "call "+c.Name)
 	}
 
-	keys = append(keys, "n", "a", "s", "c", "r", "h", "q")
+	keys = append(keys, "n", "b", "a", "s", "c", "r", "h", "q")
 	labels = append(labels,
 		"add a contact",
+		"contacts: rename, forget, call",
 		"show my address",
 		"settings",
 		"clear the screen",
@@ -288,6 +289,8 @@ func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (
 	}
 
 	switch choice {
+	case "b", "contacts":
+		return a.contactsScreen(ctx)
 	case "h", "help":
 		a.showHelp()
 	case "c", "clear":

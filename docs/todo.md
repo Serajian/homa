@@ -32,81 +32,7 @@ The first release: two people, text, files, contacts, a line-based interface
 that is worth looking at, tests under it, and a way to install it that is not
 "clone the repository".
 
-## 1. A contacts screen
-
-### The symptom
-
-The address book can be added to and called from, and nothing else. A name typed
-in a hurry is a name forever: there is no way to change it, and no way to remove
-a contact who is gone. The main menu lists every contact as a line of its own,
-which is fine for three and unreadable for thirty.
-
-### What to build
-
-`b) contacts` in the menu, opening a screen of its own that lists the address
-book, numbered. Not `c`: that is the screen wipe, which already exists. Picking a number picks a contact, and then asks what to do with
-them:
-
-```
-> b
-
-  contacts
-   1) BB          tcpGFwWCD2eo...
-   2) babak       tcpGFwWCA74k...
-> choice: 1
-
-  BB
-   c) call
-   r) rename
-   a) show their address
-   f) forget
-   b) back
-> choice:
-```
-
-**rename** is the one that has to be built carefully. It changes the local name
-and nothing else: the address and the key stay, because they are what the
-contact *is*. That rules out remove-then-add, which would drop the key and make
-the next call from them arrive as a stranger. `contacts.Book` needs a `Rename`
-that moves the name and keeps the rest, refusing a name already taken the same
-way `Add` refuses one.
-
-The name is yours, not theirs. Somebody who calls themselves `babak` is worth
-renaming `BB` to `babak` for, but that is a decision the person makes, not
-something homa does on their behalf: a peer who could rename their own entry in
-your address book could rename it to anything.
-
-**call** is `dial`, which already exists. This is a second way to reach it, not
-a second copy of it.
-
-**forget** removes the contact. Ask first, and say what is lost: the key goes
-with the name, so their next call arrives as `~` and whatever they call
-themselves, and reaching them again means pasting the address again.
-
-### An open question
-
-The main menu still lists contacts as `1) call BB`. Nothing here asks for that
-to change, and quick dialling is worth keeping, but with a contacts screen in
-place the numbered list at the top has an obvious second home. Decide it when
-the screen exists rather than now.
-
-### Files
-
-- `internal/ui/contacts.go`: new. The screen is its own responsibility, and
-  `menu.go` is already the longest file in the package
-- `internal/ui/menu.go`: the `c` entry, and routing to it
-- `internal/contacts/contacts.go`: `Rename`
-
-### Done when
-
-A contact can be renamed and keeps their key, called from the contacts screen,
-and forgotten after confirming; renaming to a name already in the book is
-refused rather than silently merging two contacts; and a renamed contact's next
-call still arrives under the new name rather than as a stranger.
-
----
-
-## 2. Tests
+## 1. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 version 3 adds rooms, which means more concurrency and more to get wrong.
@@ -166,7 +92,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 3. Install with brew and apt
+## 2. Install with brew and apt
 
 ### The symptom
 
@@ -219,7 +145,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 4. Make it look like something
+## 3. Make it look like something
 
 ### What this is
 
@@ -280,7 +206,7 @@ clever.
 
 ---
 
-## 5. A README worth arriving at
+## 4. A README worth arriving at
 
 ### The symptom
 
@@ -331,7 +257,7 @@ output matches what the program prints today.
 
 ---
 
-## 6. Diagrams that show the real thing
+## 5. Diagrams that show the real thing
 
 ### The symptom
 
@@ -379,7 +305,7 @@ lands.
 
 ---
 
-## 7. Security
+## 6. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it

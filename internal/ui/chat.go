@@ -96,7 +96,7 @@ func (a *App) awaitAccept(ctx context.Context, s *session.Session, name string) 
 
 	if err != nil {
 		_ = s.Close()
-		a.ui.Warn("%s", trimSessionPrefix(err))
+		a.ui.Warn("%s", reason(err))
 		return false
 	}
 
@@ -172,7 +172,7 @@ func (a *App) runChat(
 		a.ui.ErasePrompt()
 
 		if err != nil {
-			a.ui.Warn("the conversation ended: %v", trimSessionPrefix(err))
+			a.ui.Warn("the conversation ended: %v", reason(err))
 		} else {
 			a.ui.Info("%s left the conversation.", name)
 		}
@@ -245,7 +245,7 @@ func (a *App) chatInput(
 		}
 
 		if err := s.SendText(line); err != nil {
-			a.ui.Warn("could not send: %v", trimSessionPrefix(err))
+			a.ui.Warn("could not send: %v", reason(err))
 			return
 		}
 	}
@@ -361,7 +361,7 @@ func (a *App) sendFile(ctx context.Context, s *session.Session, h *chatHandler, 
 
 	full, err := a.resolveSend(h, arg)
 	if err != nil {
-		a.ui.Warn("%v", trimUIPrefix(err))
+		a.ui.Warn("%v", reason(err))
 		return
 	}
 	if full == "" {
@@ -382,7 +382,7 @@ func (a *App) sendFile(ctx context.Context, s *session.Session, h *chatHandler, 
 		}
 
 		if err := s.SendFile(ctx, full, progress); err != nil {
-			a.ui.Warn("%v", trimSessionPrefix(err))
+			a.ui.Warn("%v", reason(err))
 			return
 		}
 		a.ui.Info("sent.")

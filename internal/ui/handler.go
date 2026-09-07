@@ -210,21 +210,7 @@ func (h *chatHandler) OnFileError(name string, err error) {
 	delete(h.lastStep, name)
 	h.mu.Unlock()
 
-	h.ui.Warn("%q: %v", name, trimSessionPrefix(err))
-}
-
-// trimSessionPrefix drops the package prefix before showing an error.
-func trimSessionPrefix(err error) string {
-	if err == nil {
-		return ""
-	}
-
-	const prefix = "session: "
-	s := err.Error()
-	if len(s) > len(prefix) && s[:len(prefix)] == prefix {
-		return s[len(prefix):]
-	}
-	return s
+	h.ui.Warn("%q: %v", name, reason(err))
 }
 
 // errNoOffer is returned when /accept or /reject is typed with nothing
