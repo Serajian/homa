@@ -265,13 +265,14 @@ func (a *App) menuEntries() (keys, labels []string, list []contacts.Contact) {
 		labels = append(labels, "call "+c.Name)
 	}
 
-	keys = append(keys, "n", "a", "s", "c", "r", "q")
+	keys = append(keys, "n", "a", "s", "c", "r", "h", "q")
 	labels = append(labels,
 		"add a contact",
 		"show my address",
 		"settings",
 		"clear the screen",
 		"start over: forget everything",
+		"help",
 		"quit homa",
 	)
 
@@ -287,6 +288,8 @@ func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (
 	}
 
 	switch choice {
+	case "h", "help":
+		a.showHelp()
 	case "c", "clear":
 		// The word as well as the letter: it is what somebody who has
 		// used a shell will type, and it costs one case.

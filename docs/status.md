@@ -19,6 +19,9 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   no overwriting, and cleanup of partial files
 - a reset that throws away the identity, address book and settings, guarded by
   having to type the word rather than a letter
+- a help page at the menu, saying what the menu cannot say for itself: which
+  quit leaves the program and which leaves a conversation, what the marks on a
+  name mean, and that the address is a secret
 - graceful shutdown from either screen
 - `make lint` clean, hooks wired, Makefile covering build, format, lint, test,
   cross-compile

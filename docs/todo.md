@@ -152,73 +152,7 @@ than a conversation that never starts.
 
 ---
 
-## 3. A menu that explains itself
-
-### The symptom
-
-The menu lists what it can do and explains none of it. Two things in particular
-are not obvious and one of them is the kind of mistake people only make once:
-
-- **what leaves homa, and what leaves a conversation.** `q` at the menu and
-  Ctrl+C anywhere close the program. `/quit` inside a conversation closes only
-  the conversation. The two are one letter apart in a person's head
-- **what the interface is telling them.** A `~` in front of a name means the
-  peer chose it and it is not from the address book. `> choice:` takes a letter
-  or a number. Nothing on screen says either
-
-### What to build
-
-A `h) help` entry at the menu, printing a short page:
-
-```
-  homa is a direct connection between two people. Nobody else is
-  involved and nothing is stored on a server.
-
-  at the menu
-    a number    call that contact
-    n           add a contact
-    a           show your address, which is how people reach you
-    s           settings
-    c           wipe the screen
-    r           start over: forget everything and set up again
-    h           this
-    q           quit homa
-
-  in a conversation
-    /help       the commands available there
-    /clear      wipe the screen
-    /quit       leave the conversation, not homa
-
-  anywhere
-    Ctrl+C      quit homa
-
-  a name in [brackets] is what you call them. A ~ in front means it is
-  what they call themselves, and they are not in your contacts.
-
-  your address is a secret: whoever has it can call you.
-```
-
-Keep it to a screen. A guide nobody reads is worse than none, because it makes
-the thing it failed to explain look explained.
-
-The menu's own line for quitting should say what it quits: `q) quit homa`,
-against `/quit` in a conversation, which already says it leaves the conversation.
-
-### Files
-
-`internal/ui/help.go`: new, because a page of text is its own responsibility and
-`menu.go` is already the longest file in the package.
-`internal/ui/menu.go`: the entry, and the wording of `q`.
-
-### Done when
-
-Somebody who has never used homa can find out from inside it how to reach
-somebody, what the marks on the screen mean, and how to leave without guessing
-which kind of quit they are about to do.
-
----
-
-## 4. A contacts screen
+## 3. A contacts screen
 
 ### The symptom
 
@@ -292,7 +226,7 @@ call still arrives under the new name rather than as a stranger.
 
 ---
 
-## 5. Drop input that is only control characters
+## 4. Drop input that is only control characters
 
 ### The symptom
 
@@ -319,7 +253,7 @@ Real line editing, including history on the up arrow, is version 2.
 
 ---
 
-## 6. Tests
+## 5. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 version 3 adds rooms, which means more concurrency and more to get wrong.
@@ -379,7 +313,7 @@ or in the goroutines the input pump and each session start.
 
 ---
 
-## 7. Install with brew and apt
+## 6. Install with brew and apt
 
 ### The symptom
 
@@ -432,7 +366,7 @@ machine; and `homa -version` prints the tag.
 
 ---
 
-## 8. Make it look like something
+## 7. Make it look like something
 
 ### What this is
 
@@ -493,7 +427,7 @@ clever.
 
 ---
 
-## 9. A README worth arriving at
+## 8. A README worth arriving at
 
 ### The symptom
 
@@ -544,7 +478,7 @@ output matches what the program prints today.
 
 ---
 
-## 10. Diagrams that show the real thing
+## 9. Diagrams that show the real thing
 
 ### The symptom
 
@@ -592,7 +526,7 @@ lands.
 
 ---
 
-## 11. Security
+## 10. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it
