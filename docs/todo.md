@@ -22,64 +22,7 @@ their notes have been brought up to date.
 
 ---
 
-## 1. Show your own messages
-
-### The symptom
-
-Your own lines appear as bare text while theirs are labeled, so a conversation
-reads as if only one person is in it:
-
-```
-salam
-[bob] salam, chetori
-hi
-```
-
-### What to build
-
-Echo your own message with your own name, exactly like theirs:
-
-```
-[me] salam
-[bob] salam, chetori
-[me] hi
-```
-
-Use the literal `me` rather than the configured nick. It is shorter, it never
-collides with the peer's name, and it needs no lookup.
-
-This is an echo, not a round trip: print it when it is sent, not when anything
-comes back.
-
-### Files
-
-`internal/ui/chat.go`, in `chatInput`, right after `SendText` succeeds.
-
-### Caveat, and what to do about it
-
-The line the person typed is already on the screen, because the terminal echoed
-it as they typed. Printing it again shows it twice.
-
-Two options:
-
-1. **Accept it for now.** Simple, and the duplicate disappears in phase 3 when a
-   full-screen interface owns the input line.
-2. **Erase the typed line first** by writing `\033[1A\033[2K` (up one line, clear
-   it) before printing `[me] ...`. Works in any normal terminal, but it is a
-   guess about terminal state and will look wrong if the typed line wrapped.
-
-Take option 1 unless the double line is unbearable. If option 2 is taken, put the
-escape sequence behind a named constant in `internal/ui/const.go` with a comment
-saying exactly what it does, and never build it from network input.
-
-### Done when
-
-Both sides of a conversation are labeled, and it is obvious at a glance who said
-what.
-
----
-
-## 2. Make sending a file bearable
+## 1. Make sending a file bearable
 
 ### The symptom
 
@@ -136,85 +79,7 @@ number, and `/send <path>` still works as before.
 
 ---
 
-## 3. Name incoming callers correctly
-
-### The symptom
-
-Every incoming call is "someone unrecognized", even from a contact whose key was
-recorded on a previous call. The log shows why:
-
-```
-level=DEBUG msg="no key found for connection" pkg=peer addr=fd7a:115c:a1e0:3be2:...
-level=DEBUG msg="incoming connection accepted" pkg=peer known_key=false
-```
-
-So `contacts.ByPubKey` never matches, and the address book only half works.
-
-### The cause, as far as it is known
-
-`peer.lookupKey` maps a connection's tunnel address back to a node key by
-searching `Server.Status().Peer`. On the accepting side that map appears to be
-empty or to lack `TailscaleIPs`. A fresh server's network map shows
-`"Peers":null`.
-
-### Step one: find out what is actually there
-
-Add temporary logging inside `lookupKey` before doing anything else:
-
-```go
-status := srv.Status()
-lg.Debug("status peers", "count", len(status.Peer))
-for k, p := range status.Peer {
-    lg.Debug("status peer", "key", k.String(), "ips", p.TailscaleIPs)
-}
-```
-
-Take one call, read `/tmp/b.log`, and decide from evidence. Do not guess.
-
-### Likely outcomes
-
-**If the peers are there but arrive late**, the lookup runs before the network
-map updates. Retry briefly: look, and if nothing matches, wait 50ms and look
-again, up to about half a second. Do it inside `lookupKey` so no caller has to
-know.
-
-**If the peers are never there**, use what the address itself carries. A tailcat
-address embeds the first eight bytes of the node key:
-
-```
-nodekey:3be24627f2f1914f7592f144...
-fd7a:115c:a1e0:3be2:4627:f2f1:914f:7592
-             ^^^^ ^^^^ ^^^^ ^^^^ ^^^^
-```
-
-Eight bytes is not an identity, but it is enough to match against keys already
-in the address book, which is all this feature needs. Then:
-
-- `peer.RemoteKey` keeps returning the full key when it is known, from the
-  dialing side
-- add `peer.RemoteKeyPrefix`, returning the hex prefix taken from the address
-- `contacts` gains `ByPubKeyPrefix`, matching a stored key by its start
-
-Be honest in the comments about what this proves. A prefix match says "this is
-consistent with being that contact", not "this is cryptographically that
-contact". The tunnel is what actually authenticates; the address book is only
-choosing a label. Write that down where the function lives, so nobody later
-mistakes it for authentication.
-
-### Files
-
-`internal/peer/remote.go`, `internal/contacts/contacts.go`,
-`internal/ui/menu.go`
-
-### Done when
-
-Calling a contact once, then having them call back, shows their name rather than
-"someone unrecognized", and the reasoning about what a prefix does and does not
-prove is written in the code.
-
----
-
-## 4. Expire a parked call
+## 2. Expire a parked call
 
 ### The symptom
 
@@ -249,7 +114,7 @@ left in an empty conversation.
 
 ---
 
-## 5. A clear command
+## 3. A clear command
 
 ### What to build
 
@@ -273,7 +138,7 @@ Redraw the menu afterwards, so the screen is not left blank.
 
 ---
 
-## 6. Drop input that is only control characters
+## 4. Drop input that is only control characters
 
 ### The symptom
 
@@ -300,7 +165,65 @@ Real line editing, including history on the up arrow, is phase 3.
 
 ---
 
-## 7. Tests
+## 5. A reset
+
+### What to build
+
+`reset` at the menu, throwing everything away so the next start is a first run
+again: settings, address book, and identity.
+
+Ask first, and say what is being lost, because one of the three cannot be
+recovered:
+
+```
+> reset
+! This deletes your identity, your address book and your settings.
+! Your address changes, and everyone who saved the old one can no
+! longer reach you.
+> type the word reset to confirm:
+```
+
+A yes-or-no `Confirm` is too easy to answer by reflex for something with no
+undo. Make the person type the word.
+
+### What it removes
+
+Everything under the config directory: `key.json`, `config.json`,
+`contacts.json`. `paths.Dir` is where they live, and each name already exists as
+a constant in the package that owns the file. Remove the files rather than the
+directory, so nothing else that happens to be in there is taken with them.
+
+### Then what
+
+The identity is loaded once at startup and the listener is bound to it, so
+homa cannot carry on with a deleted key: the address on screen would be an
+address nobody can reach. Two ways out, and the second is the one to build
+unless there is a reason not to:
+
+1. Re-run `bootstrap`. Correct, and needs the listener closed and replaced
+   while an accept goroutine is running on it. That is real concurrency work
+   for a command people will use once.
+2. Say what was deleted, then exit cleanly. Starting homa again is the first
+   run. Nothing has to be torn down mid-flight, and the person is told exactly
+   what happened.
+
+### Files
+
+- `internal/ui/menu.go`: the menu entry and the confirmation
+- `internal/paths`: removing a file from the config directory, with the same
+  care `WriteAtomic` takes putting one there
+- `internal/config`, `internal/contacts`, `internal/peer`: each already names
+  its own file; the removal should use those names rather than repeating them
+
+### Done when
+
+Running reset, confirming it, and starting homa again gives the first-run
+questions and an empty address book, and a person who refuses the confirmation
+still has everything they had.
+
+---
+
+## 6. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 phase 2 adds rooms, which means more concurrency and more to get wrong.
@@ -357,6 +280,58 @@ everything else must stay fast enough that nobody skips it.
 The race detector is the point of `make test-race`: it is the only thing that
 will catch a mistake in the locking around the address book and the settings,
 or in the goroutines the input pump and each session start.
+
+---
+
+## 7. Install with brew and apt
+
+### The symptom
+
+There is no way to install homa except to clone the repository and build it.
+Anyone who is not already a Go developer cannot run it at all.
+
+The roadmap has this under Phase 5. It is here because it is wanted now.
+
+### What to build
+
+**GoReleaser**, configured so one tagged release produces everything:
+
+- binaries for macOS and Linux, amd64 and arm64
+- a `.deb`, which is what makes `apt` possible
+- a Homebrew formula pushed to a tap
+- checksums, and the version stamped in at build time with
+  `-ldflags -X main.version=...` so `homa -version` reports the tag rather than
+  `dev`
+
+**A Homebrew tap.** A second repository, `Serajian/homebrew-homa`, holding the
+formula GoReleaser writes. `brew install Serajian/homa/homa`.
+
+**An apt repository.** This is the harder half and worth being honest about:
+`apt` needs a signed repository served over HTTP, not just a `.deb` file. Two
+routes:
+
+1. Publish the `.deb` on the release page and tell people to
+   `dpkg -i homa_*.deb`. One line of documentation, no infrastructure, and not
+   really `apt`.
+2. A real repository, which means a GPG key, a signed `Release` file, and
+   somewhere to host it. GitHub Pages can serve it.
+
+Decide which before starting. Route 2 is what the item asks for; route 1 is
+what ships this week.
+
+### Files
+
+- `.goreleaser.yaml`: new
+- `.github/workflows/`: a workflow that runs GoReleaser on a tag
+- `Makefile`: a `release` target, or at least `snapshot` for testing locally
+- `README.md`: the install instructions, which are the point of all of this
+- `cmd/homa/version.go`: check that the ldflags path actually reaches `version`
+
+### Done when
+
+A tag produces a release with binaries, a `.deb` and a formula; `brew install`
+works from a clean machine; the documented Debian route works from a clean
+machine; and `homa -version` prints the tag.
 
 ---
 

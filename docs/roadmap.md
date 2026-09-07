@@ -35,6 +35,9 @@ Using bubbletea and lipgloss, the same tools chat-tails uses.
 
 ## Phase 5: distribution and polish
 
+Packaging has been pulled forward: binaries, a Homebrew tap and a Debian route
+are an item in [todo.md](todo.md) rather than something to wait for.
+
 - GoReleaser: binaries, `.deb` and `.rpm`, a Homebrew tap, one tagged release
   producing all of them
 - version stamped at build time with `-ldflags -X main.version=...`

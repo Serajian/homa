@@ -173,6 +173,41 @@ func (b *Book) ByPubKey(key string) (Contact, bool) {
 	return Contact{}, false
 }
 
+// ByPubKeyPrefix finds the contact whose key starts with prefix.
+//
+// It is for naming an incoming call, where only the start of the caller's
+// key arrives. Whoever produced the prefix is responsible for spelling it
+// the way a stored key is spelled; this is a string comparison and nothing
+// more. A prefix is a weaker thing than a key: it says a contact is
+// consistent with the caller, not that it is them. Nothing here decides who
+// may connect, only what to call them.
+//
+// A prefix short enough to match two contacts names neither of them, since
+// showing the wrong name is worse than admitting to not knowing.
+func (b *Book) ByPubKeyPrefix(prefix string) (Contact, bool) {
+	if prefix == "" {
+		return Contact{}, false
+	}
+
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	var found Contact
+	var seen int
+
+	for _, c := range b.list {
+		if c.PubKey != "" && strings.HasPrefix(c.PubKey, prefix) {
+			found = c
+			seen++
+		}
+	}
+
+	if seen != 1 {
+		return Contact{}, false
+	}
+	return found, true
+}
+
 // Add records a new contact. It fails with ErrExists rather than silently
 // replacing one, so a typo cannot overwrite a working address.
 func (b *Book) Add(c Contact) error {

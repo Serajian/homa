@@ -316,14 +316,24 @@ func (a *App) takeIncoming() (call, bool) {
 // anything they claim. An unknown key is said plainly, because "someone" is
 // honest and a made-up name would not be.
 func (a *App) describe(conn net.Conn) string {
-	key := peer.RemoteKey(conn)
-	if key == "" {
-		return "someone unrecognized"
+	if key := peer.RemoteKey(conn); key != "" {
+		if c, ok := a.book.ByPubKey(key); ok {
+			return c.Name
+		}
+		return "someone not in your contacts"
 	}
-	if c, ok := a.book.ByPubKey(key); ok {
-		return c.Name
+
+	// An accepted call brings no key, only the tunnel address it came from,
+	// which carries the start of one. Enough to choose a label; see
+	// peer.RemoteKeyPrefix for what a prefix does and does not prove.
+	if prefix := peer.RemoteKeyPrefix(conn); prefix != "" {
+		if c, ok := a.book.ByPubKeyPrefix(prefix); ok {
+			return c.Name
+		}
+		return "someone not in your contacts"
 	}
-	return "someone not in your contacts"
+
+	return "someone unrecognized"
 }
 
 // rememberKey records a contact's key the first time we see it.

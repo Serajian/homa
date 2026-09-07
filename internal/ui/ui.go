@@ -37,6 +37,14 @@ type UI struct {
 	lines chan string
 
 	mu sync.Mutex // serializes writes so two lines never interleave
+
+	// prompt is what is on the screen with the cursor sitting at the end of
+	// it, or empty when the cursor is at the start of a line. Printing has
+	// to work around it: without this a message arriving mid-conversation
+	// would read "[me] [bob] salam", and afterwards the label would be gone
+	// from in front of what is being typed. Guarded by mu, because a
+	// session's read goroutine prints while this one waits for input.
+	prompt string
 }
 
 // New returns a UI reading from in and writing to out, and starts the
@@ -108,6 +116,15 @@ func (u *UI) ReadLine(ctx context.Context) (string, error) {
 		if !ok {
 			return "", ErrCanceled
 		}
+
+		// Pressing Enter ended the line the terminal was echoing, so
+		// the cursor has already moved on and that prompt is spent. A
+		// canceled context is the other case: nothing was submitted,
+		// the prompt is still on the screen, and it stays recorded.
+		u.mu.Lock()
+		u.prompt = ""
+		u.mu.Unlock()
+
 		return line, nil
 
 	case <-ctx.Done():
@@ -126,9 +143,54 @@ func (u *UI) Printf(format string, args ...any) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
+	// Take the prompt off the screen, print, then put it back underneath,
+	// so the label stays in front of whatever is being typed and no empty
+	// "[me] " is left stranded above every arriving message.
+	//
+	// What was already typed is not redrawn. Those characters are still in
+	// the terminal's own line buffer and will be sent, but they are no
+	// longer on the screen. Nothing here can read them back; a full-screen
+	// interface owns the input line and is what fixes it.
+	if u.prompt != "" {
+		_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+	}
+
 	// Nothing useful can be done if the terminal cannot be written to,
 	// and reporting it would need the same terminal.
 	_, _ = fmt.Fprint(u.out, s) //nolint:errcheck // there is nowhere to report this
+
+	if u.prompt != "" {
+		_, _ = fmt.Fprint(u.out, u.prompt) //nolint:errcheck // there is nowhere to report this
+	}
+}
+
+// Prompt writes without ending the line, so what the person types appears
+// after it rather than underneath it.
+//
+// Printf and everything built on it know about this: the next line printed
+// from anywhere closes the prompt first, so output never lands inside it.
+func (u *UI) Prompt(format string, args ...any) {
+	p := fmt.Sprintf(format, args...)
+
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	_, _ = fmt.Fprint(u.out, p) //nolint:errcheck // there is nowhere to report this
+	u.prompt = p
+}
+
+// EndPrompt takes the prompt off the screen. Whoever put one up with Prompt
+// takes it down, so the menu is not printed with a chat prompt trailing it.
+func (u *UI) EndPrompt() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	if u.prompt == "" {
+		return
+	}
+
+	_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+	u.prompt = ""
 }
 
 // Info states something that happened.

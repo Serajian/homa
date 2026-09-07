@@ -23,9 +23,9 @@ What now?
   talking to server-b (they call themselves "server-b")
   /help for commands, /quit to leave
 
-salam
+[me] salam
 [server-b] salam, chetori
-/send ~/poster.tar.gz
+[me] /send ~/poster.tar.gz
   offering /Users/mohsen/poster.tar.gz, waiting for them to accept...
   sending: 100%
   sent.

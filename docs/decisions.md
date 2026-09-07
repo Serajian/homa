@@ -28,6 +28,20 @@ handshake is text they typed. `peer.RemoteKey` returns what the WireGuard
 handshake proved. The interface behind it is unexported so no other package can
 fabricate a connection that claims to know its remote key.
 
+**An incoming caller is named from the start of their key, carried in the
+tunnel address.** A dialed connection knows the peer's key, because the address
+that was dialed contains it. An accepted one does not: tailcat's status table is
+empty on the accepting side, measured on a server that had just taken a call, so
+there is nothing to look the connection up in. What does arrive is the tunnel
+address, and its last ten bytes are the first ten of the caller's key. That is
+enough to pick one contact out of an address book.
+
+It is a label and nothing else. A prefix match says a contact is consistent with
+the caller, not that it is them, and a prefix matching two contacts names
+neither. Nothing about who may connect is decided here: the tunnel already
+completed a WireGuard handshake with whoever holds the private half of that key,
+and an address book adds nothing to that.
+
 **Everything from the network is sanitized before it is printed.** A terminal
 obeys what it is given: an escape sequence could clear the screen, a carriage
 return could repaint earlier lines and forge messages. `session/sanitize.go` is

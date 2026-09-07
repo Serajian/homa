@@ -84,6 +84,11 @@ func (a *App) runChat(
 			return
 		}
 
+		// The conversation is over, so take the input prompt down before
+		// saying so. Otherwise the notice is followed by a "[me] " that
+		// nothing will ever read a line into.
+		a.ui.EndPrompt()
+
 		if err != nil {
 			a.ui.Warn("the conversation ended: %v", trimSessionPrefix(err))
 		} else {
@@ -110,7 +115,16 @@ func (a *App) chatInput(
 	h *chatHandler,
 	ended *atomic.Bool,
 ) {
+	// The prompt belongs to this loop and goes when it does, so the menu is
+	// not printed with a "[me] " hanging off it.
+	defer a.ui.EndPrompt()
+
 	for {
+		// The label goes up before the read, not after the send, so what
+		// is typed lands after it and the terminal's own echo is the
+		// only copy on the screen.
+		a.ui.Prompt("[%s] ", selfNick)
+
 		line, err := a.ui.ReadLine(ctx)
 		if errors.Is(err, ErrCanceled) {
 			return
@@ -125,6 +139,13 @@ func (a *App) chatInput(
 		// a whole line too late.
 		if ended.Load() {
 			return
+		}
+
+		// A bare Enter is not a message. It used to be sent as an empty
+		// one, which is how a keypress left over from the menu arrived
+		// at the peer as nothing at all.
+		if line == "" {
+			continue
 		}
 
 		if strings.HasPrefix(line, "/") {
