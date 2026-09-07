@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 
@@ -80,16 +81,20 @@ func (u *UI) Message(nick, text string) {
 }
 
 // ReadLine reads one line the person typed, with the surrounding whitespace
-// removed. It returns ErrCanceled when the input ends.
+// removed. It returns ErrCanceled when the input ends, whether because the
+// person pressed Ctrl+D or because shutdown closed the input to wake this
+// read.
 func (u *UI) ReadLine() (string, error) {
 	line, err := u.in.ReadString('\n')
 
 	// A final line without a newline still counts: it is what arrives when
 	// input is piped from a file that does not end in one.
-	if errors.Is(err, io.EOF) && line == "" {
+	switch {
+	case errors.Is(err, io.EOF) && line == "":
 		return "", ErrCanceled
-	}
-	if err != nil && !errors.Is(err, io.EOF) {
+	case errors.Is(err, os.ErrClosed):
+		return "", ErrCanceled
+	case err != nil && !errors.Is(err, io.EOF):
 		return "", fmt.Errorf("ui: reading input: %w", err)
 	}
 

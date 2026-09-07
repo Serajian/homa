@@ -367,3 +367,67 @@ clean: ## [Clean] Remove build output and coverage files
 	@rm -rf $(BUILD_DIR) coverage.out
 	@go clean
 	@echo "$(COLOR_GREEN)Cleaned.$(COLOR_RESET)"
+# ==================================================================================== #
+# TEST HARNESS
+# ==================================================================================== #
+# Several homa instances on one machine need separate config directories, and the
+# only portable way to move one is to move HOME: os.UserConfigDir reads
+# XDG_CONFIG_HOME on Linux but not on macOS, where it always looks under HOME.
+#
+# A gets its own sandbox too, so a test run never touches the real identity or
+# address book. Use `make run` for those.
+
+TEST_A   := /tmp/homa-a
+TEST_B   := /tmp/homa-b
+TEST_C   := /tmp/homa-c
+TEST_FILE := /tmp/homa-test-10m.bin
+
+.PHONY: run-a
+run-a: build ## [Test] Run instance A in its own sandbox
+	@mkdir -p $(TEST_A)
+	@echo "$(COLOR_BLUE)A: config in $(TEST_A), log in /tmp/a.log$(COLOR_RESET)"
+	@HOME=$(TEST_A) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/a.log -debug
+
+.PHONY: run-b
+run-b: build ## [Test] Run instance B in its own sandbox
+	@mkdir -p $(TEST_B)
+	@echo "$(COLOR_BLUE)B: config in $(TEST_B), log in /tmp/b.log$(COLOR_RESET)"
+	@HOME=$(TEST_B) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/b.log -debug
+
+.PHONY: run-c
+run-c: build ## [Test] Run instance C, for testing a busy line
+	@mkdir -p $(TEST_C)
+	@echo "$(COLOR_BLUE)C: config in $(TEST_C), log in /tmp/c.log$(COLOR_RESET)"
+	@HOME=$(TEST_C) ./$(BUILD_DIR)/$(APP_NAME) -log /tmp/c.log -debug
+
+.PHONY: logs
+logs: ## [Test] Follow every instance log at once
+	@touch /tmp/a.log /tmp/b.log /tmp/c.log
+	@tail -f /tmp/a.log /tmp/b.log /tmp/c.log
+
+.PHONY: logs-quiet
+logs-quiet: ## [Test] Follow the logs, hiding the transport's own chatter
+	@touch /tmp/a.log /tmp/b.log /tmp/c.log
+	@tail -f /tmp/a.log /tmp/b.log /tmp/c.log \
+	  | grep -Ev "wg:|magicsock:|netcheck:|derphttp|dns:|wgengine:|netstack:|NetworkMap|fakeRouter"
+
+.PHONY: addr
+addr: ## [Test] Print each sandbox's address, so it can be pasted without a menu
+	@for d in $(TEST_A) $(TEST_B) $(TEST_C); do \
+	   f="$$d/Library/Application Support/homa/contacts.json"; \
+	   [ -f "$$f" ] || f="$$d/.config/homa/contacts.json"; \
+	   echo "$(COLOR_YELLOW)$$d$(COLOR_RESET)"; \
+	   [ -f "$$f" ] && cat "$$f" || echo "  no contacts yet"; \
+	done
+
+.PHONY: testfile
+testfile: ## [Test] Create a 10 MB file to send with /send
+	@dd if=/dev/urandom of=$(TEST_FILE) bs=1m count=10 2>/dev/null
+	@echo "$(COLOR_GREEN)$(TEST_FILE)$(COLOR_RESET)"
+	@shasum -a 256 $(TEST_FILE) 2>/dev/null || sha256sum $(TEST_FILE)
+
+.PHONY: reset-test
+reset-test: ## [Test] Throw away every sandbox: identities, settings, contacts, logs
+	@rm -rf $(TEST_A) $(TEST_B) $(TEST_C)
+	@rm -f /tmp/a.log /tmp/b.log /tmp/c.log
+	@echo "$(COLOR_GREEN)Test sandboxes cleared.$(COLOR_RESET)"

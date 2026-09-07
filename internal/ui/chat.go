@@ -11,19 +11,12 @@ import (
 	"github.com/Serajian/homa/internal/session"
 )
 
-// chat runs one conversation until either side leaves.
+// startChat greets a peer we dialed and then runs the conversation.
 //
-// It owns conn: every path through this function closes it exactly once.
-// The callers hand it over and do not close it themselves.
-//
-// Two goroutines share the terminal: this one reads what the person types,
-// while the session's reads what the peer sends. They never both read the
-// keyboard, which is why a file offer is answered by typing a command
-// rather than by a prompt appearing mid-conversation.
-func (a *App) chat(ctx context.Context, conn net.Conn, name string) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
+// Only the dialing side greets here. An incoming call was already greeted
+// when it arrived, so that its caller did not sit waiting for a handshake
+// that would not happen until somebody touched the keyboard.
+func (a *App) startChat(ctx context.Context, conn net.Conn, name string) {
 	h := newChatHandler(a.ui, a.downloadDir, name)
 
 	s, err := session.Start(conn, a.nick(), h)
@@ -32,6 +25,28 @@ func (a *App) chat(ctx context.Context, conn net.Conn, name string) {
 		a.ui.Warn("could not start the conversation: %v", err)
 		return
 	}
+
+	a.runChat(ctx, conn, s, h, name)
+}
+
+// runChat runs one conversation until either side leaves.
+//
+// It owns conn: every path through this function closes it exactly once.
+// Callers hand it over and do not close it themselves.
+//
+// Two goroutines share the terminal: this one reads what the person types,
+// while the session's reads what the peer sends. They never both read the
+// keyboard, which is why a file offer is answered by typing a command
+// rather than by a prompt appearing mid-conversation.
+func (a *App) runChat(
+	ctx context.Context,
+	conn net.Conn,
+	s *session.Session,
+	h *chatHandler,
+	name string,
+) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	var (
 		ended   atomic.Bool // the peer went, or the connection broke
@@ -60,12 +75,16 @@ func (a *App) chat(ctx context.Context, conn net.Conn, name string) {
 	go func() {
 		err := s.Run(ctx)
 
-		if leaving.Load() {
+		// Either flag means we are the ones going: leaving is set when
+		// the person typed /quit, and a canceled context is Ctrl+C. Both
+		// close the connection from this side, and neither is the peer
+		// walking out.
+		if leaving.Load() || ctx.Err() != nil {
 			ended.Store(true)
 			return
 		}
 
-		if err != nil && ctx.Err() == nil {
+		if err != nil {
 			a.ui.Warn("the conversation ended: %v", trimSessionPrefix(err))
 		} else {
 			a.ui.Info("%s left the conversation.", name)

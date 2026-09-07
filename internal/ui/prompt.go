@@ -95,40 +95,28 @@ func (u *UI) Choose(question string, options []string) (int, error) {
 	}
 }
 
-// ChooseKeyed shows a list where each entry has a letter or number to type,
-// for menus whose entries are not simply numbered: "n) new contact".
+// Menu prints a keyed list and returns whatever was typed, in lower case.
 //
-// It returns the key that was typed, lowercased. Keys are compared
-// case-insensitively, since nobody wants to be told they pressed Q instead
-// of q.
-func (u *UI) ChooseKeyed(question string, keys, labels []string) (string, error) {
+// Unlike Choose it does not loop on an unrecognized answer. The main menu
+// has to regain control after every keypress, because a call may have
+// arrived while the list was on the screen, and answering it matters more
+// than whatever was typed.
+func (u *UI) Menu(question string, keys, labels []string) (string, error) {
 	if len(keys) == 0 || len(keys) != len(labels) {
 		return "", fmt.Errorf("ui: a menu needs one label per key")
 	}
 
-	valid := make(map[string]struct{}, len(keys))
-	for _, k := range keys {
-		valid[strings.ToLower(k)] = struct{}{}
+	u.Blank()
+	u.Printf("%s", question)
+	for i, k := range keys {
+		u.Printf("  %s) %s", k, labels[i])
 	}
 
-	for {
-		u.Blank()
-		u.Printf("%s", question)
-		for i, k := range keys {
-			u.Printf("  %s) %s", k, labels[i])
-		}
+	u.Printf("%schoice: ", markPrompt)
 
-		u.Printf("%schoice: ", markPrompt)
-		answer, err := u.ReadLine()
-		if err != nil {
-			return "", err
-		}
-
-		answer = strings.ToLower(answer)
-		if _, ok := valid[answer]; ok {
-			return answer, nil
-		}
-
-		u.Warn("that is not one of the choices")
+	answer, err := u.ReadLine()
+	if err != nil {
+		return "", err
 	}
+	return strings.ToLower(answer), nil
 }

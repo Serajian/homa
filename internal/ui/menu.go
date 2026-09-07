@@ -32,11 +32,17 @@ type App struct {
 	incoming chan call
 }
 
-// call is a connection together with the name to show for it, worked out
-// once when it arrives rather than again when it is answered.
+// call is a conversation that has been greeted but not yet joined.
+//
+// The handshake happens the moment a call arrives, not when the person
+// answers it. A caller waits fifteen seconds for a greeting, and nobody
+// reaches the keyboard that fast: parking an ungreeted connection meant
+// every call timed out before it could be picked up.
 type call struct {
-	conn net.Conn
-	name string
+	conn    net.Conn
+	name    string
+	session *session.Session
+	handler *chatHandler
 }
 
 // NewApp assembles the program. It does not start anything.
@@ -90,13 +96,11 @@ func (a *App) Run(ctx context.Context) error {
 	return a.menuLoop(ctx)
 }
 
-// acceptLoop takes calls as they arrive. It runs for the life of the
-// program, in parallel with whatever the person is doing.
+// acceptLoop takes calls as they arrive, greets them, and parks them.
 //
-// A caller cannot interrupt a blocked read on the terminal, so an arriving
-// call is announced and parked. The menu picks it up the next time the
-// person presses a key. That is the price of a line-based interface; a
-// full-screen one would answer without waiting.
+// A caller cannot interrupt a blocked read on the terminal, so the parked
+// call waits for the next keypress. Greeting it first means the caller is
+// already connected while they wait, rather than timing out.
 func (a *App) acceptLoop(ctx context.Context) {
 	for {
 		conn, err := a.listener.Accept(ctx)
@@ -107,17 +111,48 @@ func (a *App) acceptLoop(ctx context.Context) {
 			return
 		}
 
-		incoming := call{conn: conn, name: a.describe(conn)}
-
-		select {
-		case a.incoming <- incoming:
-			a.ui.Blank()
-			a.ui.Info("%s is calling. Press Enter to answer.", incoming.name)
-		default:
-			a.ui.Warn("%s called while another call was waiting", incoming.name)
-			go a.turnAway(conn)
-		}
+		a.greet(ctx, conn)
 	}
+}
+
+// greet completes the handshake on an incoming connection and parks it for
+// the person to pick up.
+func (a *App) greet(ctx context.Context, conn net.Conn) {
+	name := a.describe(conn)
+	handler := newChatHandler(a.ui, a.downloadDir, name)
+
+	s, err := session.Start(conn, a.nick(), handler)
+	if err != nil {
+		// The caller hung up, or is not speaking homa. Not worth
+		// interrupting the person over.
+		lg.Debug("could not greet a caller", "err", err)
+		_ = conn.Close()
+		return
+	}
+
+	c := call{conn: conn, name: name, session: s, handler: handler}
+
+	select {
+	case a.incoming <- c:
+		a.ui.Blank()
+		a.ui.Info("%s is calling. Press Enter to answer.", name)
+
+	case <-ctx.Done():
+		_ = s.Close()
+
+	default:
+		a.ui.Warn("%s called while another call was waiting", name)
+		a.turnAway(s)
+	}
+}
+
+// turnAway tells a caller why they are being hung up on, rather than
+// dropping the connection and leaving them to guess.
+func (a *App) turnAway(s *session.Session) {
+	if err := s.SendText("busy: another call is already waiting"); err != nil {
+		lg.Debug("could not tell a caller we are busy", "err", err)
+	}
+	_ = s.Close()
 }
 
 // menuLoop is the main screen.
@@ -136,7 +171,7 @@ func (a *App) menuLoop(ctx context.Context) error {
 
 		keys, labels, list := a.menuEntries()
 
-		choice, err := a.ui.ChooseKeyed("What now?", keys, labels)
+		choice, err := a.ui.Menu("What now?", keys, labels)
 		if errors.Is(err, ErrCanceled) {
 			return nil
 		}
@@ -180,6 +215,12 @@ func (a *App) menuEntries() (keys, labels []string, list []contacts.Contact) {
 
 // act performs one menu choice, reporting whether the person is leaving.
 func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (quit bool) {
+	if choice == "" {
+		// A bare Enter is how a parked call gets answered. If there was
+		// none, showing the menu again is the whole response.
+		return false
+	}
+
 	switch choice {
 	case "n":
 		a.addContact()
@@ -244,14 +285,14 @@ func (a *App) dial(ctx context.Context, c contacts.Contact) {
 	// their next call can be shown under this name.
 	a.rememberKey(c.Name, peer.RemoteKey(conn))
 
-	// chat owns conn from here and closes it.
-	a.chat(ctx, conn, c.Name)
+	// startChat owns conn from here and closes it.
+	a.startChat(ctx, conn, c.Name)
 }
 
-// answer takes a call that was parked by acceptLoop.
+// answer joins a call that was greeted and parked by the accept goroutine.
 func (a *App) answer(ctx context.Context, c call) {
 	a.ui.Info("connected to %s", c.name)
-	a.chat(ctx, c.conn, c.name)
+	a.runChat(ctx, c.conn, c.session, c.handler, c.name)
 }
 
 // takeIncoming returns a parked call if there is one, without waiting.
@@ -341,27 +382,3 @@ func preview(addr string) string {
 	}
 	return fmt.Sprintf("%s...", addr[:addrPreviewLen])
 }
-
-// turnAway tells a caller why they are being hung up on, rather than
-// dropping the connection and leaving them to guess.
-//
-// It runs in its own goroutine because the greeting has a deadline of its
-// own, and the accept loop must stay free for the next caller.
-func (a *App) turnAway(conn net.Conn) {
-	s, err := session.Start(conn, a.nick(), silentHandler{})
-	if err != nil {
-		_ = conn.Close()
-		return // they hung up, or never greeted us
-	}
-
-	if err := s.SendText("busy: another call is already waiting"); err != nil {
-		lg.Debug("could not tell a caller we are busy", "err", err)
-	}
-	_ = s.Close()
-}
-
-// silentHandler ignores everything. It is for a session that exists only
-// long enough to say one thing.
-type silentHandler struct{}
-
-func (silentHandler) OnText(string) {}
