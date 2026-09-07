@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/Serajian/homa/internal/config"
@@ -98,9 +99,10 @@ func (a *App) Run(ctx context.Context) error {
 
 // acceptLoop takes calls as they arrive, greets them, and parks them.
 //
-// A caller cannot interrupt a blocked read on the terminal, so the parked
-// call waits for the next keypress. Greeting it first means the caller is
-// already connected while they wait, rather than timing out.
+// The menu picks a parked call up at once, because it waits on the keyboard
+// and on this channel together. A call still waits when the person is
+// already in a conversation or answering a prompt, and greeting it first
+// means the caller is connected while it waits rather than timing out.
 func (a *App) acceptLoop(ctx context.Context) {
 	for {
 		conn, err := a.listener.Accept(ctx)
@@ -135,7 +137,7 @@ func (a *App) greet(ctx context.Context, conn net.Conn) {
 	select {
 	case a.incoming <- c:
 		a.ui.Blank()
-		a.ui.Info("%s is calling. Press Enter to answer.", name)
+		a.ui.Info("%s is calling.", name)
 
 	case <-ctx.Done():
 		_ = s.Close()
@@ -156,14 +158,18 @@ func (a *App) turnAway(s *session.Session) {
 }
 
 // menuLoop is the main screen.
+//
+// It waits on three things at once, which is the whole reason the input
+// pump exists: a line the person typed, a call that has arrived, and the
+// program being shut down. A call is answered the moment it lands, without
+// waiting for a keypress, and Ctrl+C returns from here immediately rather
+// than after the next Enter.
 func (a *App) menuLoop(ctx context.Context) error {
 	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-
 		// A call parked while we were busy takes priority over showing
-		// the menu again: the caller is waiting.
+		// the menu again: the caller is waiting. Checking here as well
+		// as in the select keeps the menu from being printed and then
+		// replaced a moment later.
 		if c, ok := a.takeIncoming(); ok {
 			a.answer(ctx, c)
 			continue
@@ -171,22 +177,23 @@ func (a *App) menuLoop(ctx context.Context) error {
 
 		keys, labels, list := a.menuEntries()
 
-		choice, err := a.ui.Menu("What now?", keys, labels)
-		if errors.Is(err, ErrCanceled) {
-			return nil
-		}
-		if err != nil {
+		if err := a.ui.ShowMenu("What now?", keys, labels); err != nil {
 			return err
 		}
 
-		// Pressing a key may have been the person answering a call that
-		// arrived while they were reading the menu.
-		if c, ok := a.takeIncoming(); ok {
+		select {
+		case c := <-a.incoming:
 			a.answer(ctx, c)
-			continue
-		}
 
-		if quit := a.act(ctx, choice, list); quit {
+		case line, ok := <-a.ui.Lines():
+			if !ok {
+				return nil // the person pressed Ctrl+D
+			}
+			if quit := a.act(ctx, strings.ToLower(line), list); quit {
+				return nil
+			}
+
+		case <-ctx.Done():
 			return nil
 		}
 	}
@@ -216,18 +223,18 @@ func (a *App) menuEntries() (keys, labels []string, list []contacts.Contact) {
 // act performs one menu choice, reporting whether the person is leaving.
 func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (quit bool) {
 	if choice == "" {
-		// A bare Enter is how a parked call gets answered. If there was
-		// none, showing the menu again is the whole response.
+		// A bare Enter is somebody looking again. Redrawing the menu is
+		// the whole response.
 		return false
 	}
 
 	switch choice {
 	case "n":
-		a.addContact()
+		a.addContact(ctx)
 	case "a":
 		a.showAddress()
 	case "s":
-		a.editSettings()
+		a.editSettings(ctx)
 	case "q":
 		return true
 	default:
@@ -246,14 +253,14 @@ func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (
 
 // editSettings walks the settings questions and swaps in the result.
 // Backing out is a decision rather than a failure, so it is silent.
-func (a *App) editSettings() {
+func (a *App) editSettings(ctx context.Context) {
 	a.mu.RLock()
 	current := a.cfg
 	a.mu.RUnlock()
 
 	// The questions are asked without the lock held: someone thinking
 	// about their answer must not block an incoming call.
-	updated, err := EditSettings(a.ui, current)
+	updated, err := EditSettings(ctx, a.ui, current)
 	if err != nil {
 		if !errors.Is(err, ErrCanceled) {
 			a.ui.Warn("%v", err)
@@ -337,13 +344,13 @@ func (a *App) rememberKey(name, key string) {
 // --------------------------------------------------------------- contacts
 
 // addContact asks for a name and an address and saves them.
-func (a *App) addContact() {
-	name, err := a.ui.Ask("A name for them", "")
+func (a *App) addContact(ctx context.Context) {
+	name, err := a.ui.Ask(ctx, "A name for them", "")
 	if err != nil {
 		return
 	}
 
-	addr, err := a.ui.Ask("Their address", "")
+	addr, err := a.ui.Ask(ctx, "Their address", "")
 	if err != nil {
 		return
 	}

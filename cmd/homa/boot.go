@@ -17,7 +17,7 @@ import (
 // and nothing else should have started when it does; then the address book;
 // then the identity, which may reach the network; then the listener.
 func bootstrap(ctx context.Context, out *ui.UI) (app *ui.App, cleanup func(), err error) {
-	cfg, err := loadSettings(out)
+	cfg, err := loadSettings(ctx, out)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -47,7 +47,7 @@ func bootstrap(ctx context.Context, out *ui.UI) (app *ui.App, cleanup func(), er
 
 // loadSettings reads the saved settings, asking the first-run questions if
 // there are none yet.
-func loadSettings(out *ui.UI) (*config.Config, error) {
+func loadSettings(ctx context.Context, out *ui.UI) (*config.Config, error) {
 	cfg, err := config.Load()
 	if err == nil {
 		return cfg, nil
@@ -56,7 +56,7 @@ func loadSettings(out *ui.UI) (*config.Config, error) {
 		return nil, err
 	}
 
-	cfg, err = ui.Setup(out)
+	cfg, err = ui.Setup(ctx, out)
 	if err != nil {
 		if errors.Is(err, ui.ErrCanceled) {
 			return nil, errors.New("setup was not finished")

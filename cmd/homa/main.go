@@ -43,11 +43,10 @@ func run() error {
 		os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// New starts the goroutine that reads the keyboard, so every read
+	// after this returns as soon as ctx is canceled. Nothing has to close
+	// standard input to make Ctrl+C work.
 	out := ui.New(os.Stdin, os.Stdout)
-
-	// Started before anything can block on the keyboard.
-	finished := watchForShutdown(ctx, out)
-	defer close(finished)
 
 	app, cleanup, err := bootstrap(ctx, out)
 	if err != nil {

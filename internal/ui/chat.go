@@ -90,13 +90,20 @@ func (a *App) runChat(
 			a.ui.Info("%s left the conversation.", name)
 		}
 		ended.Store(true)
-		a.ui.Info("press Enter to go back to the menu")
+
+		// Wake the goroutine reading the keyboard so the menu comes
+		// back on its own. Before the input pump, this was a printed
+		// "press Enter to go back to the menu", because nothing could
+		// interrupt that read.
+		cancel()
 	}()
 
 	a.chatInput(ctx, s, h, &ended)
 }
 
-// chatInput reads what the person types until they leave or the peer does.
+// chatInput reads what the person types until they leave, the peer does, or
+// the program is shut down. All three arrive the same way: ReadLine returns
+// ErrCanceled, because the context this loop was given has been canceled.
 func (a *App) chatInput(
 	ctx context.Context,
 	s *session.Session,
@@ -104,7 +111,7 @@ func (a *App) chatInput(
 	ended *atomic.Bool,
 ) {
 	for {
-		line, err := a.ui.ReadLine()
+		line, err := a.ui.ReadLine(ctx)
 		if errors.Is(err, ErrCanceled) {
 			return
 		}

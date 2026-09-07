@@ -13,100 +13,16 @@ boundary.
 outstanding work. Anything already shipped belongs in [status.md](status.md),
 and the reasoning behind it in [decisions.md](decisions.md).
 
-Work them in the order given. Item 1 is first because it removes the cause of
-three separate symptoms, and several later items get easier once it is done.
+Work them in the order given.
+
+The input pump that used to head this list is done: reading the keyboard now
+happens in a goroutine of its own, so Ctrl+C, an arriving call and the peer
+leaving are all just cases in a select. Several items below assumed it, and
+their notes have been brought up to date.
 
 ---
 
-## 1. Replace blocking terminal reads with an input pump
-
-**Priority: first. This one blocks the others.**
-
-### The symptoms
-
-Three bugs, one cause.
-
-**a. Ctrl+C prints "shutting down..." and then nothing happens.** The program
-stays alive at the menu until Enter is pressed, and sometimes not even then.
-
-**b. After the other person leaves, homa asks for a keypress** before returning
-to the menu: "press Enter to go back to the menu".
-
-**c. An incoming call cannot be answered until a key is pressed.** It is
-announced, parked, and waits.
-
-### The cause
-
-`UI.ReadLine` calls `bufio.Reader.ReadString`, which blocks in a `read` system
-call on standard input. Nothing in Go can interrupt that read: not a context,
-not a signal, not another goroutine.
-
-The current workaround, `cmd/homa/shutdown.go`, closes standard input to make
-the read return. That is unreliable: on macOS a `read` already in progress on a
-descriptor is not guaranteed to return when the descriptor is closed, which is
-exactly symptom (a).
-
-### What to build
-
-Move the blocking read into a goroutine of its own that never stops, and have it
-deliver lines over a channel. Every consumer then selects between input and
-whatever else it is waiting for.
-
-```go
-// in internal/ui
-
-type UI struct {
-    lines chan string   // one line per read, closed when input ends
-    // ...existing fields
-}
-
-// New starts the pump.
-func New(in io.Reader, out io.Writer) *UI
-
-// ReadLine waits for a line, ctx cancellation, or the end of input.
-func (u *UI) ReadLine(ctx context.Context) (string, error)
-```
-
-The pump goroutine is deliberately leaked when input never ends: it is one
-goroutine for the life of the process, blocked on a read the process is about to
-abandon anyway. Say so in a comment, so nobody "fixes" it later.
-
-### What it fixes, and how
-
-- **Ctrl+C**: `ReadLine` returns as soon as the context is canceled, no matter
-  what the pump is doing. `cmd/homa/shutdown.go` can then be deleted entirely,
-  along with the `finished` channel it needs, and `watchForShutdown` with it.
-  Closing standard input stops being part of the design.
-- **"press Enter"**: `chatInput` selects on input and on the session ending, so
-  the conversation returns to the menu the moment the peer leaves. Delete the
-  `press Enter to go back to the menu` line and the `ended` flag dance around it.
-- **Parked calls**: `menuLoop` selects on input and on `a.incoming`, so a call
-  is answered as it arrives rather than at the next keypress. The announcement
-  becomes "bob is calling" and the conversation simply starts.
-
-### Files
-
-- `internal/ui/ui.go`: the pump, the new `ReadLine`
-- `internal/ui/prompt.go`, `setup.go`, `menu.go`, `chat.go`: thread the context
-  through; every `ReadLine` call gains a `ctx`
-- `internal/ui/chat.go`: `chatInput` selects on input and on the session ending
-- `internal/ui/menu.go`: `menuLoop` selects on input and on `a.incoming`
-- `cmd/homa/shutdown.go`: delete
-- `cmd/homa/main.go`: drop `watchForShutdown` and its channel
-
-### Done when
-
-- Ctrl+C at the menu exits immediately, printing nothing but a goodbye
-- Ctrl+C inside a conversation ends it, the peer sees a goodbye, and the process
-  exits at once
-- when the peer leaves, the menu comes back on its own
-- an incoming call connects without a keypress
-- `README.md` and [status.md](status.md) lose the "known warts" that no longer
-  exist
-
----
-
-## 2. Show your own messages
+## 1. Show your own messages
 
 ### The symptom
 
@@ -163,7 +79,7 @@ what.
 
 ---
 
-## 3. Make sending a file bearable
+## 2. Make sending a file bearable
 
 ### The symptom
 
@@ -220,7 +136,7 @@ number, and `/send <path>` still works as before.
 
 ---
 
-## 4. Name incoming callers correctly
+## 3. Name incoming callers correctly
 
 ### The symptom
 
@@ -298,16 +214,16 @@ prove is written in the code.
 
 ---
 
-## 5. Expire a parked call
+## 4. Expire a parked call
 
 ### The symptom
 
 If nobody answers, a call waits forever. The caller sits in a conversation with
 somebody who is not there.
 
-Less pressing once item 1 lands, since calls are then answered as they arrive,
-but a call still parks whenever the person is inside another conversation or a
-prompt.
+Less pressing now that calls are answered as they arrive, but a call still
+parks whenever the person is inside another conversation or a prompt, and that
+one has no deadline.
 
 ### What to build
 
@@ -333,7 +249,7 @@ left in an empty conversation.
 
 ---
 
-## 6. A clear command
+## 5. A clear command
 
 ### What to build
 
@@ -357,7 +273,7 @@ Redraw the menu afterwards, so the screen is not left blank.
 
 ---
 
-## 7. Drop input that is only control characters
+## 6. Drop input that is only control characters
 
 ### The symptom
 
@@ -384,12 +300,16 @@ Real line editing, including history on the up arrow, is phase 3.
 
 ---
 
-## 8. Tests
+## 7. Tests
 
 **The largest gap in the project.** There is no test file in the repository, and
 phase 2 adds rooms, which means more concurrency and more to get wrong.
 
-Where the value is, in order:
+Two kinds are wanted, and they catch different things. Write the unit tests
+first: they are cheap, they need no network, and they cover the two places a
+mistake is most expensive.
+
+### Unit tests
 
 **`internal/proto`** is the easiest and the most valuable. It is pure functions
 over an `io.ReadWriter`, so a `net.Pipe` or a `bytes.Buffer` is the whole
@@ -403,18 +323,40 @@ returns stripped; invalid UTF-8 replaced; truncation by runes rather than bytes;
 `safeFileName` refusing `../`, absolute paths, empty names, and control
 characters.
 
-**`internal/session`** end to end over `net.Pipe`: two sessions, a handshake, a
-message each way, a file offer accepted, a file offer rejected, a checksum
-mismatch discarding the file, a connection dropped mid-transfer leaving no
-`.part` behind.
-
 **`internal/contacts` and `internal/config`** with a temporary `XDG_CONFIG_HOME`
 or `HOME`: save and load, a duplicate name refused, a corrupt file reported
 clearly, an atomic write surviving a replaced file.
 
-Run them with `make test-race`. The race detector is the point: it is the only
-thing that will catch a mistake in the locking added for the address book and
-the settings.
+**`internal/ui`** is testable now that input arrives on a channel. `ui.New`
+takes any `io.Reader`, so a pipe stands in for a keyboard: a line delivered, a
+`ReadLine` returning `ErrCanceled` the moment its context is canceled, input
+ending mid-prompt, a line longer than `maxInputLen` truncated.
+
+### Integration tests
+
+**`internal/session` end to end over `net.Pipe`**: two sessions, a handshake, a
+message each way, a file offer accepted, a file offer rejected, a checksum
+mismatch discarding the file, a connection dropped mid-transfer leaving no
+`.part` behind. No network is involved, so this belongs in the normal test run.
+
+**Two whole instances, over the real transport.** This is the layer with no
+tests at all, and every claim about it has so far been checked by hand. Two
+processes, each with its own `HOME`, standard input on a pipe:
+
+- one calls the other and the conversation starts with no keypress
+- the caller leaves, and the answering side returns to its menu on its own
+- `SIGINT` at the menu exits at once, and `SIGINT` inside a conversation makes
+  the peer see a goodbye
+- a second caller is told the line is busy
+- a file sent and received, with the digest checked at both ends
+
+These need the network and a relay, so keep them behind a build tag or
+`testing.Short`, and out of the normal `make test`. `make test-race` on
+everything else must stay fast enough that nobody skips it.
+
+The race detector is the point of `make test-race`: it is the only thing that
+will catch a mistake in the locking around the address book and the settings,
+or in the goroutines the input pump and each session start.
 
 ---
 

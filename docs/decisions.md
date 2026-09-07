@@ -11,10 +11,13 @@ written into `key.json`.
 **Both peers are equal.** homa listens from the moment it starts. There is no
 "host" and no coordination about who waits.
 
-**A call arriving at the menu is parked, not answered.** A blocking read on a
-terminal cannot be interrupted from another goroutine. The call is announced,
-and the next keypress picks it up. This is a limitation of a line-based
-interface, and Phase 3 removes it without changing the architecture.
+**A call is greeted the moment it arrives, and answered without a keypress.**
+The handshake happens in the accept goroutine, so a caller is connected while
+they wait rather than timing out after fifteen seconds. The menu then waits on
+the keyboard and on the channel of arrived calls together, in one select, and
+takes whichever comes first. A call still waits when the person is already in a
+conversation or answering a prompt; that is the only case left where anything
+is parked.
 
 **A second caller is told why they are turned away.** The greeting completes, a
 message says "busy: another call is already waiting", then the connection
@@ -56,10 +59,19 @@ that is also what let the build tolerate file frames before `files.go` existed.
 settings. Letting two sides disagree would break the connection with no useful
 error. Settings live in `config.json`; debug knobs are flags.
 
-**Ctrl+C closes standard input.** Cancelling a context does not wake a goroutine
-blocked on the keyboard, so without this Ctrl+C did nothing until Enter was
-pressed. Closing the input makes the read return, and every loop already treats
-the end of input as "we are done".
+**One goroutine reads the keyboard, for the life of the program.** A read on a
+terminal blocks inside a system call that nothing in Go can interrupt: not a
+context, not a signal, and not closing the descriptor, which on macOS is not
+guaranteed to make a read already in progress return. So `ui.New` starts a pump
+that reads forever and hands finished lines over an unbuffered channel, and
+every consumer selects between that channel and whatever else it is waiting on.
+Ctrl+C, the peer leaving, and a call arriving all become one more case in a
+select.
+
+The pump is never stopped, deliberately. It ends up blocked on input the process
+is about to abandon, which costs one goroutine for the life of the program. The
+alternative was closing standard input to force the read to return, and that is
+exactly the unreliable trick this replaced.
 
 **Locks live with the thing they guard.** `contacts.Book` takes its own RWMutex,
 because the accept goroutine reads it while the person edits it. `EditSettings`

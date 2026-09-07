@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+
 	"github.com/Serajian/homa/internal/config"
 )
 
@@ -9,7 +11,7 @@ import (
 // It asks only what homa cannot reasonably guess. Everything else keeps its
 // default, because a setup that asks eight questions is a setup people
 // answer without reading.
-func Setup(u *UI) (*config.Config, error) {
+func Setup(ctx context.Context, u *UI) (*config.Config, error) {
 	cfg := config.Default()
 
 	u.Blank()
@@ -17,6 +19,7 @@ func Setup(u *UI) (*config.Config, error) {
 	u.Blank()
 
 	nick, err := u.askUntilValid(
+		ctx,
 		"The name shown beside your messages",
 		cfg.Nick,
 		func(s string) error {
@@ -30,7 +33,7 @@ func Setup(u *UI) (*config.Config, error) {
 	}
 	cfg.Nick = nick
 
-	dir, err := u.Ask("Where received files should go", cfg.DownloadDir)
+	dir, err := u.Ask(ctx, "Where received files should go", cfg.DownloadDir)
 	if err != nil {
 		return nil, err
 	}
@@ -51,10 +54,11 @@ func Setup(u *UI) (*config.Config, error) {
 // It returns the saved settings rather than editing the ones passed in: the
 // caller may be sharing them with other goroutines, and swapping a pointer
 // under a lock is safe while writing through one is not.
-func EditSettings(u *UI, current *config.Config) (*config.Config, error) {
+func EditSettings(ctx context.Context, u *UI, current *config.Config) (*config.Config, error) {
 	edited := *current
 
 	nick, err := u.askUntilValid(
+		ctx,
 		"The name shown beside your messages",
 		edited.Nick,
 		func(s string) error {
@@ -68,7 +72,7 @@ func EditSettings(u *UI, current *config.Config) (*config.Config, error) {
 	}
 	edited.Nick = nick
 
-	dir, err := u.Ask("Where received files should go", edited.DownloadDir)
+	dir, err := u.Ask(ctx, "Where received files should go", edited.DownloadDir)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +89,13 @@ func EditSettings(u *UI, current *config.Config) (*config.Config, error) {
 // askUntilValid keeps asking until the answer passes check. The person sees
 // what was wrong with what they typed, rather than the question repeating
 // for no visible reason.
-func (u *UI) askUntilValid(question, def string, check func(string) error) (string, error) {
+func (u *UI) askUntilValid(
+	ctx context.Context,
+	question, def string,
+	check func(string) error,
+) (string, error) {
 	for {
-		answer, err := u.Ask(question, def)
+		answer, err := u.Ask(ctx, question, def)
 		if err != nil {
 			return "", err
 		}

@@ -180,17 +180,22 @@ saved the old one can no longer reach you.
 
 ## How a call is answered
 
-homa listens from the moment it starts, so either side can call the other. A
-call that arrives while you are at the menu is announced and parked, because a
-blocking read on a terminal cannot be interrupted from another goroutine.
-Pressing any key answers it.
+homa listens from the moment it starts, so either side can call the other. The
+greeting is completed the moment a call arrives, so the caller is connected
+rather than waiting on a handshake, and the menu waits on the keyboard and on
+arriving calls together. A call is answered without pressing anything.
+
+A call still waits when you are already in a conversation or answering a
+question, and is picked up as soon as you are free.
 
 ```mermaid
 flowchart TD
     A[call arrives] --> B{someone already waiting?}
-    B -- no --> C[park it, announce it]
-    C --> D[person presses a key]
-    D --> E[conversation starts]
+    B -- no --> C[complete the greeting, announce it]
+    C --> D{is the person free?}
+    D -- yes --> E[conversation starts]
+    D -- no --> I[wait until they are]
+    I --> E
     B -- yes --> F[complete the greeting]
     F --> G["tell them: busy, another call is waiting"]
     G --> H[hang up]
@@ -320,7 +325,7 @@ touching anything below.
 flowchart TD
     A[main] --> B[parse flags]
     B --> C[set up logging]
-    C --> D[watch for Ctrl+C]
+    C --> D[start the keyboard pump]
     D --> E{settings on disk?}
     E -- no --> F[ask the first-run questions]
     E -- yes --> G[load them]
@@ -338,20 +343,25 @@ your address on every launch and break every contact who saved it.
 ### Shutting down
 
 Cancelling a context does not wake a goroutine blocked on the keyboard: that
-read is a system call the runtime cannot interrupt. So Ctrl+C closes standard
-input, which makes the read return, and every loop in homa already treats the
-end of input as "we are done".
+read is a system call the runtime cannot interrupt. So homa never waits on that
+read directly. One goroutine, started at launch, does nothing but read lines and
+hand them over on a channel, and everything else selects between that channel
+and whatever else it is waiting for. Ctrl+C is then just another case in the
+select.
 
 ```mermaid
 flowchart TD
     A[Ctrl+C] --> B[context canceled]
-    B --> C[close standard input]
+    B --> C[every ReadLine returns at once]
     B --> D[close the connection]
-    C --> E[the keyboard read returns]
-    E --> F[the chat, then the menu, unwind]
-    D --> G[the peer sees you leave]
-    F --> H[listener closed, exit 0]
+    C --> E[the chat, then the menu, unwind]
+    D --> F[the peer sees you leave]
+    E --> G[listener closed, exit 0]
 ```
+
+The reading goroutine is left blocked on input the process is about to abandon.
+That is one goroutine for the life of the program, and it is the price of a read
+that cannot be interrupted.
 
 ## Security notes
 
@@ -415,8 +425,9 @@ sides disagree on any of them would break the connection with no useful error.
 - [x] **Phase 1** two people, text, files, contacts, a line-based interface
 - [ ] **Phase 2** rooms: one host, several guests, join requests
 - [ ] **Phase 3** a full-screen interface, which also fixes the two warts phase 1
-      lives with: a message arriving while you type, and the keypress needed
-      after the other person leaves
+      lives with: a message arriving while you type is printed over your
+      half-finished line, and a line typed but not sent when the peer leaves is
+      dropped
 - [ ] **Phase 4** an Android build. The lower three packages are already free of
       any terminal assumption, so roughly seventy percent of the code carries
       over
