@@ -1,130 +1,78 @@
-# homa
+<p align="center">
+  <img src="./docs/assets/hero.svg" width="100%"
+       alt="homa, a peer-to-peer terminal chat. Two terminals side by side showing one real conversation: sara calls mohsen and waits, mohsen is asked whether to take the call and accepts, and the two exchange messages.">
+</p>
 
-A peer-to-peer terminal chat. Two machines exchange an address once, then talk
-directly: encrypted, without an account, without a server in the middle, and
-without either of them being "the server".
-
-```
-$ homa
-
-homa | mohsen
-  your address starts with tcpGFwWCAD...
-  listening for callers
-
-What now?
-  1) call server-b
-  n) add a contact
-  a) show my address
-  s) settings
-  q) quit
-> choice: 1
-
-  calling server-b...
-  talking to server-b (they call themselves "server-b")
-  /help for commands, /quit to leave
-
-[me] salam
-[server-b] salam, chetori
-[me] /send ~/poster.tar.gz
-  offering /Users/mohsen/poster.tar.gz, waiting for them to accept...
-  sending: 100%
-  sent.
-```
-
-## What it is
-
-- **Text chat** between two machines, anywhere, through NAT and firewalls.
-- **File transfer** over the same connection, so chat keeps flowing while a
-  file is on its way.
-- **An address book**, so nobody pastes a two hundred character address twice.
-
-## What it is not
-
-- Not a group chat. One conversation at a time. Rooms are planned.
-- Not a message archive. Nothing you say is written to disk.
-- Not a Tailscale client. It uses Tailscale's data plane, not their service.
-
-## How it connects
-
-homa is built on [tailcat](https://github.com/tailscale/tailcat), which is
-Tailscale's encryption and NAT traversal without Tailscale's control plane. No
-account, no coordination server, no shared tailnet. Two peers need nothing in
-common except one string.
-
-```mermaid
-sequenceDiagram
-    participant A as You
-    participant D as DERP relay
-    participant B as Them
-
-    Note over A: homa prints your address
-    A-->>B: you send the address (chat app, email, anything)
-
-    A->>D: connect and wait
-    B->>D: connect using the address
-    D-->>A: this is them
-    D-->>B: this is you
-
-    Note over A,B: both sides now know each other's endpoints
-    A->>B: direct UDP, NAT hole punched
-    B->>A: direct UDP
-
-    Note over A,B: WireGuard tunnel, DERP no longer in the path
-```
-
-If a direct path cannot be established, DERP stays in the path as a relay. It
-never sees your content: the tunnel is encrypted end to end, and the pre-shared
-key inside your address keeps the relay operator out of it.
-
-### The address is a secret
-
-Your address carries the pre-shared key that guards your tunnel. Anyone holding
-it can call you. Treat it like a password: send it over a channel you trust, and
-do not paste it into a public issue.
-
-homa shows the full address in exactly one place, the `a` menu entry. Everywhere
-else it is shortened.
-
-## Install
-
-Requires Go 1.27.1 or newer.
+**A peer-to-peer terminal chat.** Two machines exchange one address, then talk
+directly: WireGuard between them, through NAT, on top of
+[tailcat](https://github.com/tailscale/tailcat) — Tailscale's data plane with
+the control plane taken out. A relay helps the two find each other and carries
+traffic when no direct path can be made. There is no account, nothing in the
+middle keeps your messages, and neither side is "the server": both listen and
+either can call.
 
 ```sh
 go install github.com/Serajian/homa/cmd/homa@latest
 ```
 
-Or from a clone:
+Run `homa` on both machines. The first run asks two questions and prints your
+address. Give it to the other person, press `n` to save theirs, and call.
 
-```sh
-git clone https://github.com/Serajian/homa.git
-cd homa
-make build      # ./build/homa
-make install    # into $(go env GOPATH)/bin
+## What it is
+
+- **A chat between exactly two people.** Rooms are version 3.
+- **A file transfer**, in both directions, with a digest checked at the end.
+- **A terminal program**, line-based today. A full-screen interface, with line
+  editing and history, is version 2.
+
+## What it is not
+
+- Not a group chat, not a social network, not a bot platform.
+- Not anonymous. Your peer sees a network path to you, as they would on a call.
+- Not a place anything is stored. Nothing is kept but your settings, your
+  address book, and your key — all on your own disk.
+
+## A real session
+
+Verbatim, from the side that placed the call:
+
+```
+What now?
+  1) call server-b
+  n) add a contact
+  b) contacts: rename, forget, call
+  a) show my address
+  s) settings
+  c) clear the screen
+  r) start over: forget everything
+  h) help
+  q) quit homa
+> choice:
+1
+  calling server-b...
+  waiting for server-b to answer... 55s  (Enter to give up)
+
+  talking to server-b (they call themselves "server-b")
+  /help for commands, /quit to leave
+
+[me] salam
+[server-b] salam, chetori
+[me] /send ~/notes.md
+  offering /Users/mohsen/notes.md, waiting for them to accept...
+  sending: 100%
+  sent.
 ```
 
-Cross-compiling for a server:
+The other side is asked before any of that happens:
 
-```sh
-make build-linux    # ./build/homa-linux-amd64
+```
+  ~server-b is calling (expires in 1m0s).
+> take the call from ~server-b? [56s] [y/N]: y
 ```
 
-## Quick start
-
-On both machines:
-
-```sh
-homa
-```
-
-The first run asks two questions, then prints your address.
-
-1. On machine A, press `a` and copy the address.
-2. Send it to machine B however you like.
-3. On machine B, press `n`, give A a name, paste the address.
-4. Pick A from the menu.
-
-From then on both machines know each other by name, and either can call the
-other.
+Having somebody's address is not the same as being welcome to talk to them, so
+nothing is put through until they say yes. Refusing is the default, and a call
+nobody answers is hung up on inside a minute with both sides told why.
 
 ## In a conversation
 
@@ -134,11 +82,11 @@ other.
 | `/files <n>` | list one from the last listing, `..` included |
 | `/send <path>` | offer a file |
 | `/send <n>` | offer one from the last listing |
-| `/accept` | take the file being offered |
-| `/reject` | refuse it |
+| `/accept` | take the file being offered, or just `y` |
+| `/reject` | refuse it, or just `n` |
 | `/who` | who you are talking to |
 | `/clear` | wipe the screen |
-| `/help` | this list |
+| `/help` | this list, or just `/` |
 | `/quit` | leave the conversation, not homa |
 
 Anything not starting with `/` is a message.
@@ -159,17 +107,65 @@ a thing to ask of somebody mid-conversation. `/files` shows a directory and
 
 Numbers work for walking as well as sending: `/files 2` goes into `archive`,
 `/files 1` comes back out. A name is resolved against the directory you are
-looking at rather than against wherever homa was started, so `/files archive`
-and `/files ..` do what they look like.
-
-A number is a number and anything else is a path, so a file actually named `2`
-is sent as `/send ./2`. Tab completion needs the terminal in raw mode and waits
-for the full-screen interface.
+looking at rather than against wherever homa was started.
 
 A file is never written without you accepting it, and an accepted file never
-overwrites one already there: `poster.png` becomes `poster (2).png`.
+overwrites one already there: `poster.png` becomes `poster (2).png`. Progress is
+reported every ten percent, so a large transfer says where it has got to and a
+small one prints once.
 
-## Command line
+## Who is calling
+
+A peer announces a name during the handshake, but a name is just text they
+typed. What identifies them is the key underneath the tunnel, which the
+WireGuard handshake proved. So homa decides what to call somebody by key, never
+by what they say:
+
+- **a name from your address book**, when the key matches one. The first time
+  you reach a contact their key is recorded, so their next call arrives under
+  the name you gave them. Renaming them keeps that key.
+- **`~` and the name they announced**, when it matches nothing. The `~` is what
+  keeps the two apart: contact names never carry it, so a caller who names
+  themselves `BB` shows up as `~BB` and cannot pass for the `BB` you saved.
+
+## Your address is a secret
+
+Treat it like a password. Whoever has it can call you, and it carries the
+pre-shared key that guards your tunnel. Send it over a channel you already
+trust.
+
+Everything homa keeps lives in one directory — `~/.config/homa` on Linux,
+`~/Library/Application Support/homa` on macOS, honoring `XDG_CONFIG_HOME` — as
+`0600` files inside a `0700` directory:
+
+| File | Holds |
+| --- | --- |
+| `key.json` | your identity and pre-shared key |
+| `config.json` | display name, download directory |
+| `contacts.json` | the names you gave people, and their addresses |
+
+Deleting `key.json` gives you a new identity and a new address, and everyone who
+saved the old one can no longer reach you. `r` at the menu does all three at
+once, after making you type the word `reset`.
+
+## Install
+
+Requires Go 1.27.1 or newer. Packages for `brew` and `apt` are version 1 work
+and not built yet.
+
+```sh
+go install github.com/Serajian/homa/cmd/homa@latest
+```
+
+From a clone:
+
+```sh
+git clone https://github.com/Serajian/homa.git
+cd homa
+make build          # ./build/homa
+make install        # into $(go env GOPATH)/bin
+make build-linux    # ./build/homa-linux-amd64
+```
 
 ```
 homa [flags]
@@ -179,330 +175,57 @@ homa [flags]
   -version      print the version and exit
 ```
 
-Diagnostics go nowhere by default. homa draws a terminal interface, and a log
-line landing in the middle of a conversation would scramble it. Use `-log` while
-developing:
+Diagnostics go nowhere by default: homa draws a terminal interface, and a log
+line landing in the middle of a conversation would scramble it.
 
-```sh
-homa -log homa.log -debug
-tail -f homa.log
-```
+## How it is built
 
-## Files on disk
+Dependencies point one way, and two rules hold the shape: `internal/peer` is the
+only package that imports tailcat, and `internal/session` knows nothing about
+terminals while `internal/ui` knows nothing about wire formats.
 
-Everything lives in one directory: `~/.config/homa` on Linux,
-`~/Library/Application Support/homa` on macOS. It honors `XDG_CONFIG_HOME`.
-
-| File | Holds | Mode |
-| --- | --- | --- |
-| `key.json` | your permanent identity and pre-shared key | `0600` |
-| `config.json` | display name, download directory | `0600` |
-| `contacts.json` | the names you gave people, and their addresses | `0600` |
-
-The directory is `0700`. Everything in it is either a secret or a private list,
-so nothing is world readable.
-
-Deleting `key.json` gives you a new identity and a new address, and everyone who
-saved the old one can no longer reach you. `r` at the menu does all three at
-once, after making you type the word `reset`: a letter is answered by reflex and
-this has no undo.
-
-## How a call is answered
-
-homa listens from the moment it starts, so either side can call the other. The
-greeting is completed the moment a call arrives, so the caller is connected
-rather than waiting on a handshake, and the menu waits on the keyboard and on
-arriving calls together, so the question reaches you as the call lands.
-
-Then it asks. Having your address is not the same as being welcome to talk to
-you, so nothing is put through until you say yes. Refusing is the default, and a
-refused caller is told rather than dropped.
-
-The caller waits to be let in. A finished handshake means two programs are
-talking, not that a person agreed, so the side being called sends a frame of its
-own the moment you say yes, and until then the caller is told they are waiting
-rather than that they are talking.
-
-A call still waits when you are already in a conversation or answering a
-question, and is put to you as soon as you are free — but not forever. A minute
-after it arrived, counted from then rather than from when it reaches you, it is
-hung up on and both sides are told why. Both sides watch the same clock run
-down: the question you are being asked carries the time left, and so does the
-line the caller is waiting on.
-
-```mermaid
-flowchart TD
-    A[call arrives] --> B{someone already waiting?}
-    B -- no --> C[complete the greeting, announce it]
-    C --> D{is the person free?}
-    D -- no --> I[wait, up to a minute from arrival]
-    I --> D
-    I -- time is up --> L["tell them: no answer"]
-    D -- yes --> J{do they take the call?}
-    J -- yes --> M[send ACCEPT]
-    M --> E[conversation starts]
-    J -- no --> K["tell them: not taking calls right now"]
-    J -- no answer in time --> L
-    B -- yes --> F[complete the greeting]
-    F --> G["tell them: busy, another call is waiting"]
-    G --> H[hang up]
-```
-
-A caller who is turned away is told why. Guessing why a connection died is worse
-than being told.
-
-## Who is calling
-
-A peer announces a name during the handshake, but a name is just text they
-typed. What actually identifies them is the key underneath the tunnel, which the
-WireGuard handshake proved. So homa decides what to call somebody by key, never
-by what they say:
-
-- **a name from your address book**, when the key matches one. The first time
-  you reach a contact their key is recorded, so their next call arrives under
-  the name you gave them.
-- **`~` and the name they announced**, when it matches nothing. Their own name
-  is more use than "someone not in your contacts" on every line, and the `~`
-  is what keeps the two apart: contact names never carry it, so a caller who
-  names themselves `BB` shows up as `~BB` and cannot pass for the `BB` you
-  saved.
-
-A call that arrives brings no key, only the tunnel address it came from, whose
-last ten bytes are the first ten of the caller's key. That is enough to pick one
-contact out of an address book, and a prefix matching two contacts names
-neither. It chooses a label and nothing more: what authenticates a peer is the
-tunnel, and no address book adds to or subtracts from that.
-
-## The wire protocol
-
-A TCP stream has no message boundaries, so homa frames its own. Every message is
-a length, a type, and a payload:
-
-```
-+----------+--------+------------------+
-| 4 bytes  | 1 byte |   N bytes        |
-| N, big   |  type  |   payload        |
-| endian   |        |                  |
-+----------+--------+------------------+
-```
-
-| Type | Name | Payload | Meaning |
-| --- | --- | --- | --- |
-| `0x01` | HELLO | JSON | who I am, which protocol version |
-| `0x02` | TEXT | UTF-8 | a chat message |
-| `0x03` | FILE_OFFER | JSON | id, name, size |
-| `0x04` | FILE_ACCEPT | JSON | id |
-| `0x05` | FILE_REJECT | JSON | id, reason |
-| `0x06` | FILE_CHUNK | 4-byte id + raw bytes | a piece of a file |
-| `0x07` | FILE_DONE | JSON | id, sha256 |
-| `0x08` | BYE | empty | I am leaving |
-| `0x09` | ACCEPT | empty | the person took your call |
-
-ACCEPT is version 2 of the protocol, and the only frame a caller waits for. A
-peer announcing version 1 never sends it, so a caller seeing version 1 does not
-wait; a version 1 peer receiving it skips it as an unknown type, which is what
-the framing has always done with anything it does not recognise. A version
-mismatch is never fatal.
-
-Metadata is JSON because it is readable and extensible. File chunks are raw
-bytes with a four byte id, because base64 inside JSON would add a third to every
-transfer.
-
-A frame's payload is capped at 1 MiB, so a peer cannot announce a huge length
-and make homa allocate it. The largest frame homa itself produces is a 32 KiB
-chunk.
-
-### A transfer
-
-```mermaid
-sequenceDiagram
-    participant A as Sender
-    participant B as Receiver
-
-    A->>B: FILE_OFFER {id, name, size}
-    Note over B: the person is asked
-    B->>A: FILE_ACCEPT {id}
-
-    loop 32 KiB at a time
-        A->>B: FILE_CHUNK
-    end
-
-    Note over A,B: chat messages pass between chunks
-
-    A->>B: FILE_DONE {id, sha256}
-    Note over B: digest checked, then .part renamed into place
-```
-
-Bytes land in a `.part` file that is renamed only after the digest matches. An
-interrupted or corrupted transfer never leaves a file that looks finished. A
-mismatch discards the file: TCP already catches damage in transit, so a mismatch
-means the two sides disagree about the content.
-
-## Architecture
-
-Dependencies point one way. Nothing below knows about anything above it.
-
-```mermaid
-flowchart TD
-    cmd[cmd/homa] --> ui
-    ui --> session
-    ui --> peer
-    ui --> config
-    ui --> contacts
-    session --> proto
-    peer --> tailcat[tailcat]
-    config --> paths
-    contacts --> paths
-    peer --> paths
-    ui --> logx
-    session --> logx
-    peer --> logx
-```
-
-| Package | Responsibility |
+| | |
 | --- | --- |
-| `cmd/homa` | flags, logging, signals, wiring |
-| `internal/ui` | the menu, the chat screen, everything a person sees |
-| `internal/session` | one conversation: handshake, read loop, files |
-| `internal/proto` | framing and message types |
-| `internal/peer` | listening, dialing, identity |
-| `internal/config` | the settings a person chose |
-| `internal/contacts` | the address book |
-| `internal/paths` | where files live, and writing them safely |
-| `internal/logx` | one logging switch for the whole program |
-
-Two rules hold the shape:
-
-**`internal/peer` is the only package that imports tailcat.** Its exported API
-deals in `net.Conn` and plain strings. Swapping the transport later means
-rewriting that package and nothing else.
-
-**`internal/session` knows nothing about terminals, and `internal/ui` knows
-nothing about wire formats.** A session reports to a `Handler`; the UI
-implements it. That is the seam a full-screen interface will slot into without
-touching anything below.
-
-### Startup
-
-```mermaid
-flowchart TD
-    A[main] --> B[parse flags]
-    B --> C[set up logging]
-    C --> D[start the keyboard pump]
-    D --> E{settings on disk?}
-    E -- no --> F[ask the first-run questions]
-    E -- yes --> G[load them]
-    F --> H[load the address book]
-    G --> H
-    H --> I[load or create the identity]
-    I --> J[start listening]
-    J --> K[show the menu]
-```
-
-Creating an identity measures relay latency once and freezes the choice, because
-the relay's number is encoded in your address. Letting it drift would change
-your address on every launch and break every contact who saved it.
-
-### Shutting down
-
-Cancelling a context does not wake a goroutine blocked on the keyboard: that
-read is a system call the runtime cannot interrupt. So homa never waits on that
-read directly. One goroutine, started at launch, does nothing but read lines and
-hand them over on a channel, and everything else selects between that channel
-and whatever else it is waiting for. Ctrl+C is then just another case in the
-select.
-
-```mermaid
-flowchart TD
-    A[Ctrl+C] --> B[context canceled]
-    B --> C[every ReadLine returns at once]
-    B --> D[close the connection]
-    C --> E[the chat, then the menu, unwind]
-    D --> F[the peer sees you leave]
-    E --> G[listener closed, exit 0]
-```
-
-The reading goroutine is left blocked on input the process is about to abandon.
-That is one goroutine for the life of the program, and it is the price of a read
-that cannot be interrupted.
-
-## Security notes
-
-**Everything from the network is sanitized before it is printed.** A terminal
-obeys what it is given: an escape sequence in a nick or a message could clear
-your screen, and a carriage return could repaint earlier lines to forge messages
-that were never sent. Text and names are stripped of control characters, forced
-to valid UTF-8, and truncated by runes rather than bytes.
-
-**A peer chooses the file name they send.** It is passed through
-`filepath.Base` and stripped before anything touches the disk, so a name like
-`../../.ssh/authorized_keys` cannot escape the download directory.
-
-**A peer that sends more than it offered is cut off**, so a one kilobyte offer
-cannot fill a disk.
-
-**Your identity file is the whole of your identity.** Anyone who copies it can
-impersonate you. It is written `0600` in a `0700` directory, and it is never
-logged.
+| [docs/overview.md](docs/overview.md) | what homa is, where it came from, the prior art it replaces |
+| [docs/architecture.md](docs/architecture.md) | package layout, dependency direction, startup and shutdown |
+| [docs/protocol.md](docs/protocol.md) | the frame format, every message type, a transfer end to end |
+| [docs/decisions.md](docs/decisions.md) | why things are the way they are, including every security choice |
+| [docs/status.md](docs/status.md) | what works today and what is still rough |
+| [docs/roadmap.md](docs/roadmap.md) | versions 2 and 3 |
+| [docs/conventions.md](docs/conventions.md) | code style, and the reasons behind the odd ones |
+| [docs/development.md](docs/development.md) | make targets, testing across two machines |
 
 ## Development
 
 ```sh
-make            # list every target
-make at-first   # install dev tools, sync deps, wire up git hooks
-make check      # what CI would run
-make lint       # golangci-lint
-make test-race  # tests under the race detector
-make doc        # the public API of every internal package
+make            # every target, with descriptions
+make at-first   # dev tools, deps, git hooks
+make test       # hermetic, with the race detector
+make test-live  # whole processes over the real transport
+make lint
+make run
 ```
 
-Git hooks live in `.githooks` and are enabled by `make git-hooks`, which
-`make at-first` does for you:
-
-- **pre-commit** runs the fast pipeline: deps, format, lint, build.
-- **pre-push** runs the slow one: line wrapping, lint, race tests.
-
-Both can be skipped with `--no-verify`, and both exist so a broken commit does
-not reach the remote.
-
-### Why the logger variable is called `lg`
-
-Tools that process one file at a time (`goimports`, `golines`, editor
-auto-import) cannot see that a package-level variable is declared in a sibling
-file. A variable named `logger` therefore looks like a package selector to them,
-and they helpfully add an import for some unrelated package that happens to be
-called `logger`. A name that collides with no package avoids the whole class of
-problem. This one cost an afternoon; please do not rename it back.
-
-### Where the constants live
-
-Each package keeps its tuning constants in `const.go`. Enum values stay beside
-their type, so adding a frame type touches one file rather than two.
-
-`Port`, `Version`, `ChunkSize` and `MaxPayload` are deliberately not
-configurable. They are agreements between two peers, not settings: letting two
-sides disagree on any of them would break the connection with no useful error.
+`make test` needs no network and takes seconds. `make test-live` starts real
+homa processes that reach each other through a relay, and is behind the `live`
+build tag so the ordinary run stays quick.
 
 ## Roadmap
 
 - [ ] **Version 1** two people, text, files, contacts, a line-based interface
-      worth looking at, tests under it, and installation through brew and apt.
-      Most of it works; what is left is listed in `docs/todo.md`
-- [ ] **Version 2** a full-screen interface, which also fixes the two warts
-      version 1 lives with — a message arriving while you type is printed over
-      your half-finished line, and a line typed but not sent when the peer
-      leaves is dropped — and an Android build. The lower three packages are
-      already free of any terminal assumption, so roughly seventy percent of the
-      code carries over
+      worth looking at, and installation through brew and apt. Most of it works;
+      what is left is in [docs/todo.md](docs/todo.md)
+- [ ] **Version 2** a full-screen interface, which brings line editing, history
+      and tab completion with it, plus an Android build. The lower three
+      packages are already free of any terminal assumption
 - [ ] **Version 3** rooms: one host, several guests, join requests. It breaks
       the two-equal-peers model everything else rests on, which is why it is
-      last rather than first
+      last
 
 ## Name
 
-Homa is the bird of Persian myth that never lands and never comes to rest,
-carrying fortune to whoever it passes over.
+The Homa, the bird of Persian myth that never lands.
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).

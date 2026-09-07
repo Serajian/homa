@@ -146,58 +146,7 @@ clever.
 
 ---
 
-## 3. A README worth arriving at
-
-### The symptom
-
-The README is 460 lines of prose and the first thing anyone sees. It is
-accurate, and it reads like documentation rather than an introduction: sixteen
-headings, no picture above the fold, and the reader has to get four screens down
-before anything shows them what homa looks like in use.
-
-It is also the only page most people will ever read. `docs/` is where depth
-lives; this is where somebody decides whether to care.
-
-### What to build
-
-Not a rewrite. The prose is good and was argued over — this is about what a
-reader meets first and how they move through it.
-
-- **Above the fold**: what homa is in one line, what it looks like running, and
-  how to install it. Right now `Install` is at line 88 and the sample
-  conversation at line 20, which is the one thing already in the right place
-- **Something to look at.** A terminal recording or a still of a real
-  conversation. GitHub renders SVG, and a hand-made SVG is a file that has to
-  be maintained; a recording is a file that ages. Pick knowingly
-- **The long middle belongs in `docs/`.** The wire protocol, the architecture,
-  the security notes and the file layout are all reference material with a home
-  already. Link to them and keep the summary
-- **Both themes.** GitHub renders light and dark, and an asset that assumes one
-  is unreadable in the other
-
-### What must stay true
-
-**Every sample is a transcript, not an illustration.** The sample conversation
-has been wrong twice already this month, once when the `[me]` label arrived and
-once when it changed shape. If it is on the page it has to be what the program
-actually prints, and it has to be checked whenever the interface moves.
-
-**Nothing claims more than homa does.** No badge for a test suite that does not
-exist yet, no "production ready", no benchmark nobody ran.
-
-### Files
-
-`README.md`, and whatever assets it needs. Nothing under `internal/`.
-
-### Done when
-
-Somebody who has never heard of homa can tell what it is, see it working, and
-install it without scrolling past a protocol table; and every line of sample
-output matches what the program prints today.
-
----
-
-## 4. Diagrams that show the real thing
+## 3. Diagrams that show the real thing
 
 ### The symptom
 
@@ -210,16 +159,15 @@ package that imports tailcat — in a form nobody can see at a glance.
 
 Diagrams for the four things worth drawing, and nothing else:
 
-- **the package graph**, showing the one-way dependency and the two rules that
-  hold the shape: peer is the only tailcat importer, and session knows nothing
-  about terminals
+- ~~**the package graph**~~ — drawn, in [architecture.md](architecture.md),
+  alongside startup and shutdown
 - **setting up a call**, end to end: dial, handshake, the greeting on the
   accepting side, the question, the accept, the conversation. This is the path
   that has changed three times and is the hardest to hold in your head
 - **a file transfer**, offer to digest check to rename, including where a
   `.part` file lives and when it is discarded
-- **a frame**, which the README already draws in ASCII and which is the one
-  place ASCII is arguably right
+- ~~**a frame**~~ — the ASCII drawing moved to [protocol.md](protocol.md) with
+  the rest of the wire format, and ASCII is the right answer there
 
 ### What must stay true
 
@@ -235,7 +183,8 @@ Anything richer is a file to maintain and a build to remember.
 
 ### Files
 
-`docs/architecture.md`, `README.md`, and any assets. Nothing under `internal/`.
+`docs/architecture.md`, `README.md`, and any assets, which live in `docs/assets/`.
+Nothing under `internal/`.
 
 ### Done when
 
@@ -245,7 +194,7 @@ lands.
 
 ---
 
-## 5. Security
+## 4. Security
 
 **Version 1**, and last in it only because it has no content yet: an item
 without requirements cannot be ordered against items that have them. Placing it
