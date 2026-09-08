@@ -58,3 +58,7 @@ func (s *styles) peer(name string) string {
 	}
 	return s.them.Render(name)
 }
+
+// plainStyles is styles with no styling at all, for tests that hold the
+// colored screen, stripped of its escapes, equal to the plain one.
+func plainStyles(unicode bool) *styles { return &styles{unicode: unicode} }

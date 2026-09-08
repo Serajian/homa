@@ -1,11 +1,52 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"os"
 
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/colorprofile"
 	"golang.org/x/term"
+
+	"github.com/Serajian/homa/internal/config"
+	"github.com/Serajian/homa/internal/contacts"
+	"github.com/Serajian/homa/internal/peer"
 )
+
+// Deps is everything the interface needs from below, loaded by cmd/homa
+// before the screen is taken over. The interface reads these through the
+// interfaces they already expose and adds nothing to them.
+type Deps struct {
+	Cfg      *config.Config
+	Book     *contacts.Book
+	ID       *peer.Identity
+	Listener *peer.Listener
+	NoColor  bool // the -no-color flag; NO_COLOR and TERM=dumb are read by the program itself
+}
+
+// CheckTerminal is the terminal check for cmd/homa to run before anything
+// else: before an identity is created or a listener opened, so a pipe is
+// refused without touching the network or the disk.
+func CheckTerminal() error { return needsTerminal(os.Stdin, os.Stdout) }
+
+// Run takes over the terminal and returns when the person quits. A
+// canceled ctx, or Ctrl+C, is reported as context.Canceled, which cmd/homa
+// treats as a quiet exit. It assumes CheckTerminal has passed.
+func Run(ctx context.Context, deps Deps) error {
+	st := newStyles(styleFor(0, os.Getenv).unicode)
+
+	opts := []tea.ProgramOption{tea.WithContext(ctx)}
+	if deps.NoColor {
+		opts = append(opts, tea.WithColorProfile(colorprofile.Ascii))
+	}
+
+	_, err := tea.NewProgram(newModel(deps, st), opts...).Run()
+	if errors.Is(err, tea.ErrInterrupted) || errors.Is(err, tea.ErrProgramKilled) || ctx.Err() != nil {
+		return context.Canceled
+	}
+	return err
+}
 
 // ErrNeedsTerminal is returned when homa is started with something other
 // than a terminal on either end. A full-screen program has nowhere to draw

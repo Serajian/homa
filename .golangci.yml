@@ -61,6 +61,14 @@ linters:
         # both fight the plain style used in this codebase
         - ifElseChain
         - singleCaseSwitch
+      settings:
+        hugeParam:
+          # A bubbletea model is a value by design: Update takes it and
+          # returns the next one, and copying a few hundred bytes per
+          # keypress is the cost of never needing a lock. The default (80)
+          # flags every model; anything past this is a sub-model that
+          # should be held by pointer, and styles (kilobytes) already is.
+          sizeThreshold: 512
 
     sloglint:
       # log.Info("msg", "key", value) rather than mixing in slog.String(...)

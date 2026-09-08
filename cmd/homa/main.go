@@ -43,24 +43,24 @@ func run() error {
 		os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// New starts the goroutine that reads the keyboard, so every read
-	// after this returns as soon as ctx is canceled. Nothing has to close
-	// standard input to make Ctrl+C work.
-	out := ui.New(os.Stdin, os.Stdout)
-	if opts.noColor {
-		out.DisableColor()
+	// Refuse a pipe before anything is created for it.
+	if err := ui.CheckTerminal(); err != nil {
+		return err
 	}
 
-	app, cleanup, err := bootstrap(ctx, out)
+	deps, cleanup, err := bootstrap(ctx, opts.noColor)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	if err := app.Run(ctx); err != nil {
+	// Run owns the terminal until the person quits. Ctrl+C reaches it as a
+	// key, not as a signal, and comes back as context.Canceled like any
+	// other quiet exit.
+	if err := ui.Run(ctx, deps); err != nil {
 		return err
 	}
 
-	out.Info("bye.")
+	fmt.Println("bye.")
 	return nil
 }

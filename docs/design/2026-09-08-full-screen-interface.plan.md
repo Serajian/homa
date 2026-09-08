@@ -319,7 +319,8 @@ This is the step after which `homa` runs on the new interface with a working men
       Listener *peer.Listener
       NoColor  bool
   }
-  func Run(ctx context.Context, deps Deps) error   // checks the terminal, runs the program, returns when it quits
+  func CheckTerminal() error                       // for cmd/homa, before bootstrap: a pipe is refused before anything is created
+  func Run(ctx context.Context, deps Deps) error   // runs the program, returns when it quits
 
   // model.go
   type screen int
