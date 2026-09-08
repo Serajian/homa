@@ -5,8 +5,32 @@ import (
 	"strconv"
 	"strings"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/Serajian/homa/internal/contacts"
 )
+
+// menuItem is one line of a menu: the key to press and what it does.
+type menuItem struct {
+	key  string
+	text string // what the key does; holds one %s when name is set
+
+	// name is a peer's name to be painted into text as one, so the
+	// people on a menu look like people everywhere else.
+	name string
+
+	// quiet makes the line recede: leaving, and anything that cannot be
+	// undone, should not weigh the same as calling somebody.
+	quiet bool
+}
+
+// preview shortens an address for a header.
+func preview(addr string) string {
+	if len(addr) <= addrPreviewLen {
+		return addr
+	}
+	return fmt.Sprintf("%s...", addr[:addrPreviewLen])
+}
 
 // renderGroups draws keyed groups separated by a blank line, keys padded
 // to the widest, a cursor on one row of the first group when cursor is not
@@ -175,8 +199,12 @@ type page struct {
 	back  screen
 }
 
-func (p *page) view(st *styles) string {
-	return "\n  " + st.you.Render(p.title) + "\n\n" + p.body
+// view wraps the body to the width: an address is two hundred characters
+// with no space in it, and a page that cut it at the edge would be showing
+// a secret nobody can copy.
+func (p *page) view(st *styles, width int) string {
+	body := lipgloss.NewStyle().Width(max(width-4, 20)).Render(p.body)
+	return "\n  " + st.you.Render(p.title) + "\n\n" + strings.ReplaceAll(body, "\n", "\n  ")
 }
 
 // helpText is the page a person reaches with h at the menu: what the menu
@@ -202,8 +230,27 @@ const helpText = `  homa connects two people directly. There is no account and n
 // addressText is the page under a: the whole address, which is the only
 // time it is shown in full. Everywhere else it appears shortened, because
 // it is a secret.
-func addressText(st *styles, addr string) string {
-	return markInfo + st.dim.Render("Give this to someone who should be able to reach you.") + "\n" +
-		markInfo + st.dim.Render("Treat it like a password: whoever has it can call you.") + "\n\n" +
-		addr + "\n"
+//
+// The address is cut into rows of equal width by hand rather than left to
+// the page's wrapping, which breaks at hyphens the way prose does: an
+// address has hyphens in it, and shown broken at them it reads as several
+// things and copies as none of them. Rows of one width copy as a block.
+func addressText(st *styles, addr string, width int) string {
+	return st.dim.Render("Give this to someone who should be able to reach you.") + "\n" +
+		st.dim.Render("Treat it like a password: whoever has it can call you.") + "\n\n" +
+		blockRows(addr, width) + "\n"
+}
+
+// blockRows cuts s into rows of width runes, the last one shorter.
+func blockRows(s string, width int) string {
+	width = max(width, 8)
+	r := []rune(s)
+	var b strings.Builder
+	for len(r) > width {
+		b.WriteString(string(r[:width]))
+		b.WriteString("\n")
+		r = r[width:]
+	}
+	b.WriteString(string(r))
+	return b.String()
 }

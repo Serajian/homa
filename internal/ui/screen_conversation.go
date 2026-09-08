@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -456,3 +457,7 @@ func fileFromArg(last *listing, arg string) (string, error) {
 	}
 	return path, nil
 }
+
+// errNoOffer is returned when /accept or /reject is typed with nothing
+// waiting to be answered.
+var errNoOffer = errors.New("no file is waiting for an answer")

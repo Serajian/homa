@@ -41,6 +41,10 @@ func newForm(title string, fields ...field) *form {
 		in.Prompt = ""
 		in.SetVirtualCursor(true)
 		in.CharLimit = maxInputLen
+		// As wide as the inside of its box: a long value — an address is
+		// two hundred characters — scrolls inside rather than breaking the
+		// box open, which the live tests caught on the screen grid.
+		in.SetWidth(formFieldWidth - 4)
 		f.fields[i].in = in
 	}
 	f.focus()
@@ -157,4 +161,17 @@ func (f *form) view(st *styles) string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// trimPrefix drops the package prefix from an error before showing it. A
+// person reading "display name is empty" does not need to know which Go
+// package noticed.
+func trimPrefix(err error) string {
+	const prefix = "config: "
+
+	s := err.Error()
+	if len(s) > len(prefix) && s[:len(prefix)] == prefix {
+		return s[len(prefix):]
+	}
+	return s
 }

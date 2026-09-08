@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/Serajian/homa/internal/paths"
@@ -120,98 +119,4 @@ func underListing(last, arg string) (string, error) {
 		full = filepath.Join(last, full)
 	}
 	return full, nil
-}
-
-// resolveDir turns what was typed after /files into a directory to read.
-//
-// A relative name is resolved against the directory last listed rather than
-// against the process's working directory. Walking is the point of showing
-// directories at all, and resolving against a working directory nobody can
-// see from in here would make "/files docs" work or not depending on where
-// homa happened to be started.
-//
-// A number picks a directory out of the last listing, the same way /send
-// picks a file, so ".." is a line you can point at rather than a string you
-// have to know to type.
-func (a *App) resolveDir(h *chatHandler, arg string) (string, error) {
-	last := h.listedDir()
-
-	if arg == "" {
-		if last != "" {
-			return last, nil
-		}
-		return ".", nil
-	}
-
-	if n, err := strconv.Atoi(arg); err == nil {
-		path, e, ok := h.listed(n)
-		if !ok {
-			return "", fmt.Errorf("ui: there is no %d in the last listing", n)
-		}
-		if !e.isDir {
-			return "", fmt.Errorf("ui: %s is a file; /send %d sends it", e.name, n)
-		}
-		return path, nil
-	}
-
-	full, err := underListing(last, arg)
-	if err != nil {
-		return "", err
-	}
-
-	// Naming a file here is somebody who has just read a listing and is
-	// reaching for one of its lines. "not a directory" is true and no use;
-	// the command they wanted is one word away and worth saying.
-	if st, err := os.Stat(full); err == nil && !st.IsDir() {
-		return "", fmt.Errorf("ui: %s is a file; /send %s sends it", arg, arg)
-	}
-
-	return full, nil
-}
-
-// showFiles lists a directory and remembers it, so /send can take a number
-// from what was shown.
-func (a *App) showFiles(h *chatHandler, arg string) {
-	dir, err := a.resolveDir(h, arg)
-	if err != nil {
-		a.ui.Warn("%v", reason(err))
-		return
-	}
-
-	l, hidden, err := readDir(dir)
-	if err != nil {
-		a.ui.Warn("%v", reason(err))
-		return
-	}
-
-	h.setListing(l)
-
-	a.ui.Blank()
-	a.ui.Info("%s", l.dir)
-
-	if len(l.entries) == 0 {
-		a.ui.Info("  (empty)")
-		return
-	}
-
-	// One width for every name, so the sizes line up and the eye can run
-	// down them.
-	width := 0
-	for _, e := range l.entries {
-		if n := len(e.name) + 1; n > width {
-			width = n
-		}
-	}
-
-	for i, e := range l.entries {
-		name, size := e.name, humanBytes(e.size)
-		if e.isDir {
-			name, size = e.name+"/", "dir"
-		}
-		a.ui.Info("%3d) %-*s  %s", i+1, width, name, size)
-	}
-
-	if hidden > 0 {
-		a.ui.Info("  ... and %d more, not shown", hidden)
-	}
 }

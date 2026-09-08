@@ -20,3 +20,13 @@ const offerTimeout = 5 * time.Minute
 // MaxFileNameLen bounds a received file name. Most filesystems stop at 255
 // bytes for one path element.
 const MaxFileNameLen = 200
+
+// byeLinger bounds how long Close waits, after sending its goodbye, for
+// the far side to close first. The goodbye is a frame in a tunnel run by
+// tailcat's own goroutines, and closing the connection the instant it was
+// written could drop it unsent; a peer that never hears it has no
+// connection to see break, only a tunnel that has gone quiet, and shows the
+// conversation open for minutes. The far side closes as soon as it reads
+// the goodbye, so the wait usually ends in milliseconds; the bound is for a
+// peer that does not.
+const byeLinger = 500 * time.Millisecond

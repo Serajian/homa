@@ -82,7 +82,8 @@ func newModel(ctx context.Context, deps Deps, st *styles) model {
 	}
 }
 
-// Init starts greeting callers, for the life of the program.
+// Init starts greeting callers, for the life of the program. The screen
+// was cleared by Run before the program began; see clearScreen.
 func (m model) Init() tea.Cmd {
 	if m.deps.Listener == nil {
 		return nil // tests, and nothing to listen on
@@ -159,6 +160,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		m.notice, m.warn = "", false
 		if msg.String() == keyQuit {
+			if m.conv != nil && !m.conv.ended {
+				// A goodbye the far side knows how to read, then out.
+				return m, hangUpAndQuit(m.conv.l)
+			}
 			return m, tea.Quit
 		}
 		switch m.screen {
@@ -289,7 +294,7 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenContacts
 		return m, nil
 	case actAddress:
-		m.page = &page{title: "your address", body: addressText(m.st, m.deps.Listener.Addr()), back: screenMenu}
+		m.page = &page{title: "your address", body: addressText(m.st, m.deps.Listener.Addr(), m.width-4), back: screenMenu}
 		m.screen = screenPage
 		return m, nil
 	case actSettings:
@@ -477,7 +482,7 @@ func (m model) updateContact(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.openForm(formRename, newForm("rename "+m.contact.Name,
 			field{label: "a new name for them", def: m.contact.Name}), screenContact), nil
 	case contactAddress:
-		m.page = &page{title: m.contact.Name, body: m.contact.Addr + "\n", back: screenContact}
+		m.page = &page{title: m.contact.Name, body: blockRows(m.contact.Addr, m.width-4) + "\n", back: screenContact}
 		m.screen = screenPage
 	case contactForget:
 		f := newForm("forget "+m.contact.Name,
@@ -549,7 +554,10 @@ func (m model) peerLeft(err error) (tea.Model, tea.Cmd) {
 	} else {
 		m.conv.note(m.st, m.st.peer(m.conv.l.name)+m.st.dim.Render(" left the conversation."))
 	}
-	return m, nil
+	// The line is done either way; close our end now rather than when the
+	// person presses Enter, so the far side's Close, which waits for ours,
+	// returns at once.
+	return m, closeLine(m.conv.l)
 }
 
 func (m model) View() tea.View {
@@ -564,7 +572,7 @@ func (m model) View() tea.View {
 	case screenForm:
 		status, body, keys = m.header(), m.withBarAndNotice(m.form.view(m.st)), m.footer("Enter", "next", "Esc", "back")
 	case screenPage:
-		status, body, keys = m.header(), m.withBarAndNotice(m.page.view(m.st)), m.footer("any key", "back")
+		status, body, keys = m.header(), m.withBarAndNotice(m.page.view(m.st, m.width)), m.footer("any key", "back")
 	default:
 		status, body, keys = m.header(), m.withBarAndNotice(m.menuBody()), m.menuFooter()
 	}
@@ -608,7 +616,8 @@ func (m model) menuBody() string {
 	groups := m.menu.groups
 	people := renderGroups(m.st, [][]menuItem{groups[0]}, m.menu.cursor)
 	if len(groups[0]) == 0 {
-		people = markInfo + "  " + m.st.dim.Render("nobody yet: n adds a contact, a shows your address to give them") + "\n"
+		people = markInfo + "  " + m.st.dim.Render("nobody yet") + "\n" +
+			markInfo + "  " + m.st.dim.Render("n adds a contact, a shows your address") + "\n"
 	}
 	rest := renderGroups(m.st, groups[1:], -1)
 

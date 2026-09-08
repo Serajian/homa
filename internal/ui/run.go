@@ -1,9 +1,16 @@
+// Package ui is homa's terminal front end: it reads what a person types and
+// draws what they should see. Everything below it deals in values and
+// errors; this is the only package that knows a human is involved.
+//
+// It is a bubbletea program: one model, every event a message, every
+// screen drawn whole. The design is docs/design/2026-09-08-full-screen-interface.md.
 package ui
 
 import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
@@ -11,8 +18,26 @@ import (
 
 	"github.com/Serajian/homa/internal/config"
 	"github.com/Serajian/homa/internal/contacts"
+	"github.com/Serajian/homa/internal/logx"
 	"github.com/Serajian/homa/internal/peer"
 )
+
+var lg = logx.For("ui")
+
+// unicodeLocale reports whether the locale says the terminal shows UTF-8,
+// which block characters, rounded corners and the middle dot need. LC_ALL
+// overrides LC_CTYPE, which overrides LANG, so the first of those that is
+// set is the one that counts. Color needs no such check: bubbletea reads
+// the terminal's own answer, and NO_COLOR, itself.
+func unicodeLocale(getenv func(string) string) bool {
+	for _, name := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		if v := getenv(name); v != "" {
+			v = strings.ToUpper(strings.ReplaceAll(v, "-", ""))
+			return strings.Contains(v, "UTF8")
+		}
+	}
+	return false
+}
 
 // Deps is everything the interface needs from below, loaded by cmd/homa
 // before the screen is taken over. The interface reads these through the
@@ -36,11 +61,12 @@ type Deps struct {
 // refused without touching the network or the disk.
 func CheckTerminal() error { return needsTerminal(os.Stdin, os.Stdout) }
 
-// Run takes over the terminal and returns when the person quits. A
-// canceled ctx, or Ctrl+C, is reported as context.Canceled, which cmd/homa
-// treats as a quiet exit. It assumes CheckTerminal has passed.
+// Run takes over the terminal and returns when the person quits, by q,
+// Ctrl+C, or a signal from outside: all three are leaving, none is an
+// error, and all three get the same goodbye. It assumes CheckTerminal has
+// passed.
 func Run(ctx context.Context, deps Deps) error {
-	st := newStyles(styleFor(0, os.Getenv).unicode)
+	st := newStyles(unicodeLocale(os.Getenv))
 
 	opts := []tea.ProgramOption{tea.WithContext(ctx)}
 	if deps.NoColor {
@@ -50,6 +76,9 @@ func Run(ctx context.Context, deps Deps) error {
 	// The model needs a way to hand messages to the program from other
 	// goroutines, and the program does not exist until the model does: the
 	// closure fills in once both are made, before Run starts anything.
+	// See clearScreen for why this is not optional.
+	_, _ = os.Stdout.WriteString(clearScreen)
+
 	var p *tea.Program
 	m := newModel(ctx, deps, st)
 	m.send = func(msg tea.Msg) { p.Send(msg) }
@@ -57,7 +86,7 @@ func Run(ctx context.Context, deps Deps) error {
 
 	_, err := p.Run()
 	if errors.Is(err, tea.ErrInterrupted) || errors.Is(err, tea.ErrProgramKilled) || ctx.Err() != nil {
-		return context.Canceled
+		return nil //nolint:nilerr // leaving is not an error, whichever way it came
 	}
 	return err
 }

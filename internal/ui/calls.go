@@ -239,3 +239,12 @@ func closeLine(l *line) tea.Cmd {
 		return nil
 	}
 }
+
+// hangUpAndQuit is Ctrl+C in a conversation: the same goodbye — which
+// Close waits to see leave — then out.
+func hangUpAndQuit(l *line) tea.Cmd {
+	return func() tea.Msg {
+		_ = l.s.Close()
+		return tea.QuitMsg{}
+	}
+}

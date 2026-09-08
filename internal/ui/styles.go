@@ -113,7 +113,12 @@ func (s *styles) box(frame *lipgloss.Style, width int, title string, lines ...st
 	}
 	out.WriteString(frame.Render(b.TopLeft) + frame.Render(top) +
 		frame.Render(strings.Repeat(b.Top, max(inner-lipgloss.Width(top), 0))) + frame.Render(b.TopRight) + "\n")
+	cut := lipgloss.NewStyle().MaxWidth(inner - 1)
 	for _, l := range lines {
+		// Cut, never wrapped: a line longer than the box would break the
+		// box open on the next row, which the live tests saw with an
+		// address in a form.
+		l = cut.Render(l)
 		pad := max(inner-1-lipgloss.Width(l), 0)
 		out.WriteString(frame.Render(b.Left) + " " + l + strings.Repeat(" ", pad) + frame.Render(b.Right) + "\n")
 	}

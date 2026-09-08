@@ -21,20 +21,6 @@ const (
 // no lookup on the path a message takes out.
 const selfNick = "me"
 
-// clearLine puts the cursor back at the start of the line and erases what is
-// on it: a carriage return, then the ANSI "erase to end of line". It takes a
-// prompt off the screen so something else can be printed where it was,
-// instead of leaving an empty "[me] " above every arriving message.
-//
-// It is a constant homa writes to a terminal it owns. Nothing that arrives
-// over the network is ever formatted into an escape sequence; see
-// session/sanitize.go for that boundary.
-//
-// A prompt long enough to have wrapped leaves its earlier rows behind. There
-// is no portable way to know how many rows a line took, and guessing wrong
-// erases somebody's conversation.
-const clearLine = "\r\033[K"
-
 // sepUnicode and sepASCII join the parts of one status line — who you are
 // talking to, what they call themselves, where files go. A middle dot needs
 // a UTF-8 terminal; everything else gets a dash.
@@ -82,6 +68,22 @@ const (
 	keyQuit   = "ctrl+c"
 )
 
+// clearScreen erases the screen and puts the cursor at the top left: the
+// ANSI "erase in display, everything" followed by "cursor home". Run writes
+// it once, before the program starts, and nothing else writes an escape
+// by hand.
+//
+// It has to be written. The program draws in place, without the alternate
+// screen, from wherever the cursor is, and its renderer then repaints only
+// the lines that changed, counting rows from where it believes the frame
+// began. bootstrap has printed a line or two above, so a frame as tall as
+// the terminal scrolls them off — and every later partial repaint lands
+// two rows from where it was meant, leaving stale rows behind. The live
+// tests' screen grid showed the doubled rows; a real terminal shows the
+// same. Homing the cursor first is what makes the frame and the renderer
+// agree. The terminal's scrollback is not touched.
+const clearScreen = "\033[2J\033[H"
+
 // The words on the menus. They are typed as well as shown, so a menu and
 // the switch that reads it have to agree on them.
 const (
@@ -101,23 +103,6 @@ const (
 // label is always one of yours. What actually identifies a peer is the key
 // the tunnel proved; see peer.RemoteKeyPrefix.
 const unknownMark = "~"
-
-// esc and bel are the bytes that start and end terminal escape sequences.
-// They are named because stripKeys reads them out of what a person typed,
-// where a bare 0x1b in a comparison would say nothing about why.
-const (
-	esc = 0x1b
-	bel = 0x07
-)
-
-// clearScreen erases the screen and puts the cursor back at the top left: the
-// ANSI "erase in display, everything" followed by "cursor home". Both are
-// needed — erasing without moving leaves the cursor wherever it was, writing
-// the next line into the middle of a blank screen.
-//
-// Like clearLine it is a constant homa writes to a terminal it owns, and
-// nothing that arrived over the network is ever formatted into one.
-const clearScreen = "\033[2J\033[H"
 
 // maxListing bounds how many entries /files shows at once. A home directory
 // can hold thousands, and a listing longer than the screen is one nobody can
@@ -163,7 +148,8 @@ const progressStep = 10
 
 // The welcome banner: homa-icon.svg reduced to half-block cells, 48 columns
 // wide, with every horizontal edge — the bubble's top and bottom, the dots,
-// the underscore — moved onto whole rows. A feature that ends halfway through
+// the underscore — moved onto whole rows. Drawn by bannerBlock through the
+// styles. A feature that ends halfway through
 // a cell is drawn with ▀ or ▄, and where those meet a terminal shows a seam;
 // only the diagonals still need them. Stroke widths are matched to the cell,
 // which is about twice as tall as it is wide: the bubble's walls are two
@@ -198,27 +184,4 @@ const (
 	bannerIndent   = "  "
 	bannerCols     = 48 // columns bannerArt needs, after the indent
 	bannerSplit    = 24 // where the prompt ends and the bubble begins
-)
-
-// Two palettes with the same four meanings. The 24-bit one is the logo's,
-// for a terminal that says it can show it (see styleFor); the other is the
-// sixteen ANSI colors every terminal has had for forty years, so nothing is
-// ever unreadable. "You" is the same in both: bold in the terminal's own
-// foreground, which is cream on a dark theme and ink on a light one — a
-// fixed cream would vanish on white. The warning is the terminal's own
-// yellow for the same reason.
-//
-// Like clearLine these are constants homa writes to a terminal it owns, and
-// only when style says color is wanted. Nothing that arrived over the
-// network is ever formatted into one.
-const (
-	colorYou   = "\033[1m"
-	colorWarn  = "\033[33m"
-	colorReset = "\033[0m"
-
-	color24Green = "\033[38;2;34;230;167m"
-	color24Muted = "\033[38;2;154;163;173m"
-
-	color16Green = "\033[32m"
-	color16Muted = "\033[90m"
 )

@@ -298,11 +298,26 @@ func (s *Session) readErr(ctx context.Context, err error) error {
 }
 
 // Close ends the conversation politely: it tells the peer we are leaving,
-// then closes the connection. The goodbye is best-effort, since the reason
-// for closing is often that the connection already broke.
+// waits for them to close first — bounded by byeLinger — and then closes
+// the connection. The goodbye is best-effort, since the reason for closing
+// is often that the connection already broke; when it could not be sent
+// there is nothing to wait for.
 func (s *Session) Close() error {
 	if err := s.c.WriteBye(); err != nil {
 		lg.Debug("could not send goodbye", "err", err)
+		return s.conn.Close()
+	}
+
+	// Read until the far side closes or the bound passes. Run may be
+	// reading too; a net.Conn takes readers from several goroutines, and
+	// whichever of them the peer's close reaches first, this one returns
+	// as soon as the connection is done.
+	_ = s.conn.SetReadDeadline(time.Now().Add(byeLinger))
+	buf := make([]byte, 64)
+	for {
+		if _, err := s.conn.Read(buf); err != nil {
+			break
+		}
 	}
 	return s.conn.Close()
 }

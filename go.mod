@@ -8,6 +8,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260906004030-3986e9119cf9
+	github.com/creack/pty v1.1.24
 	github.com/tailscale/tailcat v0.6.0
 	golang.org/x/term v0.45.0
 	tailscale.com v1.103.0-pre.0.20260904030409-31d8badb3bfb
@@ -29,7 +30,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/creachadair/msync v0.8.1 // indirect
-	github.com/creack/pty v1.1.24 // indirect
 	github.com/dblohm7/wingoes v0.0.0-20240119213807-a09d6be7affa // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gaissmai/bart v0.26.1 // indirect

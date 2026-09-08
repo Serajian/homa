@@ -93,11 +93,13 @@ var ErrSetupCanceled = errors.New("setup was not finished")
 // answers. It is its own program, run by cmd/homa before anything else
 // exists; the main program starts afterwards with the settings it saved.
 func RunSetup(ctx context.Context, noColor bool) (*config.Config, error) {
-	st := newStyles(styleFor(0, os.Getenv).unicode)
+	st := newStyles(unicodeLocale(os.Getenv))
 	opts := []tea.ProgramOption{tea.WithContext(ctx)}
 	if noColor {
 		opts = append(opts, tea.WithColorProfile(colorprofile.Ascii))
 	}
+
+	_, _ = os.Stdout.WriteString(clearScreen) // see clearScreen
 
 	m := setupModel{st: st, form: settingsForm("Welcome", config.Default())}
 	final, err := tea.NewProgram(m, opts...).Run()

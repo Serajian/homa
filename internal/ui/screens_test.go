@@ -236,3 +236,24 @@ func TestTheFirstRunAsksTwoQuestionsUnderTheBanner(t *testing.T) {
 		t.Errorf("settings not saved at %s: %v", config.Path(), err)
 	}
 }
+
+// An address is shown in rows of one width, never broken at a hyphen the
+// way prose wraps, so it copies as a block.
+func TestAnAddressIsShownInRowsOfOneWidth(t *testing.T) {
+	t.Parallel()
+
+	addr := strings.Repeat("abcdefghi-", 23) + "xy"
+	got := strings.Split(blockRows(addr, 96), "\n")
+	if len(got) != 3 || len(got[0]) != 96 || len(got[1]) != 96 || len(got[2]) != 40 {
+		t.Fatalf("rows of %v", func() []int {
+			var n []int
+			for _, r := range got {
+				n = append(n, len(r))
+			}
+			return n
+		}())
+	}
+	if strings.Join(got, "") != addr {
+		t.Error("the rows do not join back into the address")
+	}
+}

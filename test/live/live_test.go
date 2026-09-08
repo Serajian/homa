@@ -10,67 +10,63 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
+
+	"github.com/creack/pty"
+
+	"github.com/Serajian/homa/internal/peer"
 )
 
 // instance is one homa process with a config directory of its own, driven
-// through its standard input and watched through its standard output.
+// through a pseudo-terminal and watched on a screen grid.
 //
-// Standard input is a pipe that is never closed, so nothing here can pass
-// because the program saw the end of its input. Ctrl+C has to be a signal,
-// and a call has to be answered by something typed.
+// A pseudo-terminal, because the full-screen interface refuses anything
+// else: it draws in place with cursor movement, so what a person sees is
+// not the stream of bytes but what the stream leaves on the grid, and the
+// waits here look at the grid. Keys are single bytes; a line ends in \r,
+// which is what Enter sends. Ctrl+C is a byte too, so the program sees it
+// as a key and says goodbye to a peer on the way out.
 type instance struct {
 	t    *testing.T
 	name string
 	cmd  *exec.Cmd
-	in   *os.File
+	tty  *os.File
 	home string
+	scr  *screen
 
 	mu  sync.Mutex
-	out strings.Builder
+	raw []byte // everything the process wrote, for a failure to keep
 }
+
+// The terminal every instance gets: wide enough for the two-column menu
+// and the header's status, tall enough for a conversation.
+const ttyRows, ttyCols = 30, 100
 
 func start(t *testing.T, name string) *instance {
 	t.Helper()
 
 	home := t.TempDir()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("making a pipe: %v", err)
-	}
-
 	cmd := exec.CommandContext(t.Context(), homaBinary(t),
 		"-log", filepath.Join(home, "homa.log"), "-debug")
-	cmd.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"))
-	cmd.Stdin = r
+	cmd.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
+		"LANG=en_US.UTF-8", "TERM=xterm-256color", "COLORTERM=truecolor")
 
-	stdout, err := cmd.StdoutPipe()
+	tty, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: ttyRows, Cols: ttyCols})
 	if err != nil {
-		t.Fatalf("taking stdout: %v", err)
+		t.Fatalf("starting homa on a pty: %v", err)
 	}
-	cmd.Stderr = cmd.Stdout
 
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("starting homa: %v", err)
-	}
-	_ = r.Close()
+	in := &instance{t: t, name: name, cmd: cmd, tty: tty, home: home, scr: newScreen(ttyRows, ttyCols)}
 
-	in := &instance{t: t, name: name, cmd: cmd, in: w, home: home}
-
-	// Read raw bytes rather than lines. homa writes its prompts and its
-	// countdowns without a newline — that is what Prompt is for — so a
-	// line scanner would hold them until something else flushed, and every
-	// wait here would be deciding on a screen that lags behind the real
-	// one. This cost an afternoon to find.
 	go func() {
 		buf := make([]byte, 4096)
 		for {
-			n, err := stdout.Read(buf)
+			n, err := tty.Read(buf)
 			if n > 0 {
+				in.scr.write(buf[:n])
 				in.mu.Lock()
-				in.out.Write(buf[:n])
+				in.raw = append(in.raw, buf[:n]...)
 				in.mu.Unlock()
 			}
 			if err != nil {
@@ -80,15 +76,16 @@ func start(t *testing.T, name string) *instance {
 	}()
 
 	t.Cleanup(func() {
-		_ = w.Close()
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
+		_ = tty.Close()
 	})
 
-	// The two first-run questions.
-	in.send(name)
-	in.send("")
-	in.await("listening for callers")
+	// The two first-run questions, on the setup screen.
+	in.await("first run")
+	in.line(name)
+	in.line("")
+	in.await("listening")
 
 	return in
 }
@@ -108,23 +105,44 @@ func homaBinary(t *testing.T) string {
 	return p
 }
 
-func (i *instance) send(line string) {
+// key presses one key: what a menu, a bar or a page takes.
+func (i *instance) key(k string) {
 	i.t.Helper()
 
-	if _, err := i.in.WriteString(line + "\n"); err != nil {
-		i.t.Fatalf("%s: typing: %v", i.name, err)
+	if _, err := i.tty.WriteString(k); err != nil {
+		i.t.Fatalf("%s: pressing %q: %v", i.name, k, err)
 	}
 }
 
-func (i *instance) screen() string {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	return i.out.String()
+// line types a line and Enter: what a form field or the conversation takes.
+// A long line goes in pieces with a breath between them, the way a
+// terminal delivers a paste, rather than as one burst; see typeSlowly.
+func (i *instance) line(s string) {
+	i.t.Helper()
+	i.typeSlowly(s)
+	i.key("\r")
 }
 
-// await waits for something to appear on screen, and says what was on it when
-// it gives up. A failure that only says "timed out" is a failure nobody can
-// act on.
+// typeSlowly writes text in small pieces. A single write of a few hundred
+// bytes reached the program with its beginning missing under load — the
+// address field held the address from somewhere in its middle — and a
+// person never types that way anyway.
+func (i *instance) typeSlowly(s string) {
+	i.t.Helper()
+	const piece = 32
+	for len(s) > 0 {
+		n := min(piece, len(s))
+		i.key(s[:n])
+		s = s[n:]
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func (i *instance) screen() string { return i.scr.text() }
+
+// await waits for something to be on the screen, and says what was on it
+// when it gives up. A failure that only says "timed out" is a failure
+// nobody can act on.
 func (i *instance) await(what string) {
 	i.t.Helper()
 
@@ -135,7 +153,12 @@ func (i *instance) await(what string) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	i.t.Fatalf("%s: waited for %q. Screen was:\n%s", i.name, what, i.screen())
+	i.mu.Lock()
+	dump := filepath.Join(os.TempDir(), "homa-live-"+i.name+"-"+strings.ReplaceAll(i.t.Name(), "/", "_")+".raw")
+	_ = os.WriteFile(dump, i.raw, 0o600)
+	i.mu.Unlock()
+	i.t.Fatalf("%s: waited for %q. Sequences seen: %s. Raw output kept at %s. Screen was:\n%s",
+		i.name, what, i.scr.seen(), dump, i.screen())
 }
 
 func (i *instance) refute(what string) {
@@ -146,40 +169,65 @@ func (i *instance) refute(what string) {
 	}
 }
 
-var addrPattern = regexp.MustCompile(`[A-Za-z0-9+/=_.:-]{60,}`)
+// addrPattern matches a row of the address page: the page shows the address
+// in rows of one width, the last of which can be short.
+var addrPattern = regexp.MustCompile(`[A-Za-z0-9+/=_.:-]{4,}`)
 
+// address opens the address page, reads the address off it, and comes back.
 func (i *instance) address() string {
 	i.t.Helper()
 
-	before := len(i.screen())
-	i.send("a")
+	i.key("a")
+	i.await("Give this to someone")
 
+	// The page wraps the address across rows; the rows that are nothing
+	// but address characters, joined, are it. The page is read twice and
+	// has to say the same thing both times: under load a frame arrives in
+	// pieces, and the first rows of an address are not the address.
 	deadline := time.Now().Add(30 * time.Second)
+	last := ""
 	for time.Now().Before(deadline) {
-		if m := addrPattern.FindAllString(i.screen()[before:], -1); len(m) > 0 {
-			return m[len(m)-1]
+		var parts []string
+		for _, row := range strings.Split(i.screen(), "\n") {
+			row = strings.TrimSpace(row)
+			if addrPattern.MatchString(row) && addrPattern.FindString(row) == row {
+				parts = append(parts, row)
+			}
 		}
-		time.Sleep(100 * time.Millisecond)
+		// A homa address is well over two hundred characters; fewer is a
+		// page still being drawn.
+		addr := strings.Join(parts, "")
+		if len(addr) >= 200 && addr == last {
+			if !peer.ValidAddr(addr) {
+				i.t.Fatalf("%s: read an address off the page that does not parse (%d chars): %q\nrows: %q\nscreen:\n%s",
+					i.name, len(addr), addr, parts, i.screen())
+			}
+			i.key("x") // any key leaves the page
+			i.await("PEOPLE")
+			return addr
+		}
+		last = addr
+		time.Sleep(500 * time.Millisecond)
 	}
-	i.t.Fatalf("%s: never showed an address", i.name)
+	i.t.Fatalf("%s: never showed an address. Screen was:\n%s", i.name, i.screen())
 	return ""
 }
 
 func (i *instance) addContact(name, addr string) {
 	i.t.Helper()
 
-	i.send("n")
-	i.send(name)
-	i.send(addr)
+	i.key("n")
+	i.await("A name for them")
+	i.line(name)
+	i.line(addr)
+	i.t.Logf("%s typed the address %q", i.name, addr)
 	i.await(name + " added")
 }
 
+// interrupt is Ctrl+C typed at the terminal, which is how a person sends it.
 func (i *instance) interrupt() {
 	i.t.Helper()
-
-	if err := i.cmd.Process.Signal(syscall.SIGINT); err != nil {
-		i.t.Fatalf("%s: interrupting: %v", i.name, err)
-	}
+	i.key("\x03")
 }
 
 // waitForExit reports how long the process took to go, so a test can say
@@ -210,8 +258,8 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	alice, bob := start(t, "alice"), start(t, "bob")
 	bob.addContact("alice", alice.address())
 
-	bob.send("1")
-	bob.await("waiting for alice to answer")
+	bob.key("1")
+	bob.await("waiting for them to answer")
 
 	// Nothing has been agreed to, so nothing may claim otherwise.
 	bob.refute("talking to alice")
@@ -220,15 +268,15 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	// for himself, marked so it cannot pass for one she gave. bob has
 	// alice in his address book, so he sees the name he gave her.
 	alice.await("~bob is calling")
-	alice.send("y")
+	alice.key("y")
 
 	alice.await("talking to ~bob")
 	bob.await("talking to alice")
 
-	bob.send("salam from bob")
+	bob.line("salam from bob")
 	alice.await("salam from bob")
 
-	alice.send("salam from alice")
+	alice.line("salam from alice")
 	bob.await("salam from alice")
 }
 
@@ -238,9 +286,9 @@ func TestARefusedCallIsNeverAConversation(t *testing.T) {
 	alice, bob := start(t, "alice"), start(t, "bob")
 	bob.addContact("alice", alice.address())
 
-	bob.send("1")
-	alice.await("take the call from")
-	alice.send("n")
+	bob.key("1")
+	alice.await("incoming call")
+	alice.key("n")
 
 	bob.await("not taking calls right now")
 	bob.refute("talking to alice")
@@ -254,15 +302,15 @@ func TestGivingUpOnACallLeavesHomaRunning(t *testing.T) {
 	alice, bob := start(t, "alice"), start(t, "bob")
 	bob.addContact("alice", alice.address())
 
-	bob.send("1")
-	bob.await("Enter to give up")
-	bob.send("")
+	bob.key("1")
+	bob.await("give up")
+	bob.key("\r")
 
 	bob.await("you stopped calling alice")
-	bob.await("What now?")
+	bob.await("PEOPLE")
 
 	// Still alive: the menu it came back to answers.
-	bob.send("h")
+	bob.key("h")
 	bob.await("homa connects two people directly")
 }
 
@@ -272,16 +320,18 @@ func TestTheAnsweringSideComesBackWhenTheCallerLeaves(t *testing.T) {
 	alice, bob := start(t, "alice"), start(t, "bob")
 	bob.addContact("alice", alice.address())
 
-	bob.send("1")
-	alice.await("take the call from")
-	alice.send("y")
+	bob.key("1")
+	alice.await("incoming call")
+	alice.key("y")
 	alice.await("talking to ~bob")
 
-	bob.send("/quit")
+	bob.line("/quit")
 
-	// On its own: nothing is typed at alice after this point.
+	// On its own: nothing is typed at alice after this point. The pane
+	// says they left; the menu is one Enter away.
 	alice.await("left the conversation")
-	alice.await("What now?")
+	alice.line("")
+	alice.await("PEOPLE")
 }
 
 func TestInterruptingAtTheMenuExitsAtOnce(t *testing.T) {
@@ -305,9 +355,9 @@ func TestInterruptingInAConversationTellsThePeer(t *testing.T) {
 	alice, bob := start(t, "alice"), start(t, "bob")
 	bob.addContact("alice", alice.address())
 
-	bob.send("1")
-	alice.await("take the call from")
-	alice.send("y")
+	bob.key("1")
+	alice.await("incoming call")
+	alice.key("y")
 	bob.await("talking to alice")
 
 	bob.interrupt()
@@ -328,19 +378,19 @@ func TestASecondCallerIsToldTheLineIsBusy(t *testing.T) {
 	bob.addContact("alice", addr)
 	carol.addContact("alice", addr)
 
-	bob.send("1")
+	bob.key("1")
 	alice.await("~bob is calling")
-	alice.send("y")
+	alice.key("y")
 	alice.await("talking to ~bob")
 
-	// alice is busy now, so carol's call parks rather than being asked
-	// about, and a third would be turned away outright.
-	carol.send("1")
-	alice.await("~carol is calling")
+	// alice is busy now, so carol's call parks, unseen, until the
+	// conversation ends, and a third is turned away outright.
+	carol.key("1")
+	carol.await("waiting for them to answer")
 
 	dave := start(t, "dave")
 	dave.addContact("alice", addr)
-	dave.send("1")
+	dave.key("1")
 
 	dave.await("busy")
 }
@@ -358,14 +408,14 @@ func TestAFileCrossesAndKeepsItsContents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bob.send("1")
-	alice.await("take the call from")
-	alice.send("y")
+	bob.key("1")
+	alice.await("incoming call")
+	alice.key("y")
 	bob.await("talking to alice")
 
-	bob.send("/send " + src)
-	alice.await("wants to send")
-	alice.send("y")
+	bob.line("/send " + src)
+	alice.await("offers")
+	alice.line("y")
 
 	alice.await("saved")
 	bob.await("sent.")
@@ -388,18 +438,18 @@ func TestAFileIsPickedFromAListing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	bob.send("1")
-	alice.await("take the call from")
-	alice.send("y")
+	bob.key("1")
+	alice.await("incoming call")
+	alice.key("y")
 	bob.await("talking to alice")
 
-	bob.send("/files " + dir)
+	bob.line("/files " + dir)
 	bob.await("notes.md")
 
 	// ".." is line 1, so the file is line 2.
-	bob.send("/send 2")
-	alice.await("wants to send")
-	alice.send("y")
+	bob.line("/send 2")
+	alice.await("offers")
+	alice.line("y")
 	alice.await("saved")
 
 	if got := findFile(t, alice.home, "notes.md"); string(got) != "salam" {
