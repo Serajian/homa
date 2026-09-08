@@ -14,9 +14,9 @@ import (
 func (u *UI) Ask(ctx context.Context, question, def string) (string, error) {
 	for {
 		if def != "" {
-			u.Printf("%s%s [%s]: ", markPrompt, question, def)
+			u.Printf("%s%s %s: ", u.promptMark(), question, u.dim("["+def+"]"))
 		} else {
-			u.Printf("%s%s: ", markPrompt, question)
+			u.Printf("%s%s: ", u.promptMark(), question)
 		}
 
 		answer, err := u.ReadLine(ctx)
@@ -52,7 +52,7 @@ func (u *UI) Choose(ctx context.Context, question string, options []string) (int
 			u.Printf("  %d) %s", i+1, opt)
 		}
 
-		u.Printf("%schoice: ", markPrompt)
+		u.Printf("%schoice: ", u.promptMark())
 		answer, err := u.ReadLine(ctx)
 		if err != nil {
 			return 0, err
@@ -67,25 +67,78 @@ func (u *UI) Choose(ctx context.Context, question string, options []string) (int
 	}
 }
 
+// menuItem is one line of a menu: the key to press and what it does.
+type menuItem struct {
+	key  string
+	text string // what the key does; holds one %s when name is set
+
+	// name is a peer's name to be painted into text as one, so the
+	// people on a menu look like people everywhere else.
+	name string
+
+	// quiet makes the line recede: leaving, and anything that cannot be
+	// undone, should not weigh the same as calling somebody.
+	quiet bool
+}
+
 // ShowMenu prints a keyed list and stops there. It does not read the
 // answer, which is the difference between it and Choose.
+//
+// The groups are separated by a blank line and nothing else: what belongs
+// together sits together, and space says so better than a rule would. Keys
+// are padded to the widest so the labels line up. The whole menu is one
+// write, so a message arriving from a conversation cannot land inside it.
 //
 // The main menu has to wait on the keyboard and on an arriving call at the
 // same time, and only a select can do that, so App.menuLoop does its own
 // reading from Lines. Printing still lives here, with the other things a
 // person is shown.
-func (u *UI) ShowMenu(question string, keys, labels []string) error {
-	if len(keys) == 0 || len(keys) != len(labels) {
-		return fmt.Errorf("ui: a menu needs one label per key")
+func (u *UI) ShowMenu(question string, groups ...[]menuItem) error {
+	width, count := 0, 0
+	for _, g := range groups {
+		for _, it := range g {
+			count++
+			width = max(width, len(it.key))
+		}
+	}
+	if count == 0 {
+		return fmt.Errorf("ui: an empty menu")
 	}
 
-	u.Blank()
-	u.Printf("%s", question)
-	for i, k := range keys {
-		u.Printf("  %s) %s", k, labels[i])
+	var b strings.Builder
+	b.WriteString("\n")
+	b.WriteString(u.you(question))
+	b.WriteString("\n")
+
+	first := true
+	for _, g := range groups {
+		if len(g) == 0 {
+			continue
+		}
+		if !first {
+			b.WriteString("\n")
+		}
+		first = false
+
+		for _, it := range g {
+			key := fmt.Sprintf("%-*s", width, it.key)
+			text := it.text
+			if it.name != "" {
+				text = fmt.Sprintf(it.text, u.peer(it.name))
+			}
+
+			if it.quiet {
+				b.WriteString(markInfo + u.dim(key+"  "+text))
+			} else {
+				b.WriteString(markInfo + u.you(key) + "  " + text)
+			}
+			b.WriteString("\n")
+		}
 	}
 
-	u.Printf("%schoice: ", markPrompt)
+	b.WriteString("\n")
+	b.WriteString(u.promptMark())
+	u.Printf("%s", b.String())
 	return nil
 }
 
@@ -116,7 +169,8 @@ func (u *UI) ConfirmBy(
 
 	for {
 		stop := u.countdown(deadline, func(left time.Duration) string {
-			return fmt.Sprintf("%s%s [%s] [%s]: ", markPrompt, question, left, hint)
+			return fmt.Sprintf("%s%s %s %s: ", u.promptMark(), question,
+				u.dim("["+left.String()+"]"), u.dim("["+hint+"]"))
 		})
 
 		answer, err := u.ReadLine(ctx)

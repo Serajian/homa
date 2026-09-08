@@ -46,8 +46,9 @@ type UI struct {
 	// session's read goroutine prints while this one waits for input.
 	prompt string
 
-	// st is what the output can show, decided once in New. Guarded by mu
-	// only because DisableColor writes it; after that it is read-only.
+	// st is what the output can show, decided once in New and changed only
+	// by DisableColor, which runs before anything is printed. Every
+	// writer reads it without the lock on that understanding.
 	st style
 }
 
@@ -231,7 +232,7 @@ func (u *UI) Printf(format string, args ...any) {
 	// longer on the screen. Nothing here can read them back; a full-screen
 	// interface owns the input line and is what fixes it.
 	if u.prompt != "" {
-		_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+		u.erase()
 	}
 
 	// Nothing useful can be done if the terminal cannot be written to,
@@ -258,7 +259,7 @@ func (u *UI) Prompt(format string, args ...any) {
 	// a second with a countdown in it, and it costs nothing when there was
 	// none there to begin with.
 	if u.prompt != "" {
-		_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+		u.erase()
 	}
 
 	_, _ = fmt.Fprint(u.out, p) //nolint:errcheck // there is nowhere to report this
@@ -276,8 +277,20 @@ func (u *UI) ErasePrompt() {
 		return
 	}
 
-	_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+	u.erase()
 	u.prompt = ""
+}
+
+// erase takes the current line off a terminal. Anything else — a pipe, a
+// file — gets a newline instead: there is no screen to take it off, and an
+// escape sequence in a log is worse than a line that ends early. Callers
+// hold mu.
+func (u *UI) erase() {
+	if u.st.tty {
+		_, _ = fmt.Fprint(u.out, clearLine) //nolint:errcheck // there is nowhere to report this
+		return
+	}
+	_, _ = fmt.Fprint(u.out, "\n") //nolint:errcheck // there is nowhere to report this
 }
 
 // EndPrompt leaves the prompt where it is and moves past it. It is for a
@@ -307,21 +320,29 @@ func (u *UI) Clear() {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
-	_, _ = fmt.Fprint(u.out, clearScreen) //nolint:errcheck // there is nowhere to report this
+	// A pipe has no screen to clear. The prompt still has to be closed
+	// before it is drawn again, or the line would carry it twice.
+	if u.st.tty {
+		_, _ = fmt.Fprint(u.out, clearScreen) //nolint:errcheck // there is nowhere to report this
+	} else if u.prompt != "" {
+		u.erase()
+	}
 
 	if u.prompt != "" {
 		_, _ = fmt.Fprint(u.out, u.prompt) //nolint:errcheck // there is nowhere to report this
 	}
 }
 
-// Info states something that happened.
+// Info states something that happened. It is homa's own voice, so it is
+// grey; a name painted into it stays green.
 func (u *UI) Info(format string, args ...any) {
-	u.Printf(markInfo+format, args...)
+	u.Printf("%s%s", markInfo, u.dim(fmt.Sprintf(format, args...)))
 }
 
-// Warn states something that went wrong but did not stop anything.
+// Warn states something that went wrong but did not stop anything. The
+// mark and the words are the terminal's warning yellow, together.
 func (u *UI) Warn(format string, args ...any) {
-	u.Printf(markWarn+format, args...)
+	u.Printf("%s", u.warn(markWarn+fmt.Sprintf(format, args...)))
 }
 
 // Blank writes an empty line, for spacing between sections.
@@ -331,7 +352,8 @@ func (u *UI) Blank() { u.Printf("") }
 //
 // The nick is drawn in brackets rather than followed by a colon, so a
 // message whose own text contains a colon cannot be mistaken for a second
-// speaker.
+// speaker. The brackets are grey and the name green; the words are left
+// alone, because they are theirs.
 func (u *UI) Message(nick, text string) {
-	u.Printf("[%s] %s", nick, text)
+	u.Printf("%s%s%s %s", u.dim("["), u.peer(nick), u.dim("]"), text)
 }

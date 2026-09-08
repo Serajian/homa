@@ -35,6 +35,21 @@ const selfNick = "me"
 // erases somebody's conversation.
 const clearLine = "\r\033[K"
 
+// sepUnicode and sepASCII join the parts of one status line — who you are
+// talking to, what they call themselves, where files go. A middle dot needs
+// a UTF-8 terminal; everything else gets a dash.
+const (
+	sepUnicode = "  ·  "
+	sepASCII   = "  -  "
+)
+
+// The words on the way out of a screen. They are typed as well as shown,
+// so the menu and the switch that reads it have to agree on them.
+const (
+	wordBack = "back"
+	wordQuit = "quit homa"
+)
+
 // unknownMark goes in front of a name a peer chose for themselves, so it
 // cannot be read as a name you gave them.
 //
@@ -148,4 +163,9 @@ const (
 	colorGreen = "\033[38;2;34;230;167m"
 	colorMuted = "\033[38;2;154;163;173m"
 	colorReset = "\033[0m"
+
+	// colorWarn is the terminal's own yellow rather than a 24-bit value:
+	// every theme has a warning yellow of its own, and a warning should
+	// look like one there rather than like homa's brand.
+	colorWarn = "\033[33m"
 )

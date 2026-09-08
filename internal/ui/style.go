@@ -17,6 +17,7 @@ import (
 // goes by. style decides whether color may reinforce them, and whether the
 // welcome banner can be drawn in blocks or has to be one plain line.
 type style struct {
+	tty     bool // output is a terminal: a prompt can be erased and redrawn
 	color   bool // color escapes will be understood, and are wanted
 	unicode bool // block characters will come out as blocks, not as "?"
 	width   int  // columns, or 0 when nobody knows
@@ -36,7 +37,9 @@ func detect(out io.Writer) style {
 		width = 0
 	}
 
-	return styleFor(width, os.Getenv)
+	st := styleFor(width, os.Getenv)
+	st.tty = true
+	return st
 }
 
 // styleFor is the decision for something that is a terminal, kept apart from
@@ -67,9 +70,13 @@ func styleFor(width int, getenv func(string) string) style {
 // paint wraps s in a color when style allows it, and leaves it alone when
 // it does not. s is always text homa wrote itself; see the note on the
 // color constants.
+//
+// s may itself contain painted text, which ends with a reset that would end
+// this color too; the color is put back after each one, so a grey line with
+// a green name in it stays grey to the end.
 func paint(st style, color, s string) string {
 	if !st.color || s == "" {
 		return s
 	}
-	return color + s + colorReset
+	return color + strings.ReplaceAll(s, colorReset, colorReset+color) + colorReset
 }

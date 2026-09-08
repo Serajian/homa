@@ -30,8 +30,13 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
 - graceful shutdown from either screen
 - a welcome screen: the logo drawn in block characters and color when the
   output is a terminal that can show them, one plain line when it is a pipe, a
-  file, a narrow terminal or a locale without UTF-8. `NO_COLOR`, `TERM=dumb`
-  and `-no-color` all turn color off; nothing else is colored yet
+  file, a narrow terminal or a locale without UTF-8
+- an interface with one meaning per color — cream is you, green is them, grey
+  is homa, the terminal's yellow is a warning — that reads the same with color
+  off, menus in groups with the people first, a status line at the top of every
+  conversation, a next step under every warning, and no escape sequence ever
+  written to anything that is not a terminal. `NO_COLOR`, `TERM=dumb` and
+  `-no-color` turn color off
 - documentation with the four diagrams that matter drawn in mermaid, which
   GitHub renders, and the call-setup one also as a pannable page
 - `make lint` clean, hooks wired, Makefile covering build, format, lint, test,

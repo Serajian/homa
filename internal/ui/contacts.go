@@ -26,8 +26,8 @@ func (a *App) contactsScreen(ctx context.Context) (quit bool) {
 			return false
 		}
 
-		keys, labels := contactEntries(list)
-		if err := a.ui.ShowMenu("contacts", keys, labels); err != nil {
+		groups := contactEntries(list)
+		if err := a.ui.ShowMenu("contacts", groups...); err != nil {
 			return false
 		}
 
@@ -39,7 +39,7 @@ func (a *App) contactsScreen(ctx context.Context) (quit bool) {
 		switch line {
 		case "":
 			continue // a bare Enter is somebody looking again
-		case "b", "back":
+		case "b", wordBack:
 			return false
 		case "q", "quit":
 			return true
@@ -48,6 +48,7 @@ func (a *App) contactsScreen(ctx context.Context) (quit bool) {
 		n, convErr := strconv.Atoi(line)
 		if convErr != nil || n < 1 || n > len(list) {
 			a.ui.Warn("that is not one of the choices")
+			a.ui.Info("press one of the keys on the left")
 			continue
 		}
 
@@ -57,13 +58,22 @@ func (a *App) contactsScreen(ctx context.Context) (quit bool) {
 	}
 }
 
-// contactEntries numbers the address book and adds the two ways out.
-func contactEntries(list []contacts.Contact) (keys, labels []string) {
+// contactEntries numbers the address book, then adds the two ways out,
+// set apart.
+func contactEntries(list []contacts.Contact) [][]menuItem {
+	var people []menuItem
 	for i, c := range list {
-		keys = append(keys, strconv.Itoa(i+1))
-		labels = append(labels, fmt.Sprintf("%-16s %s", c.Name, preview(c.Addr)))
+		people = append(people, menuItem{
+			key:  strconv.Itoa(i + 1),
+			text: "%s  " + preview(c.Addr),
+			name: fmt.Sprintf("%-16s", c.Name),
+		})
 	}
-	return append(keys, "b", "q"), append(labels, "back", "quit homa")
+
+	return [][]menuItem{
+		people,
+		{{key: "b", text: wordBack, quiet: true}, {key: "q", text: wordQuit, quiet: true}},
+	}
 }
 
 // contactActions offers what can be done with one contact.
@@ -72,17 +82,20 @@ func contactEntries(list []contacts.Contact) (keys, labels []string) {
 // matters, because a rename here changes the name this was found under.
 func (a *App) contactActions(ctx context.Context, c contacts.Contact) (quit bool) {
 	for {
-		keys := []string{"c", "r", "a", "f", "b", "q"}
-		labels := []string{
-			"call " + c.Name,
-			"rename",
-			"show their address",
-			"forget",
-			"back",
-			"quit homa",
+		groups := [][]menuItem{
+			{
+				{key: "c", text: "call %s", name: c.Name},
+				{key: "r", text: "rename"},
+				{key: "a", text: "show their address"},
+				{key: "f", text: "forget", quiet: true},
+			},
+			{
+				{key: "b", text: wordBack, quiet: true},
+				{key: "q", text: wordQuit, quiet: true},
+			},
 		}
 
-		if err := a.ui.ShowMenu(c.Name, keys, labels); err != nil {
+		if err := a.ui.ShowMenu(c.Name, groups...); err != nil {
 			return false
 		}
 
@@ -94,7 +107,7 @@ func (a *App) contactActions(ctx context.Context, c contacts.Contact) (quit bool
 		switch line {
 		case "":
 			continue
-		case "b", "back":
+		case "b", wordBack:
 			return false
 		case "q", "quit":
 			return true
@@ -127,6 +140,7 @@ func (a *App) contactActions(ctx context.Context, c contacts.Contact) (quit bool
 
 		default:
 			a.ui.Warn("that is not one of the choices")
+			a.ui.Info("press one of the keys on the left")
 		}
 	}
 }

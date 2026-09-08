@@ -106,9 +106,11 @@ func (h *chatHandler) OnFileOffer(
 		h.mu.Unlock()
 	}()
 
+	// One line: who, what, how big, and what to type. The file's name is
+	// theirs, and is painted as theirs; it has been through the sanitizer.
 	h.ui.Blank()
-	h.ui.Info("%s wants to send %q (%s)", h.name, name, humanBytes(size))
-	h.ui.Info("y to accept, n to reject")
+	h.ui.Info("%s offers %s (%s)%sy to accept, n to reject",
+		h.ui.peer(h.name), h.ui.them(name), humanBytes(size), h.ui.sep())
 
 	select {
 	case ok := <-reply:
@@ -116,7 +118,8 @@ func (h *chatHandler) OnFileOffer(
 			return "", false, "declined"
 		}
 	case <-time.After(offerAnswerTimeout):
-		h.ui.Warn("the offer of %q timed out", name)
+		h.ui.Warn("the offer of %s timed out", h.ui.them(name))
+		h.ui.Info("they can offer it again; y or n answers it within %s", offerAnswerTimeout)
 		return "", false, "no answer"
 	}
 
@@ -192,7 +195,7 @@ func (h *chatHandler) OnFileProgress(name string, received, total int64) {
 	h.lastStep[name] = step
 	h.mu.Unlock()
 
-	h.ui.Info("receiving %q: %d%%", name, step*progressStep)
+	h.ui.Info("receiving %s%s%d%%", h.ui.them(name), h.ui.sep(), step*progressStep)
 }
 
 // OnFileDone reports a file that arrived and passed its checksum.
@@ -201,7 +204,7 @@ func (h *chatHandler) OnFileDone(name, path string) {
 	delete(h.lastStep, name)
 	h.mu.Unlock()
 
-	h.ui.Info("saved %q to %s", name, path)
+	h.ui.Info("%s saved to %s", h.ui.them(name), path)
 }
 
 // OnFileError reports a transfer that failed.

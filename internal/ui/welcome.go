@@ -6,11 +6,7 @@ import "strings"
 // and color when the terminal can show them, and one plain line when it
 // cannot or when output is not a terminal at all.
 func (u *UI) Welcome() {
-	u.mu.Lock()
-	st := u.st
-	u.mu.Unlock()
-
-	u.Printf("%s", banner(st))
+	u.Printf("%s", banner(u.st))
 }
 
 // DisableColor turns color off whatever the terminal said, for the

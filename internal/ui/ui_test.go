@@ -22,6 +22,16 @@ func newTest(t *testing.T) (*UI, *io.PipeWriter, *strings.Builder) {
 	return New(r, &out), w, &out
 }
 
+// newTerminalTest is newTest with the output treated as a terminal, for the
+// prompt mechanics: erasing and redrawing a line only make sense on one.
+func newTerminalTest(t *testing.T) (*UI, *io.PipeWriter, *strings.Builder) {
+	t.Helper()
+
+	u, w, out := newTest(t)
+	u.st.tty = true
+	return u, w, out
+}
+
 func typeLine(t *testing.T, w *io.PipeWriter, s string) {
 	t.Helper()
 
@@ -195,7 +205,7 @@ func TestNothingTypedArrivesWithAnEscapeInIt(t *testing.T) {
 func TestPrintingStepsAroundAPrompt(t *testing.T) {
 	t.Parallel()
 
-	u, _, out := newTest(t)
+	u, _, out := newTerminalTest(t)
 
 	u.Prompt("[me] ")
 	u.Message("bob", "salam")
@@ -219,7 +229,7 @@ func TestPrintingStepsAroundAPrompt(t *testing.T) {
 func TestAPromptReplacesAPrompt(t *testing.T) {
 	t.Parallel()
 
-	u, _, out := newTest(t)
+	u, _, out := newTerminalTest(t)
 
 	u.Prompt("[47s] ")
 	u.Prompt("[46s] ")
@@ -237,7 +247,7 @@ func TestErasePromptAndEndPromptDifferAsTheyShould(t *testing.T) {
 	t.Parallel()
 
 	// ErasePrompt takes the line off, for a prompt nobody will type into.
-	u, _, out := newTest(t)
+	u, _, out := newTerminalTest(t)
 	u.Prompt("[me] ")
 	u.ErasePrompt()
 	if got := out.String(); !strings.HasSuffix(got, clearLine) {
@@ -246,7 +256,7 @@ func TestErasePromptAndEndPromptDifferAsTheyShould(t *testing.T) {
 
 	// EndPrompt leaves it, for a question that ran out of time: the reader
 	// should still see what was on the screen.
-	u2, _, out2 := newTest(t)
+	u2, _, out2 := newTerminalTest(t)
 	u2.Prompt("take the call? ")
 	u2.EndPrompt()
 	if got := out2.String(); !strings.HasSuffix(got, "take the call? \n") {
@@ -259,7 +269,7 @@ func TestErasePromptAndEndPromptDifferAsTheyShould(t *testing.T) {
 func TestClearRedrawsAPromptItWipes(t *testing.T) {
 	t.Parallel()
 
-	u, _, out := newTest(t)
+	u, _, out := newTerminalTest(t)
 
 	u.Prompt("[me] ")
 	u.Clear()

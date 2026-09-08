@@ -173,7 +173,7 @@ func (a *App) greet(ctx context.Context, conn net.Conn) {
 	select {
 	case a.incoming <- c:
 		a.ui.Blank()
-		a.ui.Info("%s is calling (expires in %s).", name, callAnswerTimeout)
+		a.ui.Info("%s is calling (expires in %s).", a.ui.peer(name), callAnswerTimeout)
 		go a.expire(ctx, c)
 
 	case <-ctx.Done():
@@ -233,9 +233,9 @@ func (a *App) menuLoop(ctx context.Context) error {
 			continue
 		}
 
-		keys, labels, list := a.menuEntries()
+		groups, list := a.menuEntries()
 
-		if err := a.ui.ShowMenu("What now?", keys, labels); err != nil {
+		if err := a.ui.ShowMenu("What now?", groups...); err != nil {
 			return err
 		}
 
@@ -257,29 +257,36 @@ func (a *App) menuLoop(ctx context.Context) error {
 	}
 }
 
-// menuEntries builds the menu: saved contacts first, numbered, then the
-// fixed actions. list maps a numeric key back to the contact it stands for.
-func (a *App) menuEntries() (keys, labels []string, list []contacts.Contact) {
+// menuEntries builds the menu in four groups: the people you can call,
+// numbered, first, because calling somebody is what this screen is for;
+// then the address book; then homa itself; and last, set apart and quiet,
+// the two ways out. list maps a numeric key back to the contact it stands
+// for.
+func (a *App) menuEntries() (groups [][]menuItem, list []contacts.Contact) {
 	list = a.book.All()
 
+	var people []menuItem
 	for i, c := range list {
-		keys = append(keys, strconv.Itoa(i+1))
-		labels = append(labels, "call "+c.Name)
+		people = append(people, menuItem{key: strconv.Itoa(i + 1), text: "call %s", name: c.Name})
 	}
 
-	keys = append(keys, "n", "b", "a", "s", "c", "r", "h", "q")
-	labels = append(labels,
-		"add a contact",
-		"contacts: rename, forget, call",
-		"show my address",
-		"settings",
-		"clear the screen",
-		"start over: forget everything",
-		"help",
-		"quit homa",
-	)
-
-	return keys, labels, list
+	return [][]menuItem{
+		people,
+		{
+			{key: "n", text: "add a contact"},
+			{key: "b", text: "contacts: rename, forget, call"},
+			{key: "a", text: "show my address"},
+		},
+		{
+			{key: "s", text: "settings"},
+			{key: "c", text: "clear the screen"},
+			{key: "h", text: "help"},
+		},
+		{
+			{key: "r", text: "start over: forget everything", quiet: true},
+			{key: "q", text: wordQuit, quiet: true},
+		},
+	}, list
 }
 
 // act performs one menu choice, reporting whether the person is leaving.
@@ -319,6 +326,7 @@ func (a *App) act(ctx context.Context, choice string, list []contacts.Contact) (
 		n, _ := strconv.Atoi(choice)
 		if n < 1 || n > len(list) {
 			a.ui.Warn("that is not one of the choices")
+			a.ui.Info("press one of the keys on the left, or h for help")
 			return false
 		}
 		a.dial(ctx, list[n-1])
@@ -408,14 +416,15 @@ func (a *App) editSettings(ctx context.Context) {
 
 // dial calls a saved contact and hands the connection to the chat.
 func (a *App) dial(ctx context.Context, c contacts.Contact) {
-	a.ui.Info("calling %s...", c.Name)
+	a.ui.Info("calling %s...", a.ui.peer(c.Name))
 
 	dialCtx, cancel := context.WithTimeout(ctx, dialTimeout)
 	defer cancel()
 
 	conn, err := peer.Dial(dialCtx, a.id, c.Addr)
 	if err != nil {
-		a.ui.Warn("could not reach %s: %v", c.Name, err)
+		a.ui.Warn("could not reach %s: %v", a.ui.peer(c.Name), err)
+		a.ui.Info("they may not be running homa right now; their address has not changed")
 		return
 	}
 
@@ -455,7 +464,7 @@ func (a *App) offer(ctx context.Context, c *call) {
 	a.ui.Blank()
 
 	take, err := a.ui.ConfirmBy(askCtx,
-		fmt.Sprintf("take the call from %s?", c.name), false, c.deadline)
+		fmt.Sprintf("take the call from %s?", a.ui.peer(c.name)), false, c.deadline)
 	if err != nil {
 		// The deadline passed, or homa is shutting down, or the input
 		// ended. None of them is an answer, so the caller is told rather
@@ -471,7 +480,7 @@ func (a *App) offer(ctx context.Context, c *call) {
 
 	if err := c.session.SendAccept(); err != nil {
 		// They went while the question was on screen. Nothing to join.
-		a.ui.Warn("%s went before the call could be connected", c.name)
+		a.ui.Warn("%s went before the call could be connected", a.ui.peer(c.name))
 		_ = c.session.Close()
 		return
 	}
@@ -491,7 +500,7 @@ func (a *App) decline(c *call, reason, format string) {
 	}
 	_ = c.session.Close()
 
-	a.ui.Info(format, c.name)
+	a.ui.Info(format, a.ui.peer(c.name))
 }
 
 // answer joins a call that was greeted, parked, agreed to, and told so.
@@ -499,7 +508,7 @@ func (a *App) decline(c *call, reason, format string) {
 // ctx here is the one offer put a deadline on, and the conversation must not
 // inherit it: people talk for longer than they take to answer the telephone.
 func (a *App) answer(ctx context.Context, c *call) {
-	a.ui.Info("connected to %s", c.name)
+	a.ui.Info("connected to %s", a.ui.peer(c.name))
 	a.runChat(ctx, c.conn, c.session, c.handler, c.name, c.known)
 }
 
@@ -566,6 +575,7 @@ func (a *App) addContact(ctx context.Context) {
 	}
 	if !peer.ValidAddr(addr) {
 		a.ui.Warn("that does not look like a homa address")
+		a.ui.Info("it is the long line a) shows on their side; paste all of it")
 		return
 	}
 

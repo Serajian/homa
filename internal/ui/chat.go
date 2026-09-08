@@ -59,7 +59,7 @@ func (a *App) awaitAccept(ctx context.Context, s *session.Session, name string) 
 
 	stop := a.ui.countdown(deadline, func(left time.Duration) string {
 		return fmt.Sprintf("%swaiting for %s to answer... %s  (Enter to give up)",
-			markInfo, name, left)
+			markInfo, a.ui.peer(name), left)
 	})
 
 	waited := make(chan error, 1)
@@ -90,7 +90,7 @@ func (a *App) awaitAccept(ctx context.Context, s *session.Session, name string) 
 		// Close rather than drop: the goodbye is a frame the far side
 		// already knows how to read.
 		_ = s.Close()
-		a.ui.Info("you stopped calling %s.", name)
+		a.ui.Info("you stopped calling %s.", a.ui.peer(name))
 		return false
 	}
 
@@ -142,16 +142,21 @@ func (a *App) runChat(
 		_ = s.Close()
 	}()
 
+	// Two lines of status before the first message: who this is, and what
+	// there is to know while talking to them. Everything else the person
+	// may need is one /help away, and saying so is enough.
 	a.ui.Blank()
 	if known {
-		a.ui.Info("talking to %s (they call themselves %q)", name, s.Peer().Nick)
+		a.ui.Info("talking to %s%sthey call themselves %q",
+			a.ui.peer(name), a.ui.sep(), s.Peer().Nick)
 	} else {
 		// The label already is their nick, so repeating it would say
 		// nothing. What is worth saying is where it came from.
-		a.ui.Info("talking to %s, which is what they call themselves.", name)
-		a.ui.Info("they are not in your contacts, so that name is theirs, not yours.")
+		a.ui.Info("talking to %s%sthe name is theirs; they are not in your contacts",
+			a.ui.peer(name), a.ui.sep())
 	}
-	a.ui.Info("/help for commands, /quit to leave")
+	a.ui.Info("/help commands%s/quit leave%sfiles go to %s",
+		a.ui.sep(), a.ui.sep(), a.downloadDirSetting())
 	a.ui.Blank()
 
 	go func() {
@@ -174,7 +179,7 @@ func (a *App) runChat(
 		if err != nil {
 			a.ui.Warn("the conversation ended: %v", reason(err))
 		} else {
-			a.ui.Info("%s left the conversation.", name)
+			a.ui.Info("%s left the conversation.", a.ui.peer(name))
 		}
 		ended.Store(true)
 
@@ -186,6 +191,16 @@ func (a *App) runChat(
 	}()
 
 	a.chatInput(ctx, s, h, &ended)
+}
+
+// downloadDirSetting is where received files go, as the person wrote it in
+// the settings. It is for showing, so it is not expanded or created here;
+// downloadDir does that when a file actually arrives.
+func (a *App) downloadDirSetting() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	return a.cfg.DownloadDir
 }
 
 // chatInput reads what the person types until they leave, the peer does, or
@@ -205,7 +220,7 @@ func (a *App) chatInput(
 		// The label goes up before the read, not after the send, so what
 		// is typed lands after it and the terminal's own echo is the
 		// only copy on the screen.
-		a.ui.Prompt("[%s] ", selfNick)
+		a.ui.Prompt("%s", a.ui.meLabel())
 
 		line, err := a.ui.ReadLine(ctx)
 		if errors.Is(err, ErrCanceled) {
@@ -323,7 +338,7 @@ func (a *App) command(ctx context.Context, s *session.Session, h *chatHandler, l
 		a.ui.Clear()
 
 	case "/who":
-		a.ui.Info("%s, calling themselves %q", h.name, s.Peer().Nick)
+		a.ui.Info("%s, calling themselves %q", a.ui.peer(h.name), s.Peer().Nick)
 
 	case "/accept":
 		if !h.answerOffer(true) {
@@ -345,6 +360,7 @@ func (a *App) command(ctx context.Context, s *session.Session, h *chatHandler, l
 		// Show them rather than send them somewhere: they have already
 		// guessed once and being told to guess again is not help.
 		a.ui.Warn("no such command: %q", cmd)
+		a.ui.Info("these are the commands; a line that is not one is sent as a message")
 		a.showCommands()
 	}
 

@@ -28,8 +28,13 @@ func bootstrap(ctx context.Context, out *ui.UI) (app *ui.App, cleanup func(), er
 	}
 
 	// Creating an identity measures relay latency, so a first run takes a
-	// moment. Say so rather than looking frozen.
-	out.Info("starting up...")
+	// moment. Say what the wait is for, and that it is once; a later run
+	// only reads a file and needs no more than a word.
+	if peer.HasIdentity() {
+		out.Info("starting up...")
+	} else {
+		out.Info("first run: measuring the relays to pick the nearest, once. a few seconds.")
+	}
 
 	id, err := peer.LoadOrCreateIdentity(ctx)
 	if err != nil {

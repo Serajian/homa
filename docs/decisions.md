@@ -158,3 +158,33 @@ question.
 differently on every machine that lacks it, and GitHub lacks all of them. The
 face is JetBrains Mono, chosen because its licence (SIL OFL 1.1) allows exactly
 this and the system fonts on the design machine do not.
+
+**Color means one thing each, and the meaning comes from the logo.** The prompt in the
+logo is cream and the bubble is green, so in the interface cream is you (the prompt, your
+label, the keys), green is them (names, their messages' label, files arriving), grey is
+homa talking (information, hints, the marks around a name), and the terminal's own yellow
+is a warning. Nothing else is colored: the words people type are theirs. Four colors with
+one meaning each is the whole vocabulary; adding a fifth needs a fifth meaning.
+
+**Color is never the only signal.** The marks in `ui/const.go` — `>` for a prompt, two
+spaces for information, `!` for a warning, `[name]` and `~` — carry the meaning on their
+own, and color only reinforces them. The colored output, with its escapes removed, is
+byte for byte the plain output, and `ui/theme_test.go` holds it there. So a terminal
+without color, a person who cannot see the difference, and a log file read the same thing.
+
+**What the output can show is decided once, from the writer.** `ui/style.go` looks at
+where output is going when the UI is made: a terminal or not, its width, `NO_COLOR`,
+`TERM=dumb`, a UTF-8 locale, and `-no-color`. Everything that would erase or color goes
+through it, so a pipe or a redirected file never receives an escape sequence — a line
+that would have been erased is ended instead. Asking on every line would be asking a
+pipe; asking once is enough because none of it changes while homa runs.
+
+**Network text is wrapped in a color, never formatted into one.** A nick, a file name and
+a message have been through `session/sanitize.go`; painting one is `color + text + reset`,
+so the text is content and never a parameter of the escape. `fmt.Sprintf("\033[%sm", x)`
+with anything from the far side in `x` is the mistake this rules out.
+
+**Menus are grouped by space, not by lines, with the people first.** Calling somebody is
+what the menu is for, so the contacts come first; what belongs together sits together with
+a blank line between groups; and leaving and anything that cannot be undone sit last and
+recede in grey. Boxes, rules and bold are for the full-screen interface, if at all.

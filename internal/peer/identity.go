@@ -38,6 +38,18 @@ type Identity struct {
 // file name lives in this package, so the deleting does too.
 func RemoveIdentity() error { return paths.Remove(keyFile) }
 
+// HasIdentity reports whether an identity is already saved, so a caller can
+// say what the wait on the first run is for. It is a check on the file, not
+// on its contents; LoadOrCreateIdentity is what reads it.
+func HasIdentity() bool {
+	p, err := paths.File(keyFile)
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(p)
+	return err == nil
+}
+
 // LoadOrCreateIdentity returns this machine's identity, creating and saving
 // one on first run. Creation reaches the network to measure relay latency,
 // so ctx should allow for that; later runs read only from disk.

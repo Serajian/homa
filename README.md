@@ -38,36 +38,53 @@ Verbatim, from the side that placed the call:
 
 ```
 What now?
-  1) call server-b
-  n) add a contact
-  b) contacts: rename, forget, call
-  a) show my address
-  s) settings
-  c) clear the screen
-  r) start over: forget everything
-  h) help
-  q) quit homa
-> choice:
-1
-  calling server-b...
-  waiting for server-b to answer... 55s  (Enter to give up)
+  1  call alice
 
-  talking to server-b (they call themselves "server-b")
-  /help for commands, /quit to leave
+  n  add a contact
+  b  contacts: rename, forget, call
+  a  show my address
+
+  s  settings
+  c  clear the screen
+  h  help
+
+  r  start over: forget everything
+  q  quit homa
+
+> 
+1
+  calling alice...
+  waiting for alice to answer... 59s  (Enter to give up)
+
+  talking to alice  ·  they call themselves "alice"
+  /help commands  ·  /quit leave  ·  files go to ~/homa-files
 
 [me] salam
-[server-b] salam, chetori
+[alice] khoobam, to chetori?
 [me] /send ~/notes.md
-  offering /Users/mohsen/notes.md, waiting for them to accept...
+  offering /tmp/bob/notes.md, waiting for them to accept...
   sending: 100%
   sent.
 ```
 
-The other side is asked before any of that happens:
+The other side is asked before any of that happens, and sees the file arrive:
 
 ```
-  ~server-b is calling (expires in 1m0s).
-> take the call from ~server-b? [56s] [y/N]: y
+  ~bob is calling (expires in 1m0s).
+
+> take the call from ~bob? [59s] [y/N]: y
+  connected to ~bob
+
+  talking to ~bob  ·  the name is theirs; they are not in your contacts
+  /help commands  ·  /quit leave  ·  files go to ~/homa-files
+
+[~bob] salam
+[me] khoobam, to chetori?
+
+  ~bob offers notes.md (11 B)  ·  y to accept, n to reject
+[me] y
+  receiving notes.md  ·  100%
+  notes.md saved to /tmp/alice/homa-files/notes.md
 ```
 
 Having somebody's address is not the same as being welcome to talk to them, so

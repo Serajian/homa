@@ -77,7 +77,7 @@ func TestTheScreenListsTheAddressBook(t *testing.T) {
 	drive(t, a, w, out, "b")
 
 	got := out.String()
-	for _, want := range []string{"contacts", "1)", "BB", "2)", "zara", "back"} {
+	for _, want := range []string{"contacts", "1  BB", "2  zara", "back"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the screen never showed %q:\n%s", want, got)
 		}
