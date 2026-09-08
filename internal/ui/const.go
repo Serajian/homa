@@ -43,6 +43,16 @@ const (
 	sepASCII   = "  -  "
 )
 
+// The frame every screen is drawn in: one status line at the top, one line
+// of keys at the bottom, the body between. Below frameMinWidth the frame
+// keeps its text and drops its decorations, because a 40-column terminal is
+// still a terminal.
+const (
+	statusHeight  = 1
+	keysHeight    = 1
+	frameMinWidth = 50
+)
+
 // The words on the way out of a screen. They are typed as well as shown,
 // so the menu and the switch that reads it have to agree on them.
 const (

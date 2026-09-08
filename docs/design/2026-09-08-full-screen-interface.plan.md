@@ -144,10 +144,10 @@ func needsTerminal(in, out *os.File) error {
       rule                 lipgloss.Style // the dashed line above the input
       unicode              bool
   }
-  func newStyles(unicode bool) styles
-  func (s styles) sep() string                       // "  ·  " or "  -  "
-  func (s styles) peer(name string) string           // green name, grey unknownMark
-  func frame(s styles, width, height int, status, body, keys string) string
+  func newStyles(unicode bool) *styles   // by pointer: five lipgloss styles are kilobytes, and there is one
+  func (s *styles) sep() string                      // "  ·  " or "  -  "
+  func (s *styles) peer(name string) string          // green name, grey unknownMark
+  func frame(width, height int, status, body, keys string) string
   ```
   `frame` returns exactly `height` lines of at most `width` cells: status on line 0, body lines padded or cut to `height-2`, keys on the last line.
 
@@ -326,7 +326,7 @@ This is the step after which `homa` runs on the new interface with a working men
   const (screenMenu screen = iota; screenConversation; screenContacts; screenContact; screenAddContact; screenSettings; screenSetup; screenReset; screenHelp)
   type model struct {
       deps   Deps
-      st     styles
+      st     *styles
       width, height int
       screen screen
       menu   menuModel
