@@ -191,6 +191,48 @@ go install github.com/Serajian/homa/cmd/homa@latest
 
 or from a clone, `make build` puts the binary in `./build`.
 
+## Using it
+
+Two people, two machines, nothing in between. Say you are Alice and want to
+talk to Bob.
+
+**1. Start it.** The first run asks two questions — the name shown beside your
+messages, and where received files should go — and takes a few seconds to
+measure the relays, once. Then the menu.
+
+```
+homa
+```
+
+**2. Give Bob your address.** Press `a`. The long line it prints is your
+address: send it to Bob over a channel you already trust. It is a secret —
+whoever has it can call you — so not in a public place.
+
+**3. Bob adds you.** On his side: `n`, a name for you, your address. You now
+appear in his menu as `1  call alice`.
+
+**4. Bob calls, you answer.** He presses `1`. Your screen says `~bob is calling`
+and asks `take the call from ~bob? [y/N]` — `y` puts him through, Enter or `n`
+does not, and after a minute with no answer he is told nobody picked up. The
+`~` means the name is the one he chose for himself; once you save him with
+`n`, he appears under the name you gave him instead.
+
+**5. Talk.** Lines you type are sent; lines starting with `/` are commands.
+`/send ~/notes.md` offers a file, and Bob answers with `y` or `n`. `/files`
+lists a directory so you can send by number instead of typing a path. `/help`
+lists the rest; `/quit` leaves the conversation and returns to the menu.
+
+**6. Leave.** `q` at the menu quits homa; so does Ctrl+C anywhere. Your
+address, your contacts and your settings stay on your disk for next time.
+
+Either side can call the other once each has the other's address — there is no
+host and no guest. The menu keys are always on the screen; `h` explains the
+ones that are not obvious, and `s` changes the two settings from the first run.
+
+Colour is on when the terminal can show it, and never carries anything the
+text does not: `NO_COLOR`, `TERM=dumb` or `homa -no-color` turn it off, and a
+pipe or a log file gets plain text.
+
 ## How it is built
 
 Dependencies point one way, and two rules hold the shape: `internal/peer` is the
