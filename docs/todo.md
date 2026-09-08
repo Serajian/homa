@@ -32,27 +32,6 @@ The first release: two people, text, files, contacts, a line-based interface
 that is worth looking at, tests under it, and a way to install it that is not
 "clone the repository".
 
-## 1. An apt repository
-
-### What this is
-
-v0.1.0 is released and installable: `brew install --cask Serajian/homa/homa` on macOS,
-and a `.deb` on the release page for Debian and Ubuntu, both verified from a clean
-install. What the item asked for beyond that, and what is not done, is `apt install
-homa`: a real repository, which means a GPG key, a signed `Release` file, and somewhere
-to serve it — GitHub Pages can. The `.deb` the pipeline already builds is the input.
-
-### Files
-
-- `.goreleaser.yaml`: an `aptly`/`reprepro` publish step, or a small workflow of its own
-- `.github/workflows/`: publishing the repository on each release
-- `README.md`: `apt` instructions replacing `dpkg -i`
-
-### Done when
-
-A machine with the repository added installs and upgrades homa with `apt`, and the
-`.deb` route still works for everybody else.
-
 ## 3. Security
 
 **Version 1**, and last in it only because it has no content yet: an item

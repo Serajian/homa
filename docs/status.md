@@ -47,6 +47,9 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   on the release page for Debian and Ubuntu, archives for the rest, and
   `homa -version` naming the tag — all of it built by GoReleaser from a tag,
   the cask pushed to the tap by the same run
+- an apt repository at https://serajian.github.io/homa, signed, rebuilt from the
+  release's `.deb`s by a workflow on every release and served by GitHub Pages
+  from the `gh-pages` branch, so `apt install homa` works on Debian and Ubuntu
 
 Known warts, fixed by the full-screen interface in version 2 (see
 [roadmap.md](roadmap.md)):
