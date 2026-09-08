@@ -1,0 +1,32 @@
+Architectures: amd64 arm64
+Codename: stable
+Components: main
+Date: Tue, 08 Sep 2026 10:34:27 +0000
+Description: homa, peer-to-peer terminal chat
+Label: homa
+Origin: homa
+Suite: stable
+MD5Sum:
+ cb048ee55695cb9ff68ceb506d6dd160              184 Release
+ 4d2b69ec849514c54573f4d5f700f828              502 main/binary-amd64/Packages
+ f7beaffc4eea78f4da52a8b970c9297b              390 main/binary-amd64/Packages.gz
+ 7686212119622e87d78fc06d7cee962e              502 main/binary-arm64/Packages
+ c7731d9fe4c85a3e53996320b227f7e9              389 main/binary-arm64/Packages.gz
+SHA1:
+ 9dc0869aeb264dd76742c1876517085e56106a9c              184 Release
+ e409fa47bc8dbbba3468fff2f32fe86ca90778cd              502 main/binary-amd64/Packages
+ ead7e290c24b2f163cea584811f77964e1d809e8              390 main/binary-amd64/Packages.gz
+ 8df409905e5d6269081baf68781e8514b40980f4              502 main/binary-arm64/Packages
+ c362f0b564eb378e95fcd347ecdd2b34ba560f53              389 main/binary-arm64/Packages.gz
+SHA256:
+ 47e9e201af15440e64bc63c5adc04a818e8bd661c606a4427b089ae908c320ae              184 Release
+ c3c036305f798c6393cc5fa1907a7185049bb3125e21020c0cbb7c506753358d              502 main/binary-amd64/Packages
+ 464f1cffb0c00a5764c4e369b397ac5059b5be3493f3e62e7db6060307647eab              390 main/binary-amd64/Packages.gz
+ b01c409180d1e1642ce5dfb1371a97da32d63432f52c9e7c069768dae4dd7f42              502 main/binary-arm64/Packages
+ 6cce9959e6912cf8c7001b4fee11c75e41485b197b17ab981c96b0cc44212c61              389 main/binary-arm64/Packages.gz
+SHA512:
+ 538dc715d8c741c4a86fc3b005fadfd359d18b1646bdba8527ae472488f28b33ec8de2223b4bf117d3754fd925dabf3a6fe132bce2ae74d978665ee7e3862a9e              184 Release
+ 96f7830274239ba0d0fa0b712eb744924f29c139264fd4543681cbd799b55424a6fd5537d1469dc485ec1212b129f0b22c37ca5bb0197b9c65f1b3312dad3bfb              502 main/binary-amd64/Packages
+ 0b60f79903a7a54a1a790cb387dcd30698d30a3bb553c88e01eb9137f22c4249264efed67866f7c6a0c1c5475cfd2b0fc92efe743b221d849a1144cca057b3ae              390 main/binary-amd64/Packages.gz
+ 1606486bc99d4e2a4ef4a4d0a088b7dbb3521e77f4ccd456a2993b07813248c505c37835c31b06db1b7dd1daaa878c69ceb21e34475e51a839679b16367fbc73              502 main/binary-arm64/Packages
+ 380386d35540550b25bcaa062a95a7891ab6cfb88aeec07bc1de19d9cf69e53f948a5fc9bb62b3bc55fab355f34cd3ab5b21516bc935df284ba158f2503bae9f              389 main/binary-arm64/Packages.gz
