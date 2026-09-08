@@ -1,0 +1,93 @@
+# One tagged release produces everything: binaries for macOS and Linux on
+# amd64 and arm64, a .deb, checksums, and the Homebrew formula pushed to the
+# tap. `make snapshot` runs the same pipeline locally without a tag and
+# without publishing, so it can be checked before anything is released.
+version: 2
+project_name: homa
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: homa
+    main: ./cmd/homa
+    binary: homa
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    # The tag reaches `homa -version` through main.version; without this it
+    # says "dev" forever. Version is the tag without its "v".
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: tar
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs"
+      - "^style"
+      - "^test"
+
+release:
+  github:
+    owner: Serajian
+    name: homa
+  prerelease: auto
+
+# Homebrew installs the binary from the release archive through a cask in the
+# tap (GoReleaser's formula route was retired in favour of casks). The archive
+# is not signed or notarised, so macOS quarantines what it downloads; the
+# post-install hook takes that attribute off the binary, which is the
+# documented way for an unsigned open-source tool and what the person asked
+# for by installing it.
+homebrew_casks:
+  - name: homa
+    repository:
+      owner: Serajian
+      name: homebrew-homa
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: https://github.com/Serajian/homa
+    description: Peer-to-peer terminal chat with file transfer. No server, no account.
+    commit_author:
+      name: serajian.mohsen
+      email: serajian.mohsen@gmail.com
+    commit_msg_template: "homa {{ .Tag }}"
+    binaries:
+      - homa
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr",
+              args: ["-dr", "com.apple.quarantine", "#{staged_path}/homa"]
+          end
+
+nfpms:
+  - id: deb
+    package_name: homa
+    vendor: Serajian
+    homepage: https://github.com/Serajian/homa
+    maintainer: serajian.mohsen <serajian.mohsen@gmail.com>
+    description: Peer-to-peer terminal chat with file transfer. No server, no account.
+    license: MIT
+    formats: [deb]
+    bindir: /usr/bin

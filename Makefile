@@ -6,6 +6,12 @@ MODULE    := github.com/Serajian/homa
 BUILD_DIR := build
 MAIN      := ./cmd/$(APP_NAME)
 
+# The version `homa -version` reports. A release gets the tag from GoReleaser
+# (see .goreleaser.yaml); a local build gets whatever git describes, so a
+# binary from a working tree says which commit it is rather than "dev".
+VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS  := -X main.version=$(VERSION)
+
 COLOR_RESET=\033[0m
 COLOR_GREEN=\033[32m
 COLOR_YELLOW=\033[33m
@@ -99,22 +105,27 @@ deps: ## [Setup] Tidy and download Go modules
 build: ## [Build] Build the binary into ./build
 	@echo "$(COLOR_YELLOW)Building...$(COLOR_RESET)"
 	@mkdir -p $(BUILD_DIR)
-	@go build -o $(BUILD_DIR)/$(APP_NAME) $(MAIN)
-	@echo "$(COLOR_GREEN)Build complete: $(BUILD_DIR)/$(APP_NAME)$(COLOR_RESET)"
+	@go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME) $(MAIN)
+	@echo "$(COLOR_GREEN)Build complete: $(BUILD_DIR)/$(APP_NAME) ($(VERSION))$(COLOR_RESET)"
 
 .PHONY: build-linux
 build-linux: ## [Build] Cross-compile for a linux/amd64 server
 	@echo "$(COLOR_YELLOW)Cross-compiling for linux/amd64...$(COLOR_RESET)"
 	@mkdir -p $(BUILD_DIR)
-	@GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64 $(MAIN)
+	@GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64 $(MAIN)
 	@echo "$(COLOR_GREEN)Build complete: $(BUILD_DIR)/$(APP_NAME)-linux-amd64$(COLOR_RESET)"
 
 .PHONY: build-all
 build-all: build build-linux ## [Build] Build for this machine and for linux/amd64
 
+.PHONY: snapshot
+snapshot: ## [Build] Run the release pipeline locally, without a tag and without publishing
+	@goreleaser release --snapshot --clean --skip=publish
+	@echo "$(COLOR_GREEN)Snapshot in ./dist$(COLOR_RESET)"
+
 .PHONY: install
 install: ## [Build] Install into GOPATH/bin so `homa` works anywhere
-	@go install $(MAIN)
+	@go install -ldflags "$(LDFLAGS)" $(MAIN)
 	@echo "$(COLOR_GREEN)Installed to $(GO_BIN)/$(APP_NAME)$(COLOR_RESET)"
 
 .PHONY: run

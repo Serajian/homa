@@ -23,3 +23,18 @@ tail -f homa.log
 ```
 
 If the toolchain itself misbehaves, check [traps.md](traps.md) first.
+
+## Releasing
+
+A tag that starts with `v` is a release. `.github/workflows/release.yml` runs GoReleaser
+on it: binaries for macOS and Linux on amd64 and arm64, a `.deb` for each, checksums, a
+GitHub release, and the Homebrew cask pushed to `Serajian/homebrew-homa`. The tag reaches
+`homa -version` through `-X main.version`; a local `make build` stamps what `git describe`
+says instead, so a binary from a working tree names its commit.
+
+`make snapshot` runs the whole pipeline locally without a tag and without publishing, into
+`./dist`, which is where to look before tagging. The tap push needs a token of its own —
+the `HOMEBREW_TAP_GITHUB_TOKEN` repository secret — because the token Actions provides can
+only write to this repository.
+
+To release: `git tag v0.1.0 && git push origin v0.1.0`, then watch the Actions run.

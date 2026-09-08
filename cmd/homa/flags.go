@@ -2,7 +2,9 @@ package main
 
 import "flag"
 
-// version is stamped at build time. See the ldflags note in the Makefile.
+// version is stamped at build time: the Makefile passes what git describes,
+// and a release passes the tag; see .goreleaser.yaml. Built any other way it
+// says dev, which is true.
 var version = "dev"
 
 // options is what the command line asked for.

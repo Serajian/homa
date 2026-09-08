@@ -167,34 +167,29 @@ once, after making you type the word `reset`.
 
 ## Install
 
-Requires Go 1.27.1 or newer. Packages for `brew` and `apt` are version 1 work
-and not built yet.
+macOS, with Homebrew:
+
+```sh
+brew install --cask Serajian/homa/homa
+```
+
+Debian and Ubuntu, from the `.deb` on the
+[latest release](https://github.com/Serajian/homa/releases/latest):
+
+```sh
+sudo dpkg -i homa_*_linux_amd64.deb     # or _arm64
+```
+
+Anything else: download the archive for your system from the same page and put
+the `homa` binary on your `PATH`. `homa -version` says which release you have.
+
+From source, with Go 1.27.1 or newer:
 
 ```sh
 go install github.com/Serajian/homa/cmd/homa@latest
 ```
 
-From a clone:
-
-```sh
-git clone https://github.com/Serajian/homa.git
-cd homa
-make build          # ./build/homa
-make install        # into $(go env GOPATH)/bin
-make build-linux    # ./build/homa-linux-amd64
-```
-
-```
-homa [flags]
-
-  -log <path>   write diagnostics to a file
-  -debug        write diagnostics to stderr, at debug level
-  -no-color     never write color, even to a terminal (setting NO_COLOR does the same)
-  -version      print the version and exit
-```
-
-Diagnostics go nowhere by default: homa draws a terminal interface, and a log
-line landing in the middle of a conversation would scramble it.
+or from a clone, `make build` puts the binary in `./build`.
 
 ## How it is built
 
