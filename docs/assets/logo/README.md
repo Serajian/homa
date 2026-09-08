@@ -46,3 +46,6 @@ replaces it.
 
 With Unicode, `homa-icon.svg` reduces to half-block cells and stays legible
 down to about 48 columns; below that the dots go, and below 30 the shape does.
+The banner homa draws is that reduction with its horizontal edges moved onto
+whole rows, because half cells meeting (`▀` over `▄`) show a seam in most
+terminal fonts; the diagonals of the prompt keep theirs.

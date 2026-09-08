@@ -105,22 +105,26 @@ const offerAnswerTimeout = 4 * time.Minute
 const progressStep = 10
 
 // The welcome banner: homa-icon.svg reduced to half-block cells, 48 columns
-// wide. See docs/assets/logo/README.md for where it comes from and how far it
-// can be reduced. It is drawn once, on the welcome screen, and only when style
+// wide, with every horizontal edge — the bubble's top and bottom, the dots,
+// the underscore — moved onto whole rows. A feature that ends halfway through
+// a cell is drawn with ▀ or ▄, and where those meet a terminal shows a seam;
+// only the diagonals still need them. Stroke widths are matched to the cell,
+// which is about twice as tall as it is wide: the bubble's walls are two
+// columns and its edges one row, so it weighs the same all round; the
+// underscore is two rows, to match the chevron. See docs/assets/logo/README.md. It is drawn once, on the welcome screen, and only when style
 // says the terminal will show block characters; otherwise bannerPlain is used.
 //
 // Columns before bannerSplit are the prompt, the rest the bubble, which is
 // how the two are given different colors without marking up the rows.
-const bannerArt = `                          ▄▄███████████████▄
-   ███▄                  ███▀▀▀▀▀▀▀▀▀▀▀▀▀▀███
-    ▀████▄               ███              ▀██
-       ▀████▄            ███   ▄▄ ▄▄ ▄▄    ██
-          ████           ███   ▀▀ ▀▀ ▀▀    ██
-       ▄████▀▀           ███              ▄██
-    ▄████▀▀              ███   ▄▄▄▄▄▄▄▄▄▄███▀
-   ███▀▀                 ███▄█████████████▀▀
-   ▀▀     ██████████████ █████▀▀
-            ▀▀▀▀▀▀▀▀▀▀   ███▀`
+const bannerArt = `   ▄▄▄                     ████████████████
+   ████▄▄                ██                ██
+     ▀████▄▄             ██                ██
+        ▀████▄           ██    ██ ██ ██    ██
+         ▄████           ██                ██
+      ▄████▀             ██                ██
+   ▄████▀                ██████████████████
+   ██▀    ██████████████ █████▀
+          ██████████████ ██▀`
 
 // bannerPlain is the banner for a terminal that cannot show the blocks, a
 // terminal too narrow for them, and output that is not a terminal at all.
