@@ -47,10 +47,12 @@ row, `/help` and the unknown-command listing. The open questions above were
 answered in [decisions.md](decisions.md); offering the numbered listing after
 `/send` was not built and is not planned.
 
-## Version 2: `/store`
+## Version 3: `/store`
 
 Save the conversation you have been having, by typing `/store` at any point in
-it.
+it. Planned for version 2 and moved to version 3, beside security: what homa
+keeps, and for how long, is a question of the same kind as what it protects,
+and the two are better answered together than a version apart.
 
 **Working at any point is the whole of the problem.** homa prints a message and
 forgets it: `chatHandler` hands each line to the interface and keeps nothing.
@@ -69,7 +71,7 @@ lasts, and writes one to disk on request. Both are new.
   saved is the cost of the feature working the way it was asked for. A setting
   that turns the keeping off is the honest alternative to deciding for people,
   and it has to be off-by-default or on-by-default, which is the same kind of
-  choice as the ringing in the item above
+  choice as the bell was
 - **how much is kept.** An unbounded buffer is a leak on a long conversation.
   A cap by lines or by bytes, and what happens when it is reached: drop the
   oldest, or stop keeping and say so. Silently losing the start of what somebody
@@ -92,9 +94,9 @@ documentation nobody reads.
 
 **Where it fits**
 
-The full-screen interface is in this same version and will own a scrollback
-buffer of its own. That is the same data, and building the two without noticing
-would mean keeping every conversation twice.
+The full-screen interface owns a scrollback of its own: the conversation's
+pane holds every line as it was shown. That is the same data, and a transcript
+should come from it rather than from a second copy kept beside it.
 
 ## Version 3: rooms
 

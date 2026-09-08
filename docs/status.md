@@ -1,8 +1,8 @@
 # Current state: version 2 in progress
 
-v0.1.0 is out with everything version 1 set out to do. Version 2's first item,
-the full-screen interface, is built; what is left of version 2 is in
-[todo.md](todo.md). Working today:
+v0.2.0 is out: the full-screen interface, commands offered as they are typed,
+and the bell. What is left of version 2 is Android; `/store` moved to version
+3. Both are in [todo.md](todo.md). Working today:
 
 - first-run setup, saved settings, a saved identity with a stable address
 - an address book: add, list, call by name, keys learned on first contact, and

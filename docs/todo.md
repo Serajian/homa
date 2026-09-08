@@ -37,18 +37,21 @@ left here.
 # Version 2
 
 Version 1 is closed; this is the open front. Detailed in
-[roadmap.md](roadmap.md). The full-screen interface is done; its design and
-plan stay in [design/](design/) for the record.
+[roadmap.md](roadmap.md). The full-screen interface, the commands offered as
+they are typed and the bell are done and released as v0.2.0; the design and
+plan of the interface stay in [design/](design/) for the record.
 
 - **Android**: `gomobile bind` over the lower packages and a Compose interface.
   It is plausible at all because tailcat needs no VPN permission, and it is the
   reason `proto`, `peer` and `session` must stay free of any desktop assumption
+
+# Version 3
+
 - **`/store`**, saving the conversation you have been having, typed at any point
   in it. Working at any point is the whole difficulty: it means homa keeps every
   conversation as it happens, whether or not it is ever asked to save one, and
-  today homa remembers nothing
-
-# Version 3
+  today homa remembers nothing. Moved here from version 2: it changes what homa
+  keeps, which is a question for the version that settles security
 
 - **security**, the parts that are actually weak, decided after the questions
   were answered (the tunnel is end to end and forward secret, and a compromised
