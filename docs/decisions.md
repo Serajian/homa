@@ -152,3 +152,9 @@ because the accept goroutine reads it while the person edits it. `EditSettings`
 returns a new config rather than writing through the old pointer, so the lock is
 held for a pointer swap rather than for as long as somebody takes to answer a
 question.
+
+**The logo carries its own letters.** The wordmark and tagline in
+`docs/assets/logo/` are outlines, not `<text>`: an SVG that names a font renders
+differently on every machine that lacks it, and GitHub lacks all of them. The
+face is JetBrains Mono, chosen because its licence (SIL OFL 1.1) allows exactly
+this and the system fonts on the design machine do not.

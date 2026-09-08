@@ -28,6 +28,10 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   quit leaves the program and which leaves a conversation, what the marks on a
   name mean, and that the address is a secret
 - graceful shutdown from either screen
+- a welcome screen: the logo drawn in block characters and color when the
+  output is a terminal that can show them, one plain line when it is a pipe, a
+  file, a narrow terminal or a locale without UTF-8. `NO_COLOR`, `TERM=dumb`
+  and `-no-color` all turn color off; nothing else is colored yet
 - documentation with the four diagrams that matter drawn in mermaid, which
   GitHub renders, and the call-setup one also as a pannable page
 - `make lint` clean, hooks wired, Makefile covering build, format, lint, test,

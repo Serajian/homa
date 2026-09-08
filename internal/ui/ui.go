@@ -45,6 +45,10 @@ type UI struct {
 	// from in front of what is being typed. Guarded by mu, because a
 	// session's read goroutine prints while this one waits for input.
 	prompt string
+
+	// st is what the output can show, decided once in New. Guarded by mu
+	// only because DisableColor writes it; after that it is read-only.
+	st style
 }
 
 // New returns a UI reading from in and writing to out, and starts the
@@ -53,6 +57,7 @@ func New(in io.Reader, out io.Writer) *UI {
 	u := &UI{
 		out:   out,
 		lines: make(chan string),
+		st:    detect(out),
 	}
 
 	go u.pump(bufio.NewReader(in))

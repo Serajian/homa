@@ -47,6 +47,9 @@ func run() error {
 	// after this returns as soon as ctx is canceled. Nothing has to close
 	// standard input to make Ctrl+C work.
 	out := ui.New(os.Stdin, os.Stdout)
+	if opts.noColor {
+		out.DisableColor()
+	}
 
 	app, cleanup, err := bootstrap(ctx, out)
 	if err != nil {

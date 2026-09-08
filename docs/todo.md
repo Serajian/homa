@@ -98,6 +98,10 @@ up. What this item records is the ground it has to stand on, so the brainstorm
 starts from what is already true rather than from a blank page and then walks
 back into these one at a time.
 
+**The logo is decided.** The package — mark, wordmark, palette, and the plain-text
+and colour renditions for the terminal — is in [assets/logo/](assets/logo/README.md).
+Whatever the interface becomes, that is what it wears.
+
 ### What is already true, and must survive
 
 **Colour is never the only signal.** `internal/ui/const.go` says why the marks
@@ -108,10 +112,11 @@ without colour, a person who cannot see the difference, and a log file all have
 to stay readable.
 
 **Not everything homa writes to is a terminal.** Output gets piped and
-redirected. Escape sequences written unconditionally end up in the file, which
-`clearLine` already does and which is already noted as a wart. Whatever is built
-should settle that properly: detect a terminal, honour `NO_COLOR`, and give the
-flags a `-no-color` of their own.
+redirected. `ui/style.go` now decides once, in `New`, what the output can show:
+whether it is a terminal at all, `NO_COLOR`, `TERM=dumb`, a UTF-8 locale, the
+width, and the `-no-color` flag. The welcome banner goes through it. `clearLine`
+and `clearScreen` do not yet, so a redirected file still collects those two
+escapes; whatever is built next should route them through `style` as well.
 
 **Nothing from the network is ever formatted into an escape sequence.** This is
 the same boundary `session/sanitize.go` holds, and colour is exactly the kind of
@@ -126,7 +131,6 @@ Worth knowing which half is being built.
 
 ### Where it would show
 
-- the first thing on screen: the name, the address, and that homa is listening
 - the menu
 - who said what in a conversation, and the difference between a contact's name
   and a `~` name they chose for themselves

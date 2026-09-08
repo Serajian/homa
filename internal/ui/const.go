@@ -103,3 +103,45 @@ const offerAnswerTimeout = 4 * time.Minute
 // progressStep is how often progress is reported, in percent. Every chunk
 // would be twenty thousand lines for a large file.
 const progressStep = 10
+
+// The welcome banner: homa-icon.svg reduced to half-block cells, 48 columns
+// wide. See docs/assets/logo/README.md for where it comes from and how far it
+// can be reduced. It is drawn once, on the welcome screen, and only when style
+// says the terminal will show block characters; otherwise bannerPlain is used.
+//
+// Columns before bannerSplit are the prompt, the rest the bubble, which is
+// how the two are given different colors without marking up the rows.
+const bannerArt = `                          ▄▄███████████████▄
+   ███▄                  ███▀▀▀▀▀▀▀▀▀▀▀▀▀▀███
+    ▀████▄               ███              ▀██
+       ▀████▄            ███   ▄▄ ▄▄ ▄▄    ██
+          ████           ███   ▀▀ ▀▀ ▀▀    ██
+       ▄████▀▀           ███              ▄██
+    ▄████▀▀              ███   ▄▄▄▄▄▄▄▄▄▄███▀
+   ███▀▀                 ███▄█████████████▀▀
+   ▀▀     ██████████████ █████▀▀
+            ▀▀▀▀▀▀▀▀▀▀   ███▀`
+
+// bannerPlain is the banner for a terminal that cannot show the blocks, a
+// terminal too narrow for them, and output that is not a terminal at all.
+const bannerPlain = ">_ [...] HOMA"
+
+const (
+	bannerWordmark = "H O M A"
+	bannerTagline  = "Peer-to-peer terminal chat"
+	bannerIndent   = "  "
+	bannerCols     = 48 // columns bannerArt needs, after the indent
+	bannerSplit    = 24 // where the prompt ends and the bubble begins
+)
+
+// The banner's colors, as 24-bit ANSI sequences: cream for the prompt and
+// wordmark, green for the bubble, muted for the tagline. Like clearLine they
+// are constants homa writes to a terminal it owns, and they are written only
+// when style says color is wanted. Nothing that arrived over the network is
+// ever formatted into one.
+const (
+	colorCream = "\033[38;2;241;241;232m"
+	colorGreen = "\033[38;2;34;230;167m"
+	colorMuted = "\033[38;2;154;163;173m"
+	colorReset = "\033[0m"
+)

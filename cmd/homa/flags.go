@@ -10,6 +10,7 @@ type options struct {
 	debug       bool
 	logFile     string
 	showVersion bool
+	noColor     bool
 }
 
 func parseFlags() options {
@@ -21,6 +22,8 @@ func parseFlags() options {
 		"write diagnostics to this file instead of stderr")
 	flag.BoolVar(&opts.showVersion, "version", false,
 		"print the version and exit")
+	flag.BoolVar(&opts.noColor, "no-color", false,
+		"never write color, even to a terminal (setting NO_COLOR does the same)")
 
 	flag.Parse()
 	return opts

@@ -172,6 +172,7 @@ homa [flags]
 
   -log <path>   write diagnostics to a file
   -debug        write diagnostics to stderr, at debug level
+  -no-color     never write color, even to a terminal (setting NO_COLOR does the same)
   -version      print the version and exit
 ```
 

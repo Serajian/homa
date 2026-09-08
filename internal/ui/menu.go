@@ -107,7 +107,9 @@ func (a *App) Run(ctx context.Context) error {
 	go a.acceptLoop(ctx)
 
 	a.ui.Blank()
-	a.ui.Printf("homa | %s", a.nick())
+	a.ui.Welcome()
+	a.ui.Blank()
+	a.ui.Info("you are %s", a.nick())
 	a.ui.Info("your address starts with %s", preview(a.listener.Addr()))
 	a.ui.Info("listening for callers")
 

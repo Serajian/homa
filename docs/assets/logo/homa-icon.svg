@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>homa</title>
+<g transform="translate(-5.4 117.5) scale(0.8600)"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="34"><polyline points="56,74 168,150 56,226" stroke="#F1F1E8"/><line x1="152" y1="248" x2="286" y2="248" stroke="#F1F1E8"/><path d="M382 52 H500 A52 52 0 0 1 552 104 V166 A52 52 0 0 1 500 218 H400 L330 270 V104 A52 52 0 0 1 382 52 Z" stroke="#22E6A7"/></g><circle cx="405" cy="135" r="15" fill="#22E6A7"/><circle cx="441" cy="135" r="15" fill="#22E6A7"/><circle cx="477" cy="135" r="15" fill="#22E6A7"/></g>
+</svg>
