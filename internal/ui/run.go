@@ -23,6 +23,12 @@ type Deps struct {
 	ID       *peer.Identity
 	Listener *peer.Listener
 	NoColor  bool // the -no-color flag; NO_COLOR and TERM=dumb are read by the program itself
+
+	// Reset deletes the identity, the address book and the settings,
+	// attempting every one even if an earlier one fails, and returns what
+	// could not be removed, by name. cmd/homa supplies the real one; tests
+	// supply one that touches nothing.
+	Reset func() (failed []string)
 }
 
 // CheckTerminal is the terminal check for cmd/homa to run before anything

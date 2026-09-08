@@ -1,9 +1,7 @@
 package ui
 
 import (
-	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/Serajian/homa/internal/contacts"
 )
@@ -38,7 +36,7 @@ func newMenu(book *contacts.Book) menuModel {
 
 	var people []menuItem
 	for i, c := range list {
-		people = append(people, menuItem{key: strconv.Itoa(i + 1), text: "call %s", name: c.Name})
+		people = append(people, menuItem{key: strconv.Itoa(i + 1), text: wordCall, name: c.Name})
 	}
 
 	return menuModel{
@@ -53,7 +51,7 @@ func newMenu(book *contacts.Book) menuModel {
 			{
 				{key: "s", text: "settings"},
 				{key: "c", text: "clear the screen"},
-				{key: "h", text: "help"},
+				{key: "h", text: wordHelp},
 			},
 			{
 				{key: "r", text: "start over: forget everything", quiet: true},
@@ -112,51 +110,5 @@ func (mm *menuModel) key(k string) (menuAction, bool) {
 	return actNone, false
 }
 
-// view draws the groups separated by a blank line, keys padded to the
-// widest, the cursor marked on the contacts, quiet lines grey throughout.
-func (mm *menuModel) view(st *styles) string {
-	width := 0
-	for _, g := range mm.groups {
-		for _, it := range g {
-			width = max(width, len(it.key))
-		}
-	}
-
-	mark, none := "▸ ", "  "
-	if !st.unicode {
-		mark = "> "
-	}
-
-	var b strings.Builder
-	first := true
-	for gi, g := range mm.groups {
-		if len(g) == 0 {
-			continue
-		}
-		if !first {
-			b.WriteString("\n")
-		}
-		first = false
-
-		for i, it := range g {
-			cursor := none
-			if gi == 0 && i == mm.cursor {
-				cursor = mark
-			}
-			key := fmt.Sprintf("%-*s", width, it.key)
-			text := it.text
-			if it.name != "" {
-				text = fmt.Sprintf(it.text, st.peer(it.name))
-			}
-
-			b.WriteString(markInfo)
-			if it.quiet {
-				b.WriteString(st.dim.Render(cursor + key + "  " + text))
-			} else {
-				b.WriteString(cursor + st.you.Render(key) + "  " + text)
-			}
-			b.WriteString("\n")
-		}
-	}
-	return b.String()
-}
+// view draws the groups, the cursor on the contacts.
+func (mm *menuModel) view(st *styles) string { return renderGroups(st, mm.groups, mm.cursor) }

@@ -63,7 +63,7 @@ func acceptLoop(ctx context.Context, deps Deps, send func(tea.Msg)) tea.Cmd {
 func greet(ctx context.Context, deps Deps, conn net.Conn, send func(tea.Msg)) {
 	name, known := describe(deps.Book, conn)
 
-	s, err := session.Start(conn, deps.Cfg.Nick, &adapter{send: send})
+	s, err := session.Start(conn, deps.Cfg.Nick, newAdapter(send))
 	if err != nil {
 		// The caller hung up, or is not speaking homa. Not worth
 		// interrupting the person over.
@@ -186,7 +186,7 @@ func dial(ctx context.Context, deps Deps, c contacts.Contact, send func(tea.Msg)
 		// so their next call can be shown under this name.
 		rememberKey(deps.Book, c.Name, peer.RemoteKey(conn))
 
-		s, err := session.Start(conn, deps.Cfg.Nick, &adapter{send: send})
+		s, err := session.Start(conn, deps.Cfg.Nick, newAdapter(send))
 		if err != nil {
 			_ = conn.Close()
 			return callFailed{name: c.Name, err: err}

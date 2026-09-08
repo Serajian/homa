@@ -53,3 +53,51 @@ type sendFailed struct{ err error }
 
 // tickMsg is once a second while a countdown is on the screen.
 type tickMsg time.Time
+
+// fileOffered is the far side offering a file. The session's read goroutine
+// waits on reply until the person answers with y or n; the answer carries
+// where the file should go, decided at that moment from the settings.
+type fileOffered struct {
+	name  string
+	size  int64
+	reply chan<- fileAnswer
+}
+
+// fileAnswer is the person's decision on an offer.
+type fileAnswer struct {
+	accept bool
+	dir    string
+	reason string // shown to the sender when accept is false
+}
+
+// offerTimedOut is an offer nobody answered within offerAnswerTimeout.
+type offerTimedOut struct{ name string }
+
+// fileProgress is an incoming file, every progressStep percent.
+type fileProgress struct {
+	name string
+	pct  int
+}
+
+// fileDone is a file that arrived and passed its checksum.
+type fileDone struct{ name, path string }
+
+// fileFailed is an incoming transfer that failed.
+type fileFailed struct {
+	name string
+	err  error
+}
+
+// sending is our outgoing file, every progressStep percent; sent is it
+// done; sendFileFailed is it not.
+type sending struct {
+	name string
+	pct  int
+}
+
+type sent struct{ name string }
+
+type sendFileFailed struct {
+	name string
+	err  error
+}

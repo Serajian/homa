@@ -7,6 +7,9 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/Serajian/homa/internal/contacts"
+	"github.com/Serajian/homa/internal/peer"
 )
 
 // screen is which of homa's screens fills the body. One at a time; the
@@ -16,6 +19,22 @@ type screen int
 const (
 	screenMenu screen = iota
 	screenConversation
+	screenContacts
+	screenContact
+	screenForm
+	screenPage
+)
+
+// formKind is which question a form on the screen is asking, so its
+// answers go to the right place.
+type formKind int
+
+const (
+	formAdd formKind = iota
+	formRename
+	formForget
+	formSettings
+	formReset
 )
 
 // model is the whole interface: what is on the screen, and enough of what
@@ -33,10 +52,16 @@ type model struct {
 
 	width, height int
 	screen        screen
+	back          screen // where a form or a page returns to
 
-	menu menuModel
-	bar  callBar
-	conv *conversation
+	menu     menuModel
+	bar      callBar
+	conv     *conversation
+	contacts contactsModel
+	contact  contacts.Contact // the one open on screenContact
+	form     *form
+	kind     formKind
+	page     *page
 
 	// notice is one line under the body: a hint after a wrong key, why a
 	// call did not go through. The next key clears it. warn draws it in
@@ -118,6 +143,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case fileOffered, offerTimedOut, fileProgress, fileDone, fileFailed, sending, sent, sendFileFailed:
+		m.fileEvent(msg)
+		return m, nil
+
 	case tea.MouseWheelMsg:
 		if m.conv != nil {
 			cmd, _ := m.conv.update(m.st, msg)
@@ -133,6 +162,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.screen {
 		case screenConversation:
 			return m.updateConversation(msg)
+		case screenContacts:
+			return m.updateContacts(msg)
+		case screenContact:
+			return m.updateContact(msg)
+		case screenForm:
+			return m.updateForm(msg)
+		case screenPage:
+			m.screen = m.back
+			return m, nil
 		default:
 			return m.updateMenu(msg)
 		}
@@ -141,6 +179,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) say(text string, warn bool) { m.notice, m.warn = text, warn }
+
+// fileEvent is anything about a file, said in the conversation's pane.
+func (m *model) fileEvent(msg tea.Msg) {
+	c, st := m.conv, m.st
+	if c == nil {
+		return
+	}
+	switch msg := msg.(type) {
+	case fileOffered:
+		c.offered(st, msg)
+	case offerTimedOut:
+		c.offer = nil
+		c.say(st.warn.Render(markWarn + "the offer of " + msg.name + " timed out"))
+		c.say(markInfo + st.dim.Render(fmt.Sprintf("they can offer it again; y or n answers it within %s", offerAnswerTimeout)))
+	case fileProgress:
+		c.say(markInfo + st.dim.Render("receiving ") + st.them.Render(msg.name) + st.dim.Render(fmt.Sprintf("%s%d%%", st.sep(), msg.pct)))
+	case fileDone:
+		c.say(markInfo + st.them.Render(msg.name) + st.dim.Render(" saved to "+msg.path))
+	case fileFailed:
+		c.say(st.warn.Render(markWarn + quote(msg.name) + ": " + reason(msg.err)))
+	case sending:
+		c.say(markInfo + st.dim.Render(fmt.Sprintf("sending: %d%%", msg.pct)))
+	case sent:
+		c.say(markInfo + st.dim.Render("sent."))
+	case sendFileFailed:
+		c.say(st.warn.Render(markWarn + reason(msg.err)))
+	}
+}
 
 // callArrived parks a caller on the bar. A second caller while one waits
 // is turned away as busy; a caller during a conversation waits unseen
@@ -156,37 +222,44 @@ func (m model) callArrived(l *line) (tea.Model, tea.Cmd) {
 	return m, tick()
 }
 
-// updateMenu is a key on the menu, or on the call bar over it. While a
-// caller waits, the bar has the keyboard: y lets them in, n does not, and
-// nothing else does anything, as the question in version 1 did.
-func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	k := msg.String()
-
+// barKey is a key while a call is on the bar. A waiting caller has the
+// keyboard: y lets them in, n does not, and nothing else does anything, as
+// the question in version 1 did. An outgoing call takes only Enter, to
+// give up. handled is false when no call is on the bar.
+func (m model) barKey(k string) (tea.Model, tea.Cmd, bool) {
 	if l := m.bar.incoming; l != nil {
 		switch k {
 		case "y":
 			if !l.claim() {
 				m.bar.clear()
-				return m, nil
+				return m, nil, true
 			}
-			return m, takeCall(l)
+			return m, takeCall(l), true
 		case "n", keyEnter:
 			if !l.claim() {
 				m.bar.clear()
-				return m, nil
+				return m, nil, true
 			}
-			return m, declineCall(l, "they are not taking calls right now", "the call from %s was not taken.")
+			return m, declineCall(l, "they are not taking calls right now", "the call from %s was not taken."), true
 		default:
 			m.say("y takes the call, n does not", false)
-			return m, nil
+			return m, nil, true
 		}
 	}
-
 	if m.bar.outgoing != "" {
 		if k == keyEnter {
 			m.bar.cancel() // the dial reports back that we stopped calling
 		}
-		return m, nil
+		return m, nil, true
+	}
+	return m, nil, false
+}
+
+// updateMenu is a key on the menu, or on the call bar over it.
+func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	k := msg.String()
+	if next, cmd, handled := m.barKey(k); handled {
+		return next, cmd
 	}
 
 	act, ok := m.menu.key(k)
@@ -199,21 +272,231 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case actQuit:
 		return m, tea.Quit
 	case actCall:
-		return m.placeCall()
-	case actNone, actClear:
-		// The frame is redrawn whole on every update; there is nothing a
-		// clear could clear that the next draw does not.
+		return m.placeCall(m.menu.chosen())
+	case actAdd:
+		return m.openForm(formAdd, newForm("add a contact",
+			field{label: "A name for them"},
+			field{label: "Their address", check: checkAddr},
+		), screenMenu), nil
+	case actContacts:
+		m.contacts = newContacts(m.deps.Book)
+		if len(m.contacts.list) == 0 {
+			m.say("no contacts yet. n at the menu adds one.", false)
+			return m, nil
+		}
+		m.screen = screenContacts
 		return m, nil
+	case actAddress:
+		m.page = &page{title: "your address", body: addressText(m.st, m.deps.Listener.Addr()), back: screenMenu}
+		m.screen = screenPage
+		return m, nil
+	case actSettings:
+		return m.openForm(formSettings, settingsForm("settings", m.deps.Cfg), screenMenu), nil
+	case actHelp:
+		m.page = &page{title: "help", body: helpText, back: screenMenu}
+		m.screen = screenPage
+		return m, nil
+	case actReset:
+		f := newForm("start over",
+			field{label: "type the word reset to confirm", def: "cancel", word: "reset"})
+		f.warn = []string{
+			"This deletes your identity, your address book and your settings.",
+			"Your address changes, and everyone who saved the old one can no",
+			"longer reach you.",
+		}
+		return m.openForm(formReset, f, screenMenu), nil
 	default:
-		// Replaced screen by screen as the plan's later tasks land.
-		m.say("not on this screen yet", false)
+		// actNone, actClear: the frame is redrawn whole on every update;
+		// there is nothing a clear could clear that the next draw does not.
 		return m, nil
 	}
 }
 
-// placeCall dials the contact under the cursor and puts the wait on the bar.
-func (m model) placeCall() (tea.Model, tea.Cmd) {
-	c := m.menu.chosen()
+// checkAddr is the address field's check: the same test the old screen
+// made, with its hint in the same breath.
+func checkAddr(s string) error {
+	if !peer.ValidAddr(s) {
+		return fmt.Errorf("that does not look like a homa address; it is the long line a) shows on their side; paste all of it")
+	}
+	return nil
+}
+
+func (m model) openForm(kind formKind, f *form, back screen) model {
+	m.form, m.kind, m.back = f, kind, back
+	m.screen = screenForm
+	return m
+}
+
+// updateForm is a key on a form: the form takes it, and when it is done or
+// backed out of, the answers go where the kind says.
+func (m model) updateForm(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	done, cancel := m.form.update(m.st, msg)
+	switch {
+	case cancel:
+		m.screen = m.back
+		switch m.kind {
+		case formForget:
+			m.say(sayCall(m.st, "%s is still there.", m.contact.Name), false)
+		case formReset:
+			m.say("nothing was deleted.", false)
+		}
+		return m, nil
+	case !done:
+		return m, nil
+	}
+
+	answers := m.form.answers()
+	m.screen = m.back
+	switch m.kind {
+	case formAdd:
+		return m.addContact(answers[0], answers[1])
+	case formRename:
+		return m.renameContact(answers[0])
+	case formForget:
+		return m.forgetContact()
+	case formSettings:
+		cfg, err := applySettings(m.deps.Cfg, answers)
+		if err != nil {
+			m.say(err.Error(), true)
+			return m, nil
+		}
+		m.deps.Cfg = cfg
+		m.say("Saved.", false)
+		return m, nil
+	case formReset:
+		return m.reset()
+	}
+	return m, nil
+}
+
+func (m model) addContact(name, addr string) (tea.Model, tea.Cmd) {
+	if err := m.deps.Book.Add(contacts.Contact{Name: name, Addr: addr}); err != nil {
+		m.say(err.Error(), true)
+		return m, nil
+	}
+	if err := m.deps.Book.Save(); err != nil {
+		m.say("could not save the address book: "+err.Error(), true)
+		return m, nil
+	}
+	m.menu = newMenu(m.deps.Book)
+	m.say(sayCall(m.st, "%s added.", name), false)
+	return m, nil
+}
+
+// renameContact changes the local name. The name is this machine's, not
+// the peer's: somebody calling themselves "babak" is a good reason to
+// rename "BB", but it stays a decision the person makes.
+func (m model) renameContact(name string) (tea.Model, tea.Cmd) {
+	if name == m.contact.Name {
+		return m, nil
+	}
+	if err := m.deps.Book.Rename(m.contact.Name, name); err != nil {
+		m.say(reason(err), true)
+		return m, nil
+	}
+	if err := m.deps.Book.Save(); err != nil {
+		m.say("could not save the address book: "+err.Error(), true)
+	}
+	m.say(m.st.peer(m.contact.Name)+m.st.dim.Render(" is now ")+m.st.peer(name)+m.st.dim.Render("."), false)
+	m.contact.Name = name
+	m.menu = newMenu(m.deps.Book)
+	return m, nil
+}
+
+func (m model) forgetContact() (tea.Model, tea.Cmd) {
+	if err := m.deps.Book.Remove(m.contact.Name); err != nil {
+		m.say(reason(err), true)
+		return m, nil
+	}
+	if err := m.deps.Book.Save(); err != nil {
+		m.say("could not save the address book: "+err.Error(), true)
+	}
+	m.say(sayCall(m.st, "%s is forgotten.", m.contact.Name), false)
+	m.menu = newMenu(m.deps.Book)
+	m.contacts = newContacts(m.deps.Book)
+	if len(m.contacts.list) == 0 {
+		m.screen = screenMenu
+	} else {
+		m.screen = screenContacts
+	}
+	return m, nil
+}
+
+// reset deletes everything and quits: the next start asks the first-run
+// questions. What could not be removed is named, so a person told "reset
+// failed" is not left wondering whether their key is still on the disk.
+func (m model) reset() (tea.Model, tea.Cmd) {
+	failed := m.deps.Reset()
+	if len(failed) > 0 {
+		m.say("could not delete "+strings.Join(failed, ", ")+"; some of it is still on the disk.", true)
+	} else {
+		m.say("your identity, your address book and your settings are gone. start homa again and it will ask the first-run questions.", false)
+	}
+	return m, tea.Quit
+}
+
+func (m model) updateContacts(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	k := msg.String()
+	if next, cmd, handled := m.barKey(k); handled {
+		return next, cmd
+	}
+	act, ok := m.contacts.key(k)
+	if !ok {
+		m.say("that is not one of the choices"+m.st.sep()+"press one of the keys on the left", false)
+		return m, nil
+	}
+	switch act {
+	case contactOpen:
+		m.contact = m.contacts.chosen()
+		m.screen = screenContact
+	case contactBack:
+		m.screen = screenMenu
+	case contactQuit:
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+func (m model) updateContact(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	k := msg.String()
+	if next, cmd, handled := m.barKey(k); handled {
+		return next, cmd
+	}
+	act, ok := contactKey(k)
+	if !ok {
+		m.say("that is not one of the choices"+m.st.sep()+"press one of the keys on the left", false)
+		return m, nil
+	}
+	switch act {
+	case contactCall:
+		m.screen = screenMenu
+		return m.placeCall(m.contact)
+	case contactRename:
+		return m.openForm(formRename, newForm("rename "+m.contact.Name,
+			field{label: "a new name for them", def: m.contact.Name}), screenContact), nil
+	case contactAddress:
+		m.page = &page{title: m.contact.Name, body: m.contact.Addr + "\n", back: screenContact}
+		m.screen = screenPage
+	case contactForget:
+		f := newForm("forget "+m.contact.Name,
+			field{label: "type the word forget to confirm", def: "cancel", word: wordForget})
+		f.warn = []string{
+			"Forgetting " + m.contact.Name + " takes their address and their key with them.",
+			"Their next call arrives under the name they choose for themselves,",
+			"and reaching them again means pasting their address in again.",
+		}
+		return m.openForm(formForget, f, screenContact), nil
+	case contactBack:
+		m.contacts = newContacts(m.deps.Book)
+		m.screen = screenContacts
+	case contactQuit:
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
+// placeCall dials a contact and puts the wait on the bar.
+func (m model) placeCall(c contacts.Contact) (tea.Model, tea.Cmd) {
 	ctx, cancel := context.WithCancel(m.ctx)
 	m.bar = callBar{outgoing: c.Name, deadline: time.Now().Add(callAnswerTimeout), cancel: cancel}
 	return m, tea.Batch(dial(ctx, m.deps, c, m.send), tick())
@@ -223,7 +506,9 @@ func (m model) placeCall() (tea.Model, tea.Cmd) {
 func (m model) startConversation(l *line) (tea.Model, tea.Cmd) {
 	m.bar.clear()
 	m.screen = screenConversation
-	m.conv = newConversation(m.st, m.width, m.height, l, l.s.Peer().Nick, m.deps.Cfg.DownloadDir)
+	cfg := m.deps.Cfg
+	m.conv = newConversationWith(m.ctx, m.st, m.width, m.height, l, l.s.Peer().Nick, cfg.DownloadDir,
+		m.send, cfg.EnsureDownloadDir)
 	m.say("", false)
 	return m, runSession(m.ctx, l, m.send)
 }
@@ -256,6 +541,7 @@ func (m model) peerLeft(err error) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.conv.ended = true
+	m.conv.offer = nil
 	if err != nil {
 		m.conv.say(m.st.warn.Render(markWarn + "the conversation ended: " + reason(err)))
 	} else {
@@ -269,8 +555,16 @@ func (m model) View() tea.View {
 	switch m.screen {
 	case screenConversation:
 		status, body, keys = m.conv.view(m.st, m.width)
+	case screenContacts:
+		status, body, keys = m.statusLine(), m.withBarAndNotice(m.contacts.view(m.st)), m.keyLineFor("↑↓ choose · Enter open · b back · q quit")
+	case screenContact:
+		status, body, keys = m.statusLine(), m.withBarAndNotice("\n"+m.st.you.Render(m.contact.Name)+"\n\n"+renderGroups(m.st, contactGroups(m.contact), -1)), m.keyLineFor("press a key · b back")
+	case screenForm:
+		status, body, keys = m.statusLine(), m.withBarAndNotice(m.form.view(m.st)), m.keyLineFor("Enter answers · Esc backs out")
+	case screenPage:
+		status, body, keys = m.statusLine(), m.withBarAndNotice(m.page.view(m.st)), m.keyLineFor("any key goes back")
 	default:
-		status, body, keys = m.statusLine(), m.menuBody(), m.keyLine()
+		status, body, keys = m.statusLine(), m.withBarAndNotice(m.menuBody()), m.keyLine()
 	}
 
 	v := tea.NewView(frame(m.width, m.height, status, body, keys))
@@ -280,8 +574,9 @@ func (m model) View() tea.View {
 	return v
 }
 
-// statusLine is the top line of the menu: who you are, how your address
-// starts, and that homa is listening. Below frameMinWidth only the name fits.
+// statusLine is the top line of every screen but the conversation: who
+// you are, how your address starts, and that homa is listening. Below
+// frameMinWidth only the name fits.
 func (m model) statusLine() string {
 	parts := []string{m.st.you.Render("homa"), "you are " + m.st.you.Render(m.deps.Cfg.Nick)}
 	if m.width >= frameMinWidth && m.deps.Listener != nil {
@@ -291,15 +586,15 @@ func (m model) statusLine() string {
 }
 
 func (m model) menuBody() string {
+	return "\n" + m.st.you.Render("What now?") + "\n\n" + m.menu.view(m.st)
+}
+
+// withBarAndNotice puts the call bar and the notice under a body.
+func (m model) withBarAndNotice(body string) string {
 	var b strings.Builder
-	b.WriteString("\n")
-	b.WriteString(m.st.you.Render("What now?"))
-	b.WriteString("\n\n")
-	b.WriteString(m.menu.view(m.st))
+	b.WriteString(body)
 	if bar := m.bar.view(m.st, time.Now()); bar != "" {
-		b.WriteString("\n")
-		b.WriteString(bar)
-		b.WriteString("\n")
+		b.WriteString("\n" + bar + "\n")
 	}
 	if m.notice != "" {
 		b.WriteString("\n")
@@ -314,12 +609,19 @@ func (m model) menuBody() string {
 }
 
 func (m model) keyLine() string {
-	keys := "↑↓ choose · Enter call · or press a key"
-	if !m.st.unicode {
-		keys = "up/down choose - Enter call - or press a key"
-	}
 	if m.bar.incoming != nil {
-		keys = fmt.Sprintf("y take the call · n not now%s", "")
+		return m.keyLineFor("y take the call · n not now")
+	}
+	if m.bar.outgoing != "" {
+		return m.keyLineFor("Enter to give up")
+	}
+	return m.keyLineFor("↑↓ choose · Enter call · or press a key")
+}
+
+// keyLineFor is the bottom line, in grey, ASCII when the terminal is.
+func (m model) keyLineFor(keys string) string {
+	if !m.st.unicode {
+		keys = strings.NewReplacer("↑↓", "up/down", " · ", " - ").Replace(keys)
 	}
 	return " " + m.st.dim.Render(keys)
 }

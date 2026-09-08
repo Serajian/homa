@@ -1,0 +1,154 @@
+package ui
+
+import (
+	"strings"
+
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+)
+
+// field is one question on a form: its label, what Enter alone answers,
+// and what makes an answer acceptable.
+type field struct {
+	label string
+	def   string             // shown in brackets; taken by an empty Enter
+	check func(string) error // nil accepts anything; an error is shown under the field
+
+	// word, when set, is the only answer that completes the field; any
+	// other answer cancels the form. For the things there is no undo for,
+	// a single letter is answered by reflex and a typed word is not.
+	word string
+
+	in  textinput.Model
+	err string
+}
+
+// form is a few questions in a row, each a text input, walked with Enter.
+// It replaces Ask, askUntilValid and ConfirmBy from version 1: the same
+// wording, drawn in the frame instead of on a line.
+type form struct {
+	title  string
+	warn   []string // lines said in yellow above the fields: what this will do
+	lines  []string // lines said in grey above the fields
+	fields []field
+	cur    int
+}
+
+func newForm(title string, fields ...field) *form {
+	f := &form{title: title, fields: fields}
+	for i := range f.fields {
+		in := textinput.New()
+		in.Prompt = ""
+		in.SetVirtualCursor(true)
+		in.CharLimit = maxInputLen
+		f.fields[i].in = in
+	}
+	f.focus()
+	return f
+}
+
+func (f *form) focus() {
+	for i := range f.fields {
+		f.fields[i].in.Blur()
+	}
+	_ = f.fields[f.cur].in.Focus()
+}
+
+// answers is what each field ended up with, defaults included.
+func (f *form) answers() []string {
+	out := make([]string, len(f.fields))
+	for i := range f.fields {
+		out[i] = f.answer(i)
+	}
+	return out
+}
+
+func (f *form) answer(i int) string {
+	s := strings.TrimSpace(f.fields[i].in.Value())
+	if s == "" {
+		return f.fields[i].def
+	}
+	return s
+}
+
+// update takes a key. done is every field answered and accepted; cancel
+// is the person backing out, which leaves everything as it was.
+func (f *form) update(_ *styles, msg tea.Msg) (done, cancel bool) {
+	key, ok := msg.(tea.KeyPressMsg)
+	if !ok {
+		return false, false
+	}
+
+	switch key.String() {
+	case "esc":
+		return false, true
+
+	case keyEnter:
+		fld := &f.fields[f.cur]
+		got := f.answer(f.cur)
+
+		if fld.word != "" && got != fld.word {
+			return false, true
+		}
+		if fld.check != nil {
+			if err := fld.check(got); err != nil {
+				fld.err = trimPrefix(err)
+				return false, false
+			}
+		}
+		fld.err = ""
+
+		if f.cur == len(f.fields)-1 {
+			return true, false
+		}
+		f.cur++
+		f.focus()
+		return false, false
+	}
+
+	var cmd tea.Cmd
+	f.fields[f.cur].in, cmd = f.fields[f.cur].in.Update(msg)
+	_ = cmd // a text input's commands are cursor blinks; the cursor is virtual here
+	return false, false
+}
+
+// view draws the title, any warning, the fields answered so far, and the
+// one being answered with its default in brackets.
+func (f *form) view(st *styles) string {
+	var b strings.Builder
+	b.WriteString("\n")
+	b.WriteString(st.you.Render(f.title))
+	b.WriteString("\n\n")
+	for _, w := range f.warn {
+		b.WriteString(st.warn.Render(markWarn + w))
+		b.WriteString("\n")
+	}
+	for _, l := range f.lines {
+		b.WriteString(markInfo + st.dim.Render(l))
+		b.WriteString("\n")
+	}
+	if len(f.warn)+len(f.lines) > 0 {
+		b.WriteString("\n")
+	}
+
+	for i := range f.fields {
+		fld := &f.fields[i]
+		switch {
+		case i < f.cur:
+			b.WriteString(markInfo + st.dim.Render(fld.label+": ") + f.answer(i))
+		case i == f.cur:
+			b.WriteString(st.you.Render(markPrompt) + fld.label)
+			if fld.def != "" {
+				b.WriteString(" " + st.dim.Render("["+fld.def+"]"))
+			}
+			b.WriteString(": " + fld.in.View())
+			if fld.err != "" {
+				b.WriteString("\n" + st.warn.Render(markWarn+fld.err))
+			}
+		default:
+			continue
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}

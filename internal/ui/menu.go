@@ -267,7 +267,7 @@ func (a *App) menuEntries() (groups [][]menuItem, list []contacts.Contact) {
 
 	var people []menuItem
 	for i, c := range list {
-		people = append(people, menuItem{key: strconv.Itoa(i + 1), text: "call %s", name: c.Name})
+		people = append(people, menuItem{key: strconv.Itoa(i + 1), text: wordCall, name: c.Name})
 	}
 
 	return [][]menuItem{
@@ -280,7 +280,7 @@ func (a *App) menuEntries() (groups [][]menuItem, list []contacts.Contact) {
 		{
 			{key: "s", text: "settings"},
 			{key: "c", text: "clear the screen"},
-			{key: "h", text: "help"},
+			{key: "h", text: wordHelp},
 		},
 		{
 			{key: "r", text: "start over: forget everything", quiet: true},

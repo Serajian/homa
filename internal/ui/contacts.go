@@ -84,10 +84,10 @@ func (a *App) contactActions(ctx context.Context, c contacts.Contact) (quit bool
 	for {
 		groups := [][]menuItem{
 			{
-				{key: "c", text: "call %s", name: c.Name},
+				{key: "c", text: wordCall, name: c.Name},
 				{key: "r", text: "rename"},
 				{key: "a", text: "show their address"},
-				{key: "f", text: "forget", quiet: true},
+				{key: "f", text: wordForget, quiet: true},
 			},
 			{
 				{key: "b", text: wordBack, quiet: true},

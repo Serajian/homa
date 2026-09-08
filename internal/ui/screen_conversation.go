@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -13,9 +17,9 @@ import (
 // and the input keeps whatever was half-typed; that is what version 1
 // could not do, and the reason this interface exists.
 type conversation struct {
-	l     *line
-	nick  string // what they call themselves
-	files string // where received files go, as written in the settings
+	l        *line
+	nick     string // what they call themselves
+	filesDir string // where received files go, as written in the settings
 
 	pane  viewport.Model
 	in    textinput.Model
@@ -25,18 +29,42 @@ type conversation struct {
 	// ended is the far side gone or the line broken: the pane says so, the
 	// typed line stays, and Enter or /quit goes back to the menu.
 	ended bool
+
+	// offer is a file the far side is offering, waiting for y or n; the
+	// session's read goroutine is blocked on its reply meanwhile.
+	offer *fileOffered
+
+	// files is the last directory shown with /files, so /send can take a
+	// number out of it.
+	files *listing
+
+	// ctx and send are what /send needs to run a transfer in the
+	// background and report on it; downloadDir is where an accepted file
+	// goes, asked at the moment of accepting so a changed setting counts.
+	ctx         context.Context
+	send        func(tea.Msg)
+	downloadDir func() (string, error)
 }
 
 // The rows the conversation needs besides the pane: the rule and the input.
 const conversationChrome = 2
 
 func newConversation(st *styles, width, height int, l *line, nick, files string) *conversation {
+	return newConversationWith(context.Background(), st, width, height, l, nick, files, func(tea.Msg) {}, nil)
+}
+
+// newConversationWith is newConversation with the pieces file transfer
+// needs; tests of the pane and the input use the short form.
+func newConversationWith(
+	ctx context.Context, st *styles, width, height int, l *line, nick, files string,
+	send func(tea.Msg), downloadDir func() (string, error),
+) *conversation {
 	in := textinput.New()
 	in.Prompt = ""
 	in.SetVirtualCursor(true)
 	in.CharLimit = maxInputLen
 
-	c := &conversation{l: l, nick: nick, files: files, in: in, pane: viewport.New()}
+	c := &conversation{l: l, nick: nick, filesDir: files, in: in, pane: viewport.New(), ctx: ctx, send: send, downloadDir: downloadDir}
 	c.pane.MouseWheelEnabled = true
 	c.resize(width, height)
 	_ = c.in.Focus()
@@ -144,6 +172,20 @@ func (c *conversation) enter(st *styles) (tea.Cmd, bool) {
 		return nil, false
 	}
 	c.in.Reset()
+
+	// A yes or no while a file offer is waiting answers it. Checked before
+	// anything else, so the answer to a question on the screen is never
+	// sent to the peer as a message instead.
+	if c.offer != nil {
+		switch strings.ToLower(text) {
+		case "y", "yes":
+			c.answerOffer(st, true)
+			return nil, false
+		case "n", "no":
+			c.answerOffer(st, false)
+			return nil, false
+		}
+	}
 	c.hist.push(text)
 
 	if strings.HasPrefix(text, "/") {
@@ -163,7 +205,8 @@ func (c *conversation) enter(st *styles) (tea.Cmd, bool) {
 // command runs a slash command typed in the conversation. Files come in the
 // next step; here are the ones that need nothing but the line.
 func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
-	cmd, _, _ := strings.Cut(text, " ")
+	cmd, arg, _ := strings.Cut(text, " ")
+	arg = strings.TrimSpace(arg)
 	switch cmd {
 	case "/quit":
 		return closeLine(c.l), true
@@ -181,6 +224,25 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		c.lines = nil
 		c.pane.SetContent("")
 		return nil, false
+	case "/accept":
+		if c.offer == nil {
+			c.say(st.warn.Render(markWarn + errNoOffer.Error()))
+			return nil, false
+		}
+		c.answerOffer(st, true)
+		return nil, false
+	case "/reject":
+		if c.offer == nil {
+			c.say(st.warn.Render(markWarn + errNoOffer.Error()))
+			return nil, false
+		}
+		c.answerOffer(st, false)
+		return nil, false
+	case "/files", "/ls":
+		c.showFiles(st, arg)
+		return nil, false
+	case "/send":
+		return c.sendFile(st, arg), false
 	}
 	c.say(st.warn.Render(markWarn + "no such command: " + quote(cmd)))
 	c.say(markInfo + st.dim.Render("these are the commands; a line that is not one is sent as a message"))
@@ -199,3 +261,177 @@ const conversationCommands = `  /files [dir]  list a directory, numbered
   /who          who you are talking to
   /clear        wipe the screen
   /quit         leave the conversation, not homa`
+
+// offered is the far side offering a file: one line, who, what, how big,
+// what to type, and the offer parked until the answer.
+func (c *conversation) offered(st *styles, o fileOffered) {
+	c.offer = &o
+	c.say("")
+	c.say(markInfo + st.peer(c.l.name) + st.dim.Render(" offers ") + st.them.Render(o.name) +
+		st.dim.Render(" ("+humanBytes(o.size)+")"+st.sep()+"y to accept, n to reject"))
+}
+
+// answerOffer delivers the person's decision to the goroutine waiting on it.
+// Accepting asks the settings where files go, now rather than earlier, so a
+// setting changed since the offer counts.
+func (c *conversation) answerOffer(st *styles, accept bool) {
+	o := c.offer
+	c.offer = nil
+
+	ans := fileAnswer{accept: accept, reason: "declined"}
+	if accept {
+		dir, err := c.downloadDir()
+		if err != nil {
+			c.say(st.warn.Render(markWarn + err.Error()))
+			ans = fileAnswer{reason: "the receiver has nowhere to put it"}
+		} else {
+			ans = fileAnswer{accept: true, dir: dir}
+		}
+	}
+
+	select {
+	case o.reply <- ans:
+	default: // already answered, or timed out
+	}
+}
+
+// showFiles lists a directory in the pane and remembers it, so /send can
+// take a number from what was shown.
+func (c *conversation) showFiles(st *styles, arg string) {
+	dir, err := dirFromArg(c.files, arg)
+	if err != nil {
+		c.say(st.warn.Render(markWarn + reason(err)))
+		return
+	}
+
+	l, hidden, err := readDir(dir)
+	if err != nil {
+		c.say(st.warn.Render(markWarn + reason(err)))
+		return
+	}
+	c.files = l
+
+	c.say("")
+	c.say(markInfo + st.dim.Render(l.dir))
+	if len(l.entries) == 0 {
+		c.say(markInfo + st.dim.Render("  (empty)"))
+		return
+	}
+
+	// One width for every name, so the sizes line up and the eye can run
+	// down them.
+	width := 0
+	for _, e := range l.entries {
+		width = max(width, len(e.name)+1)
+	}
+	for i, e := range l.entries {
+		name, size := e.name, humanBytes(e.size)
+		if e.isDir {
+			name, size = e.name+"/", "dir"
+		}
+		c.say(markInfo + st.you.Render(fmt.Sprintf("%3d", i+1)) + st.dim.Render(")") + fmt.Sprintf(" %-*s  ", width, name) + st.dim.Render(size))
+	}
+	if hidden > 0 {
+		c.say(markInfo + st.dim.Render(fmt.Sprintf("  ... and %d more, not shown", hidden)))
+	}
+}
+
+// sendFile offers a file in the background, so the conversation carries on
+// while it transfers. Progress arrives as messages every progressStep percent.
+func (c *conversation) sendFile(st *styles, arg string) tea.Cmd {
+	if arg == "" {
+		c.say(st.warn.Render(markWarn + "which file? /send <path>, or /send <number> after /files"))
+		return nil
+	}
+
+	full, err := fileFromArg(c.files, arg)
+	if err != nil {
+		c.say(st.warn.Render(markWarn + reason(err)))
+		return nil
+	}
+
+	c.say(markInfo + st.dim.Render("offering "+full+", waiting for them to accept..."))
+
+	l, ctx, send := c.l, c.ctx, c.send
+	return func() tea.Msg {
+		last := -1
+		progress := func(sentBytes, total int64) {
+			step := percent(sentBytes, total) / progressStep
+			if step <= last {
+				return
+			}
+			last = step
+			send(sending{name: full, pct: step * progressStep})
+		}
+		if err := l.s.SendFile(ctx, full, progress); err != nil {
+			return sendFileFailed{name: full, err: err}
+		}
+		return sent{name: full}
+	}
+}
+
+// dirFromArg turns what was typed after /files into a directory: nothing
+// means the last listing or where homa is; a number picks a directory out
+// of the last listing, the same way /send picks a file; anything else is a
+// name resolved under the last listing, so a line that was just shown can
+// simply be typed.
+func dirFromArg(last *listing, arg string) (string, error) {
+	lastDir := ""
+	if last != nil {
+		lastDir = last.dir
+	}
+
+	if arg == "" {
+		if lastDir != "" {
+			return lastDir, nil
+		}
+		return ".", nil
+	}
+
+	if n, err := strconv.Atoi(arg); err == nil {
+		path, e, ok := last.path(n)
+		if !ok {
+			return "", fmt.Errorf("ui: there is no %d in the last listing", n)
+		}
+		if !e.isDir {
+			return "", fmt.Errorf("ui: %s is a file; /send %d sends it", e.name, n)
+		}
+		return path, nil
+	}
+
+	full, err := underListing(lastDir, arg)
+	if err != nil {
+		return "", err
+	}
+	// Naming a file here is somebody who has just read a listing and is
+	// reaching for one of its lines; the command they wanted is one word
+	// away and worth saying.
+	if st, err := os.Stat(full); err == nil && !st.IsDir() {
+		return "", fmt.Errorf("ui: %s is a file; /send %s sends it", arg, arg)
+	}
+	return full, nil
+}
+
+// fileFromArg turns what was typed after /send into a path. A number means
+// a line from the last listing; anything else is a name under it. So a file
+// actually named "2" cannot be sent as "/send 2" — "/send ./2" is how, and
+// that is the price of not needing a flag to tell the two apart.
+func fileFromArg(last *listing, arg string) (string, error) {
+	n, err := strconv.Atoi(arg)
+	if err != nil {
+		lastDir := ""
+		if last != nil {
+			lastDir = last.dir
+		}
+		return underListing(lastDir, arg)
+	}
+
+	path, e, ok := last.path(n)
+	if !ok {
+		return "", fmt.Errorf("ui: there is no %d in the last listing; /files to make one", n)
+	}
+	if e.isDir {
+		return "", fmt.Errorf("ui: %s is a directory; send an archive instead", e.name)
+	}
+	return path, nil
+}

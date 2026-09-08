@@ -65,11 +65,14 @@ const (
 	keyQuit   = "ctrl+c"
 )
 
-// The words on the way out of a screen. They are typed as well as shown,
-// so the menu and the switch that reads it have to agree on them.
+// The words on the menus. They are typed as well as shown, so a menu and
+// the switch that reads it have to agree on them.
 const (
-	wordBack = "back"
-	wordQuit = "quit homa"
+	wordBack   = "back"
+	wordQuit   = "quit homa"
+	wordHelp   = "help"
+	wordForget = "forget"
+	wordCall   = "call %s" // takes the name
 )
 
 // unknownMark goes in front of a name a peer chose for themselves, so it
