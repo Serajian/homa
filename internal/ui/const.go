@@ -153,19 +153,25 @@ const (
 	bannerSplit    = 24 // where the prompt ends and the bubble begins
 )
 
-// The banner's colors, as 24-bit ANSI sequences: cream for the prompt and
-// wordmark, green for the bubble, muted for the tagline. Like clearLine they
-// are constants homa writes to a terminal it owns, and they are written only
-// when style says color is wanted. Nothing that arrived over the network is
-// ever formatted into one.
+// Two palettes with the same four meanings. The 24-bit one is the logo's,
+// for a terminal that says it can show it (see styleFor); the other is the
+// sixteen ANSI colors every terminal has had for forty years, so nothing is
+// ever unreadable. "You" is the same in both: bold in the terminal's own
+// foreground, which is cream on a dark theme and ink on a light one — a
+// fixed cream would vanish on white. The warning is the terminal's own
+// yellow for the same reason.
+//
+// Like clearLine these are constants homa writes to a terminal it owns, and
+// only when style says color is wanted. Nothing that arrived over the
+// network is ever formatted into one.
 const (
-	colorCream = "\033[38;2;241;241;232m"
-	colorGreen = "\033[38;2;34;230;167m"
-	colorMuted = "\033[38;2;154;163;173m"
+	colorYou   = "\033[1m"
+	colorWarn  = "\033[33m"
 	colorReset = "\033[0m"
 
-	// colorWarn is the terminal's own yellow rather than a 24-bit value:
-	// every theme has a warning yellow of its own, and a warning should
-	// look like one there rather than like homa's brand.
-	colorWarn = "\033[33m"
+	color24Green = "\033[38;2;34;230;167m"
+	color24Muted = "\033[38;2;154;163;173m"
+
+	color16Green = "\033[32m"
+	color16Muted = "\033[90m"
 )

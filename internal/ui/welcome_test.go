@@ -101,9 +101,10 @@ func TestBannerDrawsBlocksOnAWideUTF8Terminal(t *testing.T) {
 func TestBannerColorIsBalancedAndOptional(t *testing.T) {
 	t.Parallel()
 
-	got := banner(style{color: true, unicode: true, width: 80})
-	starts := strings.Count(got, colorCream) + strings.Count(got, colorGreen) +
-		strings.Count(got, colorMuted)
+	st := style{color: true, truecolor: true, unicode: true, width: 80}
+	got := banner(st)
+	you, green, grey := st.code(roleYou), st.code(roleThem), st.code(roleDim)
+	starts := strings.Count(got, you) + strings.Count(got, green) + strings.Count(got, grey)
 	if starts == 0 {
 		t.Fatal("color was on, but nothing was painted")
 	}
@@ -114,7 +115,7 @@ func TestBannerColorIsBalancedAndOptional(t *testing.T) {
 	// The same banner without color is the same text with the escapes
 	// taken out, so a reader with color off is told exactly as much.
 	plain := banner(style{unicode: true, width: 80})
-	stripped := strings.NewReplacer(colorCream, "", colorGreen, "", colorMuted, "", colorReset, "").Replace(got)
+	stripped := strings.NewReplacer(you, "", green, "", grey, "", colorReset, "").Replace(got)
 	if stripped != plain {
 		t.Errorf("color changed the text:\n%q\n%q", stripped, plain)
 	}

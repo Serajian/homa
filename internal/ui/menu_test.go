@@ -58,10 +58,11 @@ func TestShowMenuPaintsAQuietLineGreyAndAKeyCream(t *testing.T) {
 	)
 
 	got := out.String()
-	if !strings.Contains(got, colorCream+"1"+colorReset+"  call "+colorGreen+"alice"+colorReset) {
+	you, green, grey := u.st.code(roleYou), u.st.code(roleThem), u.st.code(roleDim)
+	if !strings.Contains(got, you+"1"+colorReset+"  call "+green+"alice"+colorReset) {
 		t.Errorf("the ordinary line is not cream key + green name: %q", got)
 	}
-	if !strings.Contains(got, colorMuted+"q  quit homa"+colorReset) {
+	if !strings.Contains(got, grey+"q  quit homa"+colorReset) {
 		t.Errorf("the quiet line is not grey through: %q", got)
 	}
 }

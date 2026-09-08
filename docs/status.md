@@ -35,8 +35,10 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   is homa, the terminal's yellow is a warning — that reads the same with color
   off, menus in groups with the people first, a status line at the top of every
   conversation, a next step under every warning, and no escape sequence ever
-  written to anything that is not a terminal. `NO_COLOR`, `TERM=dumb` and
-  `-no-color` turn color off
+  written to anything that is not a terminal. The logo's 24-bit palette on a
+  terminal that declares it, the sixteen ANSI colors everywhere else, and "you"
+  in the terminal's own foreground so a light theme reads too. `NO_COLOR`,
+  `TERM=dumb` and `-no-color` turn color off
 - documentation with the four diagrams that matter drawn in mermaid, which
   GitHub renders, and the call-setup one also as a pannable page
 - `make lint` clean, hooks wired, Makefile covering build, format, lint, test,

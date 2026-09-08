@@ -51,10 +51,11 @@ func TestAPeerIsGreenAndTheirOwnMarkIsGrey(t *testing.T) {
 	u, _, _ := newTerminalTest(t)
 	u.st.color = true
 
-	if got := u.peer("alice"); got != colorGreen+"alice"+colorReset {
+	green, grey := u.st.code(roleThem), u.st.code(roleDim)
+	if got := u.peer("alice"); got != green+"alice"+colorReset {
 		t.Errorf("a contact's name = %q", got)
 	}
-	want := colorMuted + unknownMark + colorReset + colorGreen + "bob" + colorReset
+	want := grey + unknownMark + colorReset + green + "bob" + colorReset
 	if got := u.peer("~bob"); got != want {
 		t.Errorf("a self-chosen name = %q, want %q", got, want)
 	}
@@ -65,9 +66,9 @@ func TestAPeerIsGreenAndTheirOwnMarkIsGrey(t *testing.T) {
 func TestPaintPutsTheOuterColorBackAfterAnInnerReset(t *testing.T) {
 	t.Parallel()
 
-	st := style{color: true}
-	got := paint(st, colorMuted, "talking to "+paint(st, colorGreen, "alice")+" now")
-	want := colorMuted + "talking to " + colorGreen + "alice" + colorReset + colorMuted + " now" + colorReset
+	st := style{color: true, truecolor: true}
+	got := paint(st, roleDim, "talking to "+paint(st, roleThem, "alice")+" now")
+	want := color24Muted + "talking to " + color24Green + "alice" + colorReset + color24Muted + " now" + colorReset
 	if got != want {
 		t.Errorf("got  %q\nwant %q", got, want)
 	}
@@ -105,5 +106,51 @@ func TestATerminalStillGetsThePromptErased(t *testing.T) {
 
 	if got := out.String(); !strings.Contains(got, clearLine) {
 		t.Errorf("no erase on a terminal: %q", got)
+	}
+}
+
+// The logo's 24-bit palette is used only when the terminal says it can show
+// it; everything else gets the sixteen ANSI colors, which every terminal has.
+// "You" is bold in the terminal's own foreground in both, so it is visible on
+// a light theme as well as a dark one.
+func TestTheTerminalChoosesThePalette(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		env       map[string]string
+		truecolor bool
+	}{
+		{"nothing said", map[string]string{}, false},
+		{"COLORTERM=truecolor", map[string]string{"COLORTERM": "truecolor"}, true},
+		{"COLORTERM=24bit", map[string]string{"COLORTERM": "24bit"}, true},
+		{"TERM=xterm-direct", map[string]string{"TERM": "xterm-direct"}, true},
+		{"COLORTERM=256color is not it", map[string]string{"COLORTERM": "256color"}, false},
+		{"truecolor but NO_COLOR", map[string]string{"COLORTERM": "truecolor", "NO_COLOR": "1"}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			st := styleFor(80, env(c.env))
+			if st.truecolor != c.truecolor {
+				t.Errorf("truecolor = %v, want %v", st.truecolor, c.truecolor)
+			}
+		})
+	}
+
+	basic := style{color: true}
+	if got := paint(basic, roleThem, "x"); got != color16Green+"x"+colorReset {
+		t.Errorf("them without truecolor = %q", got)
+	}
+	if got := paint(basic, roleDim, "x"); got != color16Muted+"x"+colorReset {
+		t.Errorf("dim without truecolor = %q", got)
+	}
+	for _, st := range []style{basic, {color: true, truecolor: true}} {
+		if got := paint(st, roleYou, "x"); got != colorYou+"x"+colorReset {
+			t.Errorf("you = %q in %+v; want bold in the terminal's own color", got, st)
+		}
+		if got := paint(st, roleWarn, "x"); got != colorWarn+"x"+colorReset {
+			t.Errorf("warn = %q in %+v; want the terminal's yellow", got, st)
+		}
 	}
 }

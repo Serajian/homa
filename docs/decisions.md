@@ -166,6 +166,13 @@ homa talking (information, hints, the marks around a name), and the terminal's o
 is a warning. Nothing else is colored: the words people type are theirs. Four colors with
 one meaning each is the whole vocabulary; adding a fifth needs a fifth meaning.
 
+The meanings are fixed; the palette is the terminal's to choose. The logo's 24-bit
+green and grey are sent only when the terminal says it can show them (`COLORTERM`
+truecolor or 24bit, or a `-direct` TERM); everything else gets the sixteen ANSI colors,
+which every terminal has shown for forty years. "You" is bold in the terminal's own
+foreground in both — cream on a dark theme, ink on a light one — because a fixed cream
+disappears on white, and the warning is the terminal's own yellow for the same reason.
+
 **Color is never the only signal.** The marks in `ui/const.go` — `>` for a prompt, two
 spaces for information, `!` for a warning, `[name]` and `~` — carry the meaning on their
 own, and color only reinforces them. The colored output, with its escapes removed, is

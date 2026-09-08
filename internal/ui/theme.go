@@ -3,7 +3,8 @@ package ui
 import "strings"
 
 // What color means here comes from the logo: the prompt is cream and the
-// bubble is green, so cream is you and green is them. Grey is homa itself
+// bubble is green, so you are the terminal's own foreground, bold — cream
+// on a dark theme — and green is them. Grey is homa itself
 // talking — explanations, hints, the marks around a name — and the
 // terminal's own yellow is a warning. Nothing else is colored: the words
 // people type belong to them, not to the interface.
@@ -13,16 +14,16 @@ import "strings"
 // be the same text.
 
 // you paints something that is yours: the prompt, your label, a key to press.
-func (u *UI) you(s string) string { return paint(u.st, colorCream, s) }
+func (u *UI) you(s string) string { return paint(u.st, roleYou, s) }
 
 // them paints the far side: a name, a message label, a file arriving.
-func (u *UI) them(s string) string { return paint(u.st, colorGreen, s) }
+func (u *UI) them(s string) string { return paint(u.st, roleThem, s) }
 
 // dim paints homa's own voice: information, hints, metadata.
-func (u *UI) dim(s string) string { return paint(u.st, colorMuted, s) }
+func (u *UI) dim(s string) string { return paint(u.st, roleDim, s) }
 
 // warn paints a warning in the terminal's own yellow.
-func (u *UI) warn(s string) string { return paint(u.st, colorWarn, s) }
+func (u *UI) warn(s string) string { return paint(u.st, roleWarn, s) }
 
 // peer paints a name the way the far side is always shown: green, with the
 // unknownMark in grey when the name is one they chose for themselves, so

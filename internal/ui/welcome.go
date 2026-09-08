@@ -23,8 +23,8 @@ func (u *UI) DisableColor() {
 // alone so it can be tested for every kind of terminal without one.
 func banner(st style) string {
 	if !st.unicode || st.width < len(bannerIndent)+bannerCols {
-		return bannerIndent + paint(st, colorCream, bannerPlain) +
-			"   " + paint(st, colorMuted, bannerTagline)
+		return bannerIndent + paint(st, roleYou, bannerPlain) +
+			"   " + paint(st, roleDim, bannerTagline)
 	}
 
 	var b strings.Builder
@@ -37,16 +37,16 @@ func banner(st style) string {
 		}
 
 		b.WriteString(bannerIndent)
-		b.WriteString(paint(st, colorCream, string(prompt)))
-		b.WriteString(paint(st, colorGreen, string(bubble)))
+		b.WriteString(paint(st, roleYou, string(prompt)))
+		b.WriteString(paint(st, roleThem, string(bubble)))
 		b.WriteByte('\n')
 	}
 
 	b.WriteByte('\n')
 	b.WriteString(bannerIndent)
-	b.WriteString(paint(st, colorGreen, bannerWordmark))
+	b.WriteString(paint(st, roleThem, bannerWordmark))
 	b.WriteString("   ")
-	b.WriteString(paint(st, colorMuted, bannerTagline))
+	b.WriteString(paint(st, roleDim, bannerTagline))
 
 	return b.String()
 }
