@@ -36,8 +36,10 @@ left here.
 
 # Version 2
 
-Not to be started while version 1 is open. Detailed in
-[roadmap.md](roadmap.md).
+Version 1 is closed; this is the open front. Detailed in
+[roadmap.md](roadmap.md). The full-screen interface is in progress: design in
+[design/2026-09-08-full-screen-interface.md](design/2026-09-08-full-screen-interface.md),
+plan beside it.
 
 - **a full-screen interface**, on bubbletea and lipgloss: a chat pane, a
   separate input line, a contact list. It removes the two warts version 1 lives
