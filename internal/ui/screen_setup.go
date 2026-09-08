@@ -76,11 +76,12 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m setupModel) View() tea.View {
-	body := bannerBlock(m.st, m.width) + "\n" +
+	body := "\n" + bannerBlock(m.st, m.width) + "\n" +
 		markInfo + m.st.dim.Render("This is the first run, so two questions.") + "\n" +
 		m.form.view(m.st)
-	v := tea.NewView(frame(m.width, m.height, " "+m.st.dim.Render("homa"+m.st.sep()+"first run"), body,
-		" "+m.st.dim.Render("Enter answers · Esc stops")))
+	v := tea.NewView(frame(m.width, m.height,
+		header(m.st, m.width, brand(m.st), m.st.dim.Render("first run")), body,
+		footer(m.st, m.width, m.st.keys("Enter", "next", "Esc", "stop"))))
 	v.AltScreen = false
 	return v
 }

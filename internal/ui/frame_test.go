@@ -12,12 +12,12 @@ import (
 func TestFrameIsExactlyTheTerminalTall(t *testing.T) {
 	t.Parallel()
 
-	got := frame(40, 6, "status", "a\nb", "keys")
+	got := frame(40, 6, "status\nrule", "a\nb", "rule\nkeys")
 	lines := strings.Split(got, "\n")
 	if len(lines) != 6 {
 		t.Fatalf("%d lines, want 6:\n%s", len(lines), got)
 	}
-	if lines[0] != "status" || lines[1] != "a" || lines[2] != "b" || lines[5] != "keys" {
+	if lines[0] != "status" || lines[1] != "rule" || lines[2] != "a" || lines[3] != "b" || lines[5] != "keys" {
 		t.Errorf("wrong placement:\n%q", lines)
 	}
 	for i, l := range lines {
@@ -48,5 +48,51 @@ func TestFrameCutsALineWiderThanTheTerminal(t *testing.T) {
 	lines := strings.Split(got, "\n")
 	if len(lines) != 3 || lipgloss.Width(lines[1]) != 10 {
 		t.Errorf("got %q", lines)
+	}
+}
+
+// The header puts the status flush right and a rule under both; a
+// terminal too narrow for both keeps the name and drops the status.
+func TestHeaderRightAlignsTheStatus(t *testing.T) {
+	t.Parallel()
+
+	st := plainStyles(true)
+	got := header(st, 40, ">_ homa", "mohsen")
+	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("%d lines, want 2: %q", len(lines), got)
+	}
+	// two columns of margin on each side: the line is width-2 wide
+	if !strings.HasPrefix(lines[0], "  >_ homa") || !strings.HasSuffix(lines[0], "mohsen") || lipgloss.Width(lines[0]) != 38 {
+		t.Errorf("header line %q", lines[0])
+	}
+	if lipgloss.Width(lines[1]) != 39 {
+		t.Errorf("rule is %d wide", lipgloss.Width(lines[1]))
+	}
+	narrow := strings.Split(header(st, 14, ">_ homa", "mohsen"), "\n")[0]
+	if strings.Contains(narrow, "mohsen") {
+		t.Errorf("a narrow header kept the status: %q", narrow)
+	}
+}
+
+func TestBoxHasATitleOnItsEdgeAndPadsItsLines(t *testing.T) {
+	t.Parallel()
+
+	st := plainStyles(true)
+	got := st.box(st.boxThem(), 30, "incoming call", "a", "bb")
+	lines := strings.Split(got, "\n")
+	if len(lines) != 4 {
+		t.Fatalf("%d lines: %q", len(lines), got)
+	}
+	if lines[0] != "╭─ incoming call ────────────╮" {
+		t.Errorf("top = %q", lines[0])
+	}
+	for _, l := range lines {
+		if lipgloss.Width(l) != 30 {
+			t.Errorf("line %q is %d wide, want 30", l, lipgloss.Width(l))
+		}
+	}
+	if !strings.HasPrefix(lines[1], "│ a") || !strings.HasPrefix(lines[2], "│ bb") {
+		t.Errorf("lines %q", lines[1:3])
 	}
 }

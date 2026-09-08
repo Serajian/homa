@@ -19,7 +19,7 @@ func TestAnOfferIsAnsweredWithYAndTheDirectory(t *testing.T) {
 	reply := make(chan fileAnswer, 1)
 	c.offered(st, fileOffered{name: "notes.md", size: 14 * 1024, reply: reply})
 
-	if got := stripANSI(strings.Join(c.lines, "\n")); !strings.Contains(got, "~bob offers notes.md (14.0 KB)") || !strings.Contains(got, "y to accept, n to reject") {
+	if got := stripANSI(strings.Join(c.lines, "\n")); !strings.Contains(got, "~bob offers notes.md (14.0 KB)") || !strings.Contains(got, " y  accept") {
 		t.Errorf("offer line:\n%s", got)
 	}
 
@@ -53,7 +53,7 @@ func TestSlashFilesListsAndSlashSendPicksANumber(t *testing.T) {
 	c := newConversation(st, 80, 20, testLine("alice", true), "alice", "")
 	c.showFiles(st, dir)
 	got := stripANSI(strings.Join(c.lines, "\n"))
-	if !strings.Contains(got, "1) ../") || !strings.Contains(got, "archive/") || !strings.Contains(got, "notes.md") {
+	if !strings.Contains(got, "1  ../") || !strings.Contains(got, "archive/") || !strings.Contains(got, "notes.md") {
 		t.Errorf("listing:\n%s", got)
 	}
 

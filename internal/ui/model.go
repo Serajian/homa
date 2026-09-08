@@ -3,10 +3,12 @@ package ui
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/Serajian/homa/internal/contacts"
 	"github.com/Serajian/homa/internal/peer"
@@ -131,14 +133,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case peerSaid:
 		if m.conv != nil {
-			m.conv.say(m.st.dim.Render("[") + m.st.peer(m.conv.l.name) + m.st.dim.Render("]") + " " + msg.text)
+			m.conv.msg(m.st, m.conv.l.name, msg.text, false)
 		}
 		return m, nil
 	case peerLeft:
 		return m.peerLeft(msg.err)
 	case sendFailed:
 		if m.conv != nil && !m.conv.ended {
-			m.conv.say(m.st.warn.Render(markWarn + "could not send: " + reason(msg.err)))
+			m.conv.alert(m.st, "could not send: "+reason(msg.err))
 			m.conv.ended = true
 		}
 		return m, nil
@@ -191,20 +193,20 @@ func (m *model) fileEvent(msg tea.Msg) {
 		c.offered(st, msg)
 	case offerTimedOut:
 		c.offer = nil
-		c.say(st.warn.Render(markWarn + "the offer of " + msg.name + " timed out"))
-		c.say(markInfo + st.dim.Render(fmt.Sprintf("they can offer it again; y or n answers it within %s", offerAnswerTimeout)))
+		c.alert(st, "the offer of "+msg.name+" timed out")
+		c.note(st, st.dim.Render(fmt.Sprintf("they can offer it again; y or n answers it within %s", offerAnswerTimeout)))
 	case fileProgress:
-		c.say(markInfo + st.dim.Render("receiving ") + st.them.Render(msg.name) + st.dim.Render(fmt.Sprintf("%s%d%%", st.sep(), msg.pct)))
+		c.note(st, st.dim.Render("receiving ")+st.them.Render(msg.name)+"  "+progressBar(st, msg.pct)+st.dim.Render(fmt.Sprintf("  %d%%", msg.pct)))
 	case fileDone:
-		c.say(markInfo + st.them.Render(msg.name) + st.dim.Render(" saved to "+msg.path))
+		c.note(st, st.them.Render(msg.name)+st.dim.Render(" saved to "+msg.path))
 	case fileFailed:
-		c.say(st.warn.Render(markWarn + quote(msg.name) + ": " + reason(msg.err)))
+		c.alert(st, quote(msg.name)+": "+reason(msg.err))
 	case sending:
-		c.say(markInfo + st.dim.Render(fmt.Sprintf("sending: %d%%", msg.pct)))
+		c.note(st, st.dim.Render("sending ")+progressBar(st, msg.pct)+st.dim.Render(fmt.Sprintf("  %d%%", msg.pct)))
 	case sent:
-		c.say(markInfo + st.dim.Render("sent."))
+		c.note(st, st.dim.Render("sent."))
 	case sendFileFailed:
-		c.say(st.warn.Render(markWarn + reason(msg.err)))
+		c.alert(st, reason(msg.err))
 	}
 }
 
@@ -543,9 +545,9 @@ func (m model) peerLeft(err error) (tea.Model, tea.Cmd) {
 	m.conv.ended = true
 	m.conv.offer = nil
 	if err != nil {
-		m.conv.say(m.st.warn.Render(markWarn + "the conversation ended: " + reason(err)))
+		m.conv.alert(m.st, "the conversation ended: "+reason(err))
 	} else {
-		m.conv.say(markInfo + m.st.peer(m.conv.l.name) + m.st.dim.Render(" left the conversation."))
+		m.conv.note(m.st, m.st.peer(m.conv.l.name)+m.st.dim.Render(" left the conversation."))
 	}
 	return m, nil
 }
@@ -556,15 +558,15 @@ func (m model) View() tea.View {
 	case screenConversation:
 		status, body, keys = m.conv.view(m.st, m.width)
 	case screenContacts:
-		status, body, keys = m.statusLine(), m.withBarAndNotice(m.contacts.view(m.st)), m.keyLineFor("↑↓ choose · Enter open · b back · q quit")
+		status, body, keys = m.header(), m.withBarAndNotice(m.contacts.view(m.st)), m.footer("↑↓", "choose", "Enter", "open", "b", "back", "q", "quit")
 	case screenContact:
-		status, body, keys = m.statusLine(), m.withBarAndNotice("\n"+m.st.you.Render(m.contact.Name)+"\n\n"+renderGroups(m.st, contactGroups(m.contact), -1)), m.keyLineFor("press a key · b back")
+		status, body, keys = m.header(), m.withBarAndNotice("\n  "+m.st.you.Render(m.contact.Name)+"\n\n"+renderGroups(m.st, contactGroups(m.contact), -1)), m.footer("b", "back")
 	case screenForm:
-		status, body, keys = m.statusLine(), m.withBarAndNotice(m.form.view(m.st)), m.keyLineFor("Enter answers · Esc backs out")
+		status, body, keys = m.header(), m.withBarAndNotice(m.form.view(m.st)), m.footer("Enter", "next", "Esc", "back")
 	case screenPage:
-		status, body, keys = m.statusLine(), m.withBarAndNotice(m.page.view(m.st)), m.keyLineFor("any key goes back")
+		status, body, keys = m.header(), m.withBarAndNotice(m.page.view(m.st)), m.footer("any key", "back")
 	default:
-		status, body, keys = m.statusLine(), m.withBarAndNotice(m.menuBody()), m.keyLine()
+		status, body, keys = m.header(), m.withBarAndNotice(m.menuBody()), m.menuFooter()
 	}
 
 	v := tea.NewView(frame(m.width, m.height, status, body, keys))
@@ -574,54 +576,76 @@ func (m model) View() tea.View {
 	return v
 }
 
-// statusLine is the top line of every screen but the conversation: who
-// you are, how your address starts, and that homa is listening. Below
-// frameMinWidth only the name fits.
-func (m model) statusLine() string {
-	parts := []string{m.st.you.Render("homa"), "you are " + m.st.you.Render(m.deps.Cfg.Nick)}
+// header is the top of every screen but the conversation: the mark and
+// the name on the left; who you are, how your address starts, and that
+// homa is listening on the right. Below frameMinWidth only the name fits.
+func (m model) header() string {
+	parts := []string{m.st.you.Render(m.deps.Cfg.Nick)}
 	if m.width >= frameMinWidth && m.deps.Listener != nil {
-		parts = append(parts, preview(m.deps.Listener.Addr()), "listening")
+		parts = append(parts, preview(m.deps.Listener.Addr()), m.st.them.Render("●")+" listening")
 	}
-	return " " + m.st.dim.Render(strings.Join(parts, m.st.sep()))
+	return header(m.st, m.width, brand(m.st), m.st.dim.Render(strings.Join(parts, m.st.sep())))
 }
 
+func (m model) footer(pairs ...string) string { return footer(m.st, m.width, m.st.keys(pairs...)) }
+
+func (m model) menuFooter() string {
+	switch {
+	case m.bar.incoming != nil:
+		return m.footer("y", "take the call", "n", "not now")
+	case m.bar.outgoing != "":
+		return m.footer("Enter", "give up")
+	case len(m.menu.contacts) > 0:
+		return m.footer("↑↓", "choose", "Enter", "call", "1-"+strconv.Itoa(len(m.menu.contacts)), "call by number")
+	}
+	return m.footer("n", "add a contact", "a", "your address", "h", "help")
+}
+
+// menuBody is the people on the left and homa's own keys on the right when
+// there is room, one under the other when there is not. The people come
+// first either way, because calling somebody is what the screen is for.
 func (m model) menuBody() string {
-	return "\n" + m.st.you.Render("What now?") + "\n\n" + m.menu.view(m.st)
+	groups := m.menu.groups
+	people := renderGroups(m.st, [][]menuItem{groups[0]}, m.menu.cursor)
+	if len(groups[0]) == 0 {
+		people = markInfo + "  " + m.st.dim.Render("nobody yet: n adds a contact, a shows your address to give them") + "\n"
+	}
+	rest := renderGroups(m.st, groups[1:], -1)
+
+	if m.width < menuTwoColumns {
+		return "\n  " + m.st.label.Render("PEOPLE") + "\n\n" + people + "\n  " + m.st.label.Render("HOMA") + "\n\n" + rest
+	}
+
+	left := lipgloss.NewStyle().Width(menuLeftColumn).Render("  " + m.st.label.Render("PEOPLE") + "\n\n" + people)
+	right := "  " + m.st.label.Render("HOMA") + "\n\n" + rest
+	return "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
 // withBarAndNotice puts the call bar and the notice under a body.
 func (m model) withBarAndNotice(body string) string {
 	var b strings.Builder
 	b.WriteString(body)
-	if bar := m.bar.view(m.st, time.Now()); bar != "" {
+	if bar := m.bar.view(m.st, m.width, time.Now()); bar != "" {
 		b.WriteString("\n" + bar + "\n")
 	}
 	if m.notice != "" {
 		b.WriteString("\n")
 		if m.warn {
-			b.WriteString(m.st.warn.Render(markWarn + m.notice))
+			b.WriteString("  " + m.st.warn.Render(m.notice))
 		} else {
-			b.WriteString(markInfo + m.st.dim.Render(m.notice))
+			b.WriteString("  " + m.st.dim.Render(m.notice))
 		}
 		b.WriteString("\n")
 	}
 	return b.String()
 }
 
-func (m model) keyLine() string {
-	if m.bar.incoming != nil {
-		return m.keyLineFor("y take the call · n not now")
+// progressBar is ten cells of a file's progress, in the far side's color for
+// what has arrived. Full and light blocks, which every terminal font has.
+func progressBar(st *styles, pct int) string {
+	done := min(max(pct/10, 0), 10)
+	if !st.unicode {
+		return st.them.Render(strings.Repeat("#", done)) + st.dim.Render(strings.Repeat("-", 10-done))
 	}
-	if m.bar.outgoing != "" {
-		return m.keyLineFor("Enter to give up")
-	}
-	return m.keyLineFor("↑↓ choose · Enter call · or press a key")
-}
-
-// keyLineFor is the bottom line, in grey, ASCII when the terminal is.
-func (m model) keyLineFor(keys string) string {
-	if !m.st.unicode {
-		keys = strings.NewReplacer("↑↓", "up/down", " · ", " - ").Replace(keys)
-	}
-	return " " + m.st.dim.Render(keys)
+	return st.them.Render(strings.Repeat("█", done)) + st.dim.Render(strings.Repeat("░", 10-done))
 }

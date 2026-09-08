@@ -43,14 +43,31 @@ const (
 	sepASCII   = "  -  "
 )
 
-// The frame every screen is drawn in: one status line at the top, one line
-// of keys at the bottom, the body between. Below frameMinWidth the frame
-// keeps its text and drops its decorations, because a 40-column terminal is
-// still a terminal.
+// The frame every screen is drawn in: a two-line header at the top, a
+// two-line footer at the bottom, the body between. Below frameMinWidth the
+// frame keeps its text and drops its decorations, because a 40-column
+// terminal is still a terminal.
 const (
-	statusHeight  = 1
-	keysHeight    = 1
+	headerHeight  = 2 // the header line and its rule
+	footerHeight  = 2 // the rule and the key line
 	frameMinWidth = 50
+
+	// menuTwoColumns is the width from which the menu shows the people and
+	// homa's own keys side by side; narrower, one under the other.
+	// menuLeftColumn is the people's column then.
+	menuTwoColumns = 72
+	menuLeftColumn = 44
+
+	// inputBoxHeight is the boxed input line of a conversation: a border,
+	// the line, a border.
+	inputBoxHeight = 3
+
+	// formFieldWidth is the box a form's answer is typed in.
+	formFieldWidth = 44
+
+	// nameColumn is where message text starts in a conversation: names are
+	// right-aligned to it, so every line of text begins at the same place.
+	nameColumn = 9
 )
 
 // The keys the screens match on, as bubbletea names them
@@ -168,7 +185,12 @@ const bannerArt = `   ▄▄▄                     █████████�
 
 // bannerPlain is the banner for a terminal that cannot show the blocks, a
 // terminal too narrow for them, and output that is not a terminal at all.
-const bannerPlain = ">_ [...] HOMA"
+// bannerPlainMark is its first half, the prompt, which is the mark beside
+// the name in every header.
+const (
+	bannerPlain     = ">_ [...] HOMA"
+	bannerPlainMark = ">_"
+)
 
 const (
 	bannerWordmark = "H O M A"

@@ -90,9 +90,9 @@ func TestACallIsTakenAndAMessageGoesEachWay(t *testing.T) {
 			teatest.WithDuration(5*time.Second))
 	}
 
-	waitFor("What now?")
+	waitFor("PEOPLE")
 	tm.Send(callArrived{&line{conn: connA, s: sessA, name: "~bob", deadline: time.Now().Add(time.Minute)}})
-	waitFor("~bob is calling")
+	waitFor("is calling") // the name before it is painted
 
 	// B waits to be let in, then reads.
 	bIn := make(chan error, 1)
@@ -106,7 +106,7 @@ func TestACallIsTakenAndAMessageGoesEachWay(t *testing.T) {
 	}()
 
 	tm.Type("y")
-	waitFor("talking to ~bob")
+	waitFor("talking to")
 	if err := <-bIn; err != nil {
 		t.Fatalf("B was not let in: %v", err)
 	}
@@ -125,11 +125,11 @@ func TestACallIsTakenAndAMessageGoesEachWay(t *testing.T) {
 	if err := b.s.SendText("khoobam"); err != nil {
 		t.Fatalf("B sending: %v", err)
 	}
-	waitFor("[~bob] khoobam")
+	waitFor("│ khoobam") // the name before it is painted, so an escape sits between them
 
 	tm.Type("/quit")
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
-	waitFor("What now?")
+	waitFor("PEOPLE")
 
 	tm.Send(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	tm.WaitFinished(t, teatest.WithFinalTimeout(5*time.Second))

@@ -75,7 +75,7 @@ func TestTheContactsScreenOpensOneAndComesBack(t *testing.T) {
 		t.Fatalf("b did not open the contacts screen: %v", m.screen)
 	}
 	view := stripANSI(m.View().Content)
-	if !strings.Contains(view, "contacts") || !strings.Contains(view, "1  alice") || !strings.Contains(view, "2  bob") {
+	if !strings.Contains(view, "CONTACTS") || !strings.Contains(view, "1  alice") || !strings.Contains(view, "2  bob") {
 		t.Errorf("contacts screen:\n%s", view)
 	}
 

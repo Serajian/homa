@@ -82,19 +82,19 @@ func TestMenuViewIsGroupedAndMarksTheCursor(t *testing.T) {
 
 	mm := newMenu(bookWith(t, "alice", "~bob"))
 	got := stripANSI(mm.view(newStyles(true)))
-	want := "  ▸ 1  call alice\n" +
-		"    2  call ~bob\n" +
+	want := "  ▸  1  call alice\n" +
+		"     2  call ~bob\n" +
 		"\n" +
-		"    n  add a contact\n" +
-		"    b  contacts: rename, forget, call\n" +
-		"    a  show my address\n" +
+		"     n  add a contact\n" +
+		"     b  contacts: rename, forget, call\n" +
+		"     a  show my address\n" +
 		"\n" +
-		"    s  settings\n" +
-		"    c  clear the screen\n" +
-		"    h  help\n" +
+		"     s  settings\n" +
+		"     c  clear the screen\n" +
+		"     h  help\n" +
 		"\n" +
-		"    r  start over: forget everything\n" +
-		"    q  quit homa\n"
+		"     r  start over: forget everything\n" +
+		"     q  quit homa\n"
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}

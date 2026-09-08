@@ -10,6 +10,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // conversation is one open line: a pane of what was said, and the line
@@ -46,9 +47,6 @@ type conversation struct {
 	downloadDir func() (string, error)
 }
 
-// The rows the conversation needs besides the pane: the rule and the input.
-const conversationChrome = 2
-
 func newConversation(st *styles, width, height int, l *line, nick, files string) *conversation {
 	return newConversationWith(context.Background(), st, width, height, l, nick, files, func(tea.Msg) {}, nil)
 }
@@ -69,23 +67,44 @@ func newConversationWith(
 	c.resize(width, height)
 	_ = c.in.Focus()
 
-	if l.known {
-		c.say(st.dim.Render("talking to ") + st.peer(l.name) + st.dim.Render(st.sep()+"they call themselves ") + st.dim.Render(quote(nick)))
-	} else {
-		c.say(st.dim.Render("talking to ") + st.peer(l.name) + st.dim.Render(st.sep()+"the name is theirs; they are not in your contacts"))
+	// Who this is lives in the header; the pane opens on what needs saying
+	// once: that a name not in the book is theirs, not yours.
+	if !l.known {
+		c.note(st, st.dim.Render("the name is theirs; they are not in your contacts"))
 	}
-	c.say(st.dim.Render("/help commands" + st.sep() + "/quit leave" + st.sep() + "files go to " + files))
-	c.say("")
 	return c
+}
+
+// msg is a line somebody said: the name right-aligned to the name column,
+// a faint bar, the words. Every message's text starts at the same place,
+// which is what makes a conversation readable at a glance.
+func (c *conversation) msg(st *styles, who, text string, mine bool) {
+	name := st.peer(who)
+	if mine {
+		name = st.you.Render(who)
+	}
+	pad := max(nameColumn-lipgloss.Width(who), 0)
+	c.say(strings.Repeat(" ", pad) + name + " " + st.dim.Render("│") + " " + text)
+}
+
+// note is homa's own line in the pane, in the column the words use, with
+// no name: what a file is doing, what a command said.
+func (c *conversation) note(st *styles, styled string) {
+	c.say(strings.Repeat(" ", nameColumn+1) + st.dim.Render("│") + " " + styled)
+}
+
+// alert is note in the terminal's yellow, bar included.
+func (c *conversation) alert(st *styles, text string) {
+	c.say(strings.Repeat(" ", nameColumn+1) + st.warn.Render("│ "+text))
 }
 
 func quote(s string) string { return "\"" + s + "\"" }
 
 func (c *conversation) resize(width, height int) {
-	paneHeight := max(height-statusHeight-keysHeight-conversationChrome, 1)
+	paneHeight := max(height-headerHeight-footerHeight-inputBoxHeight-1, 1)
 	c.pane.SetWidth(width)
 	c.pane.SetHeight(paneHeight)
-	c.in.SetWidth(max(width-len("[me] ")-1, 10))
+	c.in.SetWidth(max(width-8, 10))
 	c.pane.SetContent(strings.Join(c.lines, "\n"))
 	c.pane.GotoBottom()
 }
@@ -101,27 +120,25 @@ func (c *conversation) say(s string) {
 	}
 }
 
-// view is the conversation's three regions.
+// view is the conversation's three regions: the header saying who, the
+// pane, and the input in its box, with the keys under it.
 func (c *conversation) view(st *styles, width int) (status, body, keys string) {
-	status = " " + st.dim.Render("talking to ") + st.peer(c.l.name)
-	if c.ended {
-		status += st.dim.Render(st.sep() + "the line is closed")
-	}
-
-	rule := strings.Repeat("┄", max(width, 1))
-	if !st.unicode {
-		rule = strings.Repeat("-", max(width, 1))
-	}
-
-	body = c.pane.View() + "\n" + st.rule.Render(rule) + "\n" +
-		st.dim.Render("[") + st.you.Render(selfNick) + st.dim.Render("]") + " " + c.in.View()
-
-	keys = " " + st.dim.Render("PgUp/PgDn scroll · ↑↓ history · /help · /quit")
-	if !st.unicode {
-		keys = " " + st.dim.Render("PgUp/PgDn scroll - up/down history - /help - /quit")
+	who := st.dim.Render("talking to ") + st.peer(c.l.name)
+	if c.l.known {
+		who += st.dim.Render(st.sep() + "they call themselves " + quote(c.nick))
 	}
 	if c.ended {
-		keys = " " + st.dim.Render("Enter to go back to the menu")
+		who += st.dim.Render(st.sep() + "the line is closed")
+	}
+	status = header(st, width, brand(st)+"   "+who, st.dim.Render("files → "+c.filesDir))
+
+	body = c.pane.View() + "\n\n  " + strings.ReplaceAll(
+		st.box(st.boxDim(), width-4, "", c.in.View()), "\n", "\n  ")
+
+	if c.ended {
+		keys = footer(st, width, st.keys("Enter", "back to the menu"))
+	} else {
+		keys = footer(st, width, st.keys("PgUp PgDn", "scroll", "↑ ↓", "history", "/help", "commands", "/quit", "leave"))
 	}
 	return status, body, keys
 }
@@ -192,7 +209,7 @@ func (c *conversation) enter(st *styles) (tea.Cmd, bool) {
 		return c.command(st, text)
 	}
 
-	c.say(st.dim.Render("[") + st.you.Render(selfNick) + st.dim.Render("]") + " " + text)
+	c.msg(st, selfNick, text, true)
 	l := c.l
 	return func() tea.Msg {
 		if err := l.s.SendText(text); err != nil {
@@ -211,13 +228,15 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 	case "/quit":
 		return closeLine(c.l), true
 	case "/help", "/":
-		c.say(st.dim.Render(conversationCommands))
+		for _, l := range strings.Split(conversationCommands, "\n") {
+			c.note(st, st.dim.Render(strings.TrimSpace(l)))
+		}
 		return nil, false
 	case "/who":
 		if c.l.known {
-			c.say(markInfo + st.peer(c.l.name) + st.dim.Render(", calling themselves "+quote(c.nick)))
+			c.note(st, st.peer(c.l.name)+st.dim.Render(", calling themselves "+quote(c.nick)))
 		} else {
-			c.say(markInfo + st.peer(c.l.name) + st.dim.Render(", which is what they call themselves"))
+			c.note(st, st.peer(c.l.name)+st.dim.Render(", which is what they call themselves"))
 		}
 		return nil, false
 	case "/clear":
@@ -226,14 +245,14 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		return nil, false
 	case "/accept":
 		if c.offer == nil {
-			c.say(st.warn.Render(markWarn + errNoOffer.Error()))
+			c.alert(st, errNoOffer.Error())
 			return nil, false
 		}
 		c.answerOffer(st, true)
 		return nil, false
 	case "/reject":
 		if c.offer == nil {
-			c.say(st.warn.Render(markWarn + errNoOffer.Error()))
+			c.alert(st, errNoOffer.Error())
 			return nil, false
 		}
 		c.answerOffer(st, false)
@@ -244,9 +263,11 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 	case "/send":
 		return c.sendFile(st, arg), false
 	}
-	c.say(st.warn.Render(markWarn + "no such command: " + quote(cmd)))
-	c.say(markInfo + st.dim.Render("these are the commands; a line that is not one is sent as a message"))
-	c.say(st.dim.Render(conversationCommands))
+	c.alert(st, "no such command: "+quote(cmd))
+	c.note(st, st.dim.Render("these are the commands; a line that is not one is sent as a message"))
+	for _, l := range strings.Split(conversationCommands, "\n") {
+		c.note(st, st.dim.Render(strings.TrimSpace(l)))
+	}
 	return nil, false
 }
 
@@ -267,8 +288,8 @@ const conversationCommands = `  /files [dir]  list a directory, numbered
 func (c *conversation) offered(st *styles, o fileOffered) {
 	c.offer = &o
 	c.say("")
-	c.say(markInfo + st.peer(c.l.name) + st.dim.Render(" offers ") + st.them.Render(o.name) +
-		st.dim.Render(" ("+humanBytes(o.size)+")"+st.sep()+"y to accept, n to reject"))
+	c.note(st, st.peer(c.l.name)+st.dim.Render(" offers ")+st.them.Render(o.name)+
+		st.dim.Render(" ("+humanBytes(o.size)+")   ")+st.keys("y", "accept", "n", "reject"))
 }
 
 // answerOffer delivers the person's decision to the goroutine waiting on it.
@@ -282,7 +303,7 @@ func (c *conversation) answerOffer(st *styles, accept bool) {
 	if accept {
 		dir, err := c.downloadDir()
 		if err != nil {
-			c.say(st.warn.Render(markWarn + err.Error()))
+			c.alert(st, err.Error())
 			ans = fileAnswer{reason: "the receiver has nowhere to put it"}
 		} else {
 			ans = fileAnswer{accept: true, dir: dir}
@@ -300,21 +321,21 @@ func (c *conversation) answerOffer(st *styles, accept bool) {
 func (c *conversation) showFiles(st *styles, arg string) {
 	dir, err := dirFromArg(c.files, arg)
 	if err != nil {
-		c.say(st.warn.Render(markWarn + reason(err)))
+		c.alert(st, reason(err))
 		return
 	}
 
 	l, hidden, err := readDir(dir)
 	if err != nil {
-		c.say(st.warn.Render(markWarn + reason(err)))
+		c.alert(st, reason(err))
 		return
 	}
 	c.files = l
 
 	c.say("")
-	c.say(markInfo + st.dim.Render(l.dir))
+	c.note(st, st.dim.Render(l.dir))
 	if len(l.entries) == 0 {
-		c.say(markInfo + st.dim.Render("  (empty)"))
+		c.note(st, st.dim.Render("(empty)"))
 		return
 	}
 
@@ -329,10 +350,10 @@ func (c *conversation) showFiles(st *styles, arg string) {
 		if e.isDir {
 			name, size = e.name+"/", "dir"
 		}
-		c.say(markInfo + st.you.Render(fmt.Sprintf("%3d", i+1)) + st.dim.Render(")") + fmt.Sprintf(" %-*s  ", width, name) + st.dim.Render(size))
+		c.note(st, st.chip(fmt.Sprintf("%2d", i+1))+fmt.Sprintf(" %-*s  ", width, name)+st.dim.Render(size))
 	}
 	if hidden > 0 {
-		c.say(markInfo + st.dim.Render(fmt.Sprintf("  ... and %d more, not shown", hidden)))
+		c.note(st, st.dim.Render(fmt.Sprintf("... and %d more, not shown", hidden)))
 	}
 }
 
@@ -340,17 +361,17 @@ func (c *conversation) showFiles(st *styles, arg string) {
 // while it transfers. Progress arrives as messages every progressStep percent.
 func (c *conversation) sendFile(st *styles, arg string) tea.Cmd {
 	if arg == "" {
-		c.say(st.warn.Render(markWarn + "which file? /send <path>, or /send <number> after /files"))
+		c.alert(st, "which file? /send <path>, or /send <number> after /files")
 		return nil
 	}
 
 	full, err := fileFromArg(c.files, arg)
 	if err != nil {
-		c.say(st.warn.Render(markWarn + reason(err)))
+		c.alert(st, reason(err))
 		return nil
 	}
 
-	c.say(markInfo + st.dim.Render("offering "+full+", waiting for them to accept..."))
+	c.note(st, st.dim.Render("offering "+full+", waiting for them to accept..."))
 
 	l, ctx, send := c.l, c.ctx, c.send
 	return func() tea.Msg {

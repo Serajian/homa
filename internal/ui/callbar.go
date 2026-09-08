@@ -3,9 +3,11 @@ package ui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // callBar is the line under the body while a call is on the way in or
@@ -34,24 +36,28 @@ func (b *callBar) clear() {
 	*b = callBar{}
 }
 
-// view draws the bar for this moment, or nothing.
-func (b *callBar) view(st *styles, now time.Time) string {
+// view draws the bar for this moment, or nothing: a box, the one place the
+// interface draws in the far side's color, because a call is the one
+// moment that needs the whole screen's attention.
+func (b *callBar) view(st *styles, width int, now time.Time) string {
 	left := b.deadline.Sub(now).Round(time.Second)
 	if left < 0 {
 		left = 0 // "-1s" is a countdown nobody trusts again
 	}
+	inner := width - 4 - 2 - 1 // the box's inside, less its padding
 
 	switch {
 	case b.incoming != nil:
-		return markInfo + st.peer(b.incoming.name) + " is calling" + st.sep() +
-			st.dim.Render(left.String()) + "        " +
-			st.you.Render("y") + st.dim.Render(" take it") + st.dim.Render(" · ") +
-			st.you.Render("n") + st.dim.Render(" not now")
+		who := " " + st.peer(b.incoming.name) + " is calling"
+		who += strings.Repeat(" ", max(inner-lipgloss.Width(who)-lipgloss.Width(left.String())-1, 0)) + st.dim.Render(left.String())
+		return "  " + strings.ReplaceAll(st.box(st.boxThem(), width-4, "incoming call",
+			who, " "+st.keys("y", "take the call", "n", "not now")), "\n", "\n  ")
 
 	case b.outgoing != "":
-		return markInfo + st.dim.Render("calling ") + st.peer(b.outgoing) +
-			st.dim.Render(st.sep()+"waiting for them to answer"+st.sep()+left.String()+st.sep()) +
-			st.you.Render("Enter") + st.dim.Render(" to give up")
+		who := " " + st.dim.Render("calling ") + st.peer(b.outgoing) + st.dim.Render(st.sep()+"waiting for them to answer")
+		who += strings.Repeat(" ", max(inner-lipgloss.Width(who)-lipgloss.Width(left.String())-1, 0)) + st.dim.Render(left.String())
+		return "  " + strings.ReplaceAll(st.box(st.boxDim(), width-4, "calling",
+			who, " "+st.keys("Enter", "give up")), "\n", "\n  ")
 	}
 	return ""
 }

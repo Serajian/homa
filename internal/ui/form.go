@@ -112,20 +112,19 @@ func (f *form) update(_ *styles, msg tea.Msg) (done, cancel bool) {
 	return false, false
 }
 
-// view draws the title, any warning, the fields answered so far, and the
-// one being answered with its default in brackets.
+// view draws the title, any warning, then each field: its label above, the
+// answer in a box — the one being answered with the cursor and a plain
+// frame, the ones to come faint, the ones done showing what was answered.
 func (f *form) view(st *styles) string {
 	var b strings.Builder
-	b.WriteString("\n")
+	b.WriteString("\n  ")
 	b.WriteString(st.you.Render(f.title))
 	b.WriteString("\n\n")
 	for _, w := range f.warn {
-		b.WriteString(st.warn.Render(markWarn + w))
-		b.WriteString("\n")
+		b.WriteString("  " + st.warn.Render(w) + "\n")
 	}
 	for _, l := range f.lines {
-		b.WriteString(markInfo + st.dim.Render(l))
-		b.WriteString("\n")
+		b.WriteString("  " + st.dim.Render(l) + "\n")
 	}
 	if len(f.warn)+len(f.lines) > 0 {
 		b.WriteString("\n")
@@ -133,20 +132,27 @@ func (f *form) view(st *styles) string {
 
 	for i := range f.fields {
 		fld := &f.fields[i]
+		b.WriteString("  " + st.dim.Render(fld.label))
+		if fld.def != "" && i >= f.cur {
+			b.WriteString(st.dim.Render("  [" + fld.def + "]"))
+		}
+		b.WriteString("\n")
+
+		var inside string
+		frame := *st.boxDim()
 		switch {
 		case i < f.cur:
-			b.WriteString(markInfo + st.dim.Render(fld.label+": ") + f.answer(i))
+			inside = st.dim.Render(f.answer(i))
+			frame = frame.Faint(true)
 		case i == f.cur:
-			b.WriteString(st.you.Render(markPrompt) + fld.label)
-			if fld.def != "" {
-				b.WriteString(" " + st.dim.Render("["+fld.def+"]"))
-			}
-			b.WriteString(": " + fld.in.View())
-			if fld.err != "" {
-				b.WriteString("\n" + st.warn.Render(markWarn+fld.err))
-			}
+			inside = fld.in.View()
 		default:
-			continue
+			inside = st.dim.Render(fld.def)
+			frame = frame.Faint(true)
+		}
+		b.WriteString("  " + strings.ReplaceAll(st.box(&frame, formFieldWidth, "", inside), "\n", "\n  ") + "\n")
+		if i == f.cur && fld.err != "" {
+			b.WriteString("  " + st.warn.Render(fld.err) + "\n")
 		}
 		b.WriteString("\n")
 	}

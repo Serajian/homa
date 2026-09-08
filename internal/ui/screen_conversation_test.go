@@ -36,7 +36,7 @@ func TestAMessageArrivingWhileTypingDoesNotTouchTheInput(t *testing.T) {
 	if !strings.Contains(plain, "[alice] salam") {
 		t.Errorf("the message is not in the pane:\n%s", plain)
 	}
-	if !strings.Contains(plain, "[me] hi") {
+	if !strings.Contains(plain, "hi") {
 		t.Errorf("the input line is not drawn with what was typed:\n%s", plain)
 	}
 }
@@ -65,11 +65,11 @@ func TestTheHeaderSaysWhoAndWhereFilesGo(t *testing.T) {
 
 	st := newStyles(true)
 	c := newConversation(st, 80, 12, testLine("~bob", false), "bob", "~/homa-files")
-	_, body, _ := c.view(st, 80)
-	plain := stripANSI(body)
-	for _, want := range []string{"talking to ~bob", "the name is theirs; they are not in your contacts", "/help commands", "files go to ~/homa-files"} {
+	status, body, keys := c.view(st, 80)
+	plain := stripANSI(status + body + keys)
+	for _, want := range []string{"talking to ~bob", "the name is theirs; they are not in your contacts", "files → ~/homa-files", "/help", "/quit"} {
 		if !strings.Contains(plain, want) {
-			t.Errorf("header lacks %q:\n%s", want, plain)
+			t.Errorf("conversation lacks %q:\n%s", want, plain)
 		}
 	}
 }

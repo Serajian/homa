@@ -41,17 +41,17 @@ func renderGroups(st *styles, groups [][]menuItem, cursor int) string {
 			if gi == 0 && i == cursor {
 				cur = mark
 			}
-			key := fmt.Sprintf("%-*s", width, it.key)
+			key := st.chip(fmt.Sprintf("%-*s", width, it.key))
 			text := it.text
 			if it.name != "" {
 				text = fmt.Sprintf(it.text, st.peer(it.name))
 			}
 
-			b.WriteString(markInfo)
+			b.WriteString(markInfo + cur + key + " ")
 			if it.quiet {
-				b.WriteString(st.dim.Render(cur + key + "  " + text))
+				b.WriteString(st.dim.Render(text))
 			} else {
-				b.WriteString(cur + st.you.Render(key) + "  " + text)
+				b.WriteString(text)
 			}
 			b.WriteString("\n")
 		}
@@ -86,7 +86,7 @@ func (cm *contactsModel) groups() [][]menuItem {
 }
 
 func (cm *contactsModel) view(st *styles) string {
-	return "\n" + st.you.Render("contacts") + "\n\n" + renderGroups(st, cm.groups(), cm.cursor)
+	return "\n  " + st.label.Render("CONTACTS") + "\n\n" + renderGroups(st, cm.groups(), cm.cursor)
 }
 
 // contactAction is what a key on the contacts screens asks for.
@@ -176,7 +176,7 @@ type page struct {
 }
 
 func (p *page) view(st *styles) string {
-	return "\n" + st.you.Render(p.title) + "\n\n" + p.body
+	return "\n  " + st.you.Render(p.title) + "\n\n" + p.body
 }
 
 // helpText is the page a person reaches with h at the menu: what the menu

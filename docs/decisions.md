@@ -205,3 +205,16 @@ changes that, because its keys would live on the same machine. Encrypting again 
 tunnel would therefore protect nothing the tunnel does not, while adding code that can be
 wrong and confidence that is not earned. Where a second layer *does* belong is the key at
 rest — a passphrase held in a head rather than a file — and that is version 3 work.
+
+**The look: one header, one footer, keycaps, a name column, and three boxes.** Every
+screen has the mark and the name top-left, what the screen is about flush right, and a
+faint rule under both; the keys that matter sit under a rule at the bottom, drawn as
+keycaps — the key on a slate chip, its meaning in grey — so they are found by one glance
+down a column. In a conversation the names are right-aligned to one column with a faint
+bar after them, so every message's words start in the same place. Boxes are drawn in three
+places only, each with a job: an incoming call, in the far side's green, because it is the
+one moment that needs the whole screen; the input line, so it is clear where typing goes; a
+form's field, so it is clear what is being asked. Nothing else is boxed and nothing is
+underlined, because a frame that is everywhere is a frame nobody sees. The menu puts the
+people on the left and homa's own keys on the right when the terminal is wide enough, and
+one under the other when it is not.
