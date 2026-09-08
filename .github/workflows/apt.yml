@@ -1,0 +1,70 @@
+# Publishes the .deb files of a release to the apt repository on GitHub
+# Pages: the gh-pages branch of this repository, served at
+# https://serajian.github.io/homa. Runs when a release is published, and by
+# hand for a release that already exists.
+#
+# The packages come from the release itself, not from a build here, so this
+# publishes exactly what people can also download by hand. Signing needs the
+# APT_GPG_PRIVATE_KEY secret: a key made for this and nothing else.
+name: apt
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (empty: the latest release)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find the release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.inputs.tag || github.event.release.tag_name }}"
+          if [ -z "$tag" ]; then
+            tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          mkdir incoming
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.deb' --dir incoming
+          ls -l incoming
+
+      - name: Tools
+        run: sudo apt-get update -q && sudo apt-get install -y -q dpkg-dev apt-utils gnupg
+
+      - name: Signing key
+        run: |
+          printf '%s\n' "${{ secrets.APT_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg --batch --list-secret-keys --keyid-format long
+
+      - name: Check out gh-pages, or start it
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git worktree add site gh-pages
+          else
+            git worktree add --orphan -b gh-pages site
+          fi
+
+      - name: Build the repository
+        run: |
+          .github/apt/build.sh incoming site "${{ steps.rel.outputs.tag }}"
+          cp .github/apt/index.html site/index.html
+
+      - name: Publish
+        run: |
+          cd site
+          git add -A
+          git -c user.name="serajian.mohsen" -c user.email="serajian.mohsen@gmail.com" \
+            commit -m "apt: homa ${{ steps.rel.outputs.tag }}" || { echo "nothing new"; exit 0; }
+          git push origin gh-pages

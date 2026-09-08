@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>homa apt repository</title>
+<style>body{font:15px/1.5 -apple-system,system-ui,sans-serif;max-width:40em;margin:3em auto;padding:0 1em;color:#111}pre{background:#f4f4f2;padding:1em;overflow-x:auto}a{color:#0a6}</style>
+<h1>homa · apt repository</h1>
+<p>Debian and Ubuntu, amd64 and arm64. Three lines:</p>
+<pre>curl -fsSL https://serajian.github.io/homa/homa.gpg | sudo tee /usr/share/keyrings/homa.gpg &gt;/dev/null
+echo "deb [signed-by=/usr/share/keyrings/homa.gpg] https://serajian.github.io/homa stable main" | sudo tee /etc/apt/sources.list.d/homa.list
+sudo apt update &amp;&amp; sudo apt install homa</pre>
+<p>Then <code>homa</code>. Source, releases and everything else: <a href="https://github.com/Serajian/homa">github.com/Serajian/homa</a>.</p>

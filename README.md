@@ -173,7 +173,16 @@ macOS, with Homebrew:
 brew install --cask Serajian/homa/homa
 ```
 
-Debian and Ubuntu, from the `.deb` on the
+Debian and Ubuntu, with apt — the repository is signed, and `apt upgrade`
+brings later releases:
+
+```sh
+curl -fsSL https://serajian.github.io/homa/homa.gpg | sudo tee /usr/share/keyrings/homa.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/homa.gpg] https://serajian.github.io/homa stable main" | sudo tee /etc/apt/sources.list.d/homa.list
+sudo apt update && sudo apt install homa
+```
+
+Or just the `.deb` from the
 [latest release](https://github.com/Serajian/homa/releases/latest):
 
 ```sh
