@@ -48,8 +48,16 @@ func TestStyleForNeedsAUTF8Locale(t *testing.T) {
 		{"LANG UTF-8", map[string]string{"LANG": "en_US.UTF-8"}, true},
 		{"LANG utf8, lower and without the dash", map[string]string{"LANG": "fa_IR.utf8"}, true},
 		{"LANG=C", map[string]string{"LANG": "C"}, false},
-		{"LC_ALL=C overrides a UTF-8 LANG", map[string]string{"LC_ALL": "C", "LANG": "en_US.UTF-8"}, false},
-		{"LC_CTYPE UTF-8 overrides LANG=C", map[string]string{"LC_CTYPE": "en_US.UTF-8", "LANG": "C"}, true},
+		{
+			"LC_ALL=C overrides a UTF-8 LANG",
+			map[string]string{"LC_ALL": "C", "LANG": "en_US.UTF-8"},
+			false,
+		},
+		{
+			"LC_CTYPE UTF-8 overrides LANG=C",
+			map[string]string{"LC_CTYPE": "en_US.UTF-8", "LANG": "C"},
+			true,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -142,7 +150,10 @@ func TestWelcomeWritesNoEscapesToAPipe(t *testing.T) {
 	u.Welcome()
 
 	if strings.Contains(out.String(), "\033") {
-		t.Errorf("Welcome wrote an escape sequence to something that is not a terminal: %q", out.String())
+		t.Errorf(
+			"Welcome wrote an escape sequence to something that is not a terminal: %q",
+			out.String(),
+		)
 	}
 	if !strings.Contains(out.String(), bannerPlain) {
 		t.Errorf("Welcome did not write %q: %q", bannerPlain, out.String())

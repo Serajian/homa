@@ -22,9 +22,14 @@ func everyScreen(u *UI) {
 	u.Prompt("%s", u.meLabel())
 	u.ErasePrompt()
 	u.Printf("%s%s %s: ", u.promptMark(), "Their address", u.dim("[none]"))
-	_ = u.ShowMenu("What now?",
-		[]menuItem{{key: "1", text: "call %s", name: "alice"}, {key: "10", text: "call %s", name: "~bob"}},
-		[]menuItem{{key: "q", text: "quit homa", quiet: true}})
+	_ = u.ShowMenu(
+		"What now?",
+		[]menuItem{
+			{key: "1", text: "call %s", name: "alice"},
+			{key: "10", text: "call %s", name: "~bob"},
+		},
+		[]menuItem{{key: "q", text: "quit homa", quiet: true}},
+	)
 }
 
 func TestColorChangesNothingButColor(t *testing.T) {
@@ -126,7 +131,11 @@ func TestTheTerminalChoosesThePalette(t *testing.T) {
 		{"COLORTERM=24bit", map[string]string{"COLORTERM": "24bit"}, true},
 		{"TERM=xterm-direct", map[string]string{"TERM": "xterm-direct"}, true},
 		{"COLORTERM=256color is not it", map[string]string{"COLORTERM": "256color"}, false},
-		{"truecolor but NO_COLOR", map[string]string{"COLORTERM": "truecolor", "NO_COLOR": "1"}, false},
+		{
+			"truecolor but NO_COLOR",
+			map[string]string{"COLORTERM": "truecolor", "NO_COLOR": "1"},
+			false,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

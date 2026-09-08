@@ -9,8 +9,12 @@ func TestShowMenuGroupsBySpaceAndAlignsTheKeys(t *testing.T) {
 	t.Parallel()
 
 	u, _, out := newTerminalTest(t)
-	err := u.ShowMenu("What now?",
-		[]menuItem{{key: "1", text: "call %s", name: "alice"}, {key: "10", text: "call %s", name: "bob"}},
+	err := u.ShowMenu(
+		"What now?",
+		[]menuItem{
+			{key: "1", text: "call %s", name: "alice"},
+			{key: "10", text: "call %s", name: "bob"},
+		},
 		nil, // an empty group draws nothing, not a stray blank line
 		[]menuItem{{key: "n", text: "add a contact"}},
 		[]menuItem{{key: "q", text: "quit homa", quiet: true}},
