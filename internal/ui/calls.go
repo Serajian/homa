@@ -80,7 +80,13 @@ func greet(ctx context.Context, deps Deps, conn net.Conn, send func(tea.Msg)) {
 		name = unknownMark + s.Peer().Nick
 	}
 
-	l := &line{conn: conn, s: s, name: name, known: known, deadline: time.Now().Add(callAnswerTimeout)}
+	l := &line{
+		conn:     conn,
+		s:        s,
+		name:     name,
+		known:    known,
+		deadline: time.Now().Add(callAnswerTimeout),
+	}
 	send(callArrived{l})
 	go expire(ctx, l, send)
 }

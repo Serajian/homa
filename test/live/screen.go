@@ -197,7 +197,8 @@ func (s *screen) escape(in []rune) (int, bool) {
 // csi applies one control sequence. Private ones (a leading ?, >, = or a
 // trailing $) are ignored.
 func (s *screen) csi(params string, final rune) {
-	if params != "" && (params[0] == '?' || params[0] == '>' || params[0] == '=' || strings.HasSuffix(params, "$")) {
+	if params != "" &&
+		(params[0] == '?' || params[0] == '>' || params[0] == '=' || strings.HasSuffix(params, "$")) {
 		return
 	}
 	nums := []int{}

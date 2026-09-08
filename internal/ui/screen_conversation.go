@@ -49,7 +49,17 @@ type conversation struct {
 }
 
 func newConversation(st *styles, width, height int, l *line, nick, files string) *conversation {
-	return newConversationWith(context.Background(), st, width, height, l, nick, files, func(tea.Msg) {}, nil)
+	return newConversationWith(
+		context.Background(),
+		st,
+		width,
+		height,
+		l,
+		nick,
+		files,
+		func(tea.Msg) {},
+		nil,
+	)
 }
 
 // newConversationWith is newConversation with the pieces file transfer
@@ -63,7 +73,16 @@ func newConversationWith(
 	in.SetVirtualCursor(true)
 	in.CharLimit = maxInputLen
 
-	c := &conversation{l: l, nick: nick, filesDir: files, in: in, pane: viewport.New(), ctx: ctx, send: send, downloadDir: downloadDir}
+	c := &conversation{
+		l:           l,
+		nick:        nick,
+		filesDir:    files,
+		in:          in,
+		pane:        viewport.New(),
+		ctx:         ctx,
+		send:        send,
+		downloadDir: downloadDir,
+	}
 	c.pane.MouseWheelEnabled = true
 	c.resize(width, height)
 	_ = c.in.Focus()
@@ -351,7 +370,18 @@ func (c *conversation) showFiles(st *styles, arg string) {
 		if e.isDir {
 			name, size = e.name+"/", "dir"
 		}
-		c.note(st, st.chip(fmt.Sprintf("%2d", i+1))+fmt.Sprintf(" %-*s  ", width, name)+st.dim.Render(size))
+		c.note(
+			st,
+			st.chip(
+				fmt.Sprintf("%2d", i+1),
+			)+fmt.Sprintf(
+				" %-*s  ",
+				width,
+				name,
+			)+st.dim.Render(
+				size,
+			),
+		)
 	}
 	if hidden > 0 {
 		c.note(st, st.dim.Render(fmt.Sprintf("... and %d more, not shown", hidden)))

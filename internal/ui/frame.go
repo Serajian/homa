@@ -58,7 +58,11 @@ func header(st *styles, width int, left, right string) string {
 }
 
 // brand is the mark and the name, the left of every header.
-func brand(st *styles) string { return st.you.Render(bannerPlainMark) + " " + st.you.Render("homa") }
+func brand(
+	st *styles,
+) string {
+	return st.you.Render(bannerPlainMark) + " " + st.you.Render("homa")
+}
 
 // footer is the bottom of every screen: a rule, then the keys that matter
 // here. Two lines.

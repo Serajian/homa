@@ -86,12 +86,20 @@ func TestACallIsTakenAndAMessageGoesEachWay(t *testing.T) {
 	tm = teatest.NewTestModel(t, m, teatest.WithInitialTermSize(80, 24))
 	waitFor := func(want string) {
 		t.Helper()
-		teatest.WaitFor(t, tm.Output(), func(out []byte) bool { return bytes.Contains(out, []byte(want)) },
-			teatest.WithDuration(5*time.Second))
+		teatest.WaitFor(
+			t,
+			tm.Output(),
+			func(out []byte) bool { return bytes.Contains(out, []byte(want)) },
+			teatest.WithDuration(5*time.Second),
+		)
 	}
 
 	waitFor("PEOPLE")
-	tm.Send(callArrived{&line{conn: connA, s: sessA, name: "~bob", deadline: time.Now().Add(time.Minute)}})
+	tm.Send(
+		callArrived{
+			&line{conn: connA, s: sessA, name: "~bob", deadline: time.Now().Add(time.Minute)},
+		},
+	)
 	waitFor("is calling") // the name before it is painted
 
 	// B waits to be let in, then reads.

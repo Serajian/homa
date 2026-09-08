@@ -85,7 +85,8 @@ func Run(ctx context.Context, deps Deps) error {
 	p = tea.NewProgram(m, opts...)
 
 	_, err := p.Run()
-	if errors.Is(err, tea.ErrInterrupted) || errors.Is(err, tea.ErrProgramKilled) || ctx.Err() != nil {
+	if errors.Is(err, tea.ErrInterrupted) || errors.Is(err, tea.ErrProgramKilled) ||
+		ctx.Err() != nil {
 		return nil //nolint:nilerr // leaving is not an error, whichever way it came
 	}
 	return err

@@ -49,7 +49,14 @@ func bootstrap(ctx context.Context, noColor bool) (deps ui.Deps, cleanup func(),
 	}
 
 	cleanup = func() { _ = listener.Close() }
-	return ui.Deps{Cfg: cfg, Book: book, ID: id, Listener: listener, NoColor: noColor, Reset: resetAll}, cleanup, nil
+	return ui.Deps{
+		Cfg:      cfg,
+		Book:     book,
+		ID:       id,
+		Listener: listener,
+		NoColor:  noColor,
+		Reset:    resetAll,
+	}, cleanup, nil
 }
 
 // loadSettings reads the saved settings, asking the first-run questions on

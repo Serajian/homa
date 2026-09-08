@@ -247,7 +247,11 @@ func (m model) barKey(k string) (tea.Model, tea.Cmd, bool) {
 				m.bar.clear()
 				return m, nil, true
 			}
-			return m, declineCall(l, "they are not taking calls right now", "the call from %s was not taken."), true
+			return m, declineCall(
+				l,
+				"they are not taking calls right now",
+				"the call from %s was not taken.",
+			), true
 		default:
 			m.say("y takes the call, n does not", false)
 			return m, nil, true
@@ -271,7 +275,10 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	act, ok := m.menu.key(k)
 	if !ok {
-		m.say("that is not one of the choices"+m.st.sep()+"press one of the keys on the left, or h for help", false)
+		m.say(
+			"that is not one of the choices"+m.st.sep()+"press one of the keys on the left, or h for help",
+			false,
+		)
 		return m, nil
 	}
 
@@ -294,7 +301,11 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenContacts
 		return m, nil
 	case actAddress:
-		m.page = &page{title: "your address", body: addressText(m.st, m.deps.Listener.Addr(), m.width-4), back: screenMenu}
+		m.page = &page{
+			title: "your address",
+			body:  addressText(m.st, m.deps.Listener.Addr(), m.width-4),
+			back:  screenMenu,
+		}
 		m.screen = screenPage
 		return m, nil
 	case actSettings:
@@ -323,7 +334,9 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // made, with its hint in the same breath.
 func checkAddr(s string) error {
 	if !peer.ValidAddr(s) {
-		return fmt.Errorf("that does not look like a homa address; it is the long line a) shows on their side; paste all of it")
+		return fmt.Errorf(
+			"that does not look like a homa address; it is the long line a) shows on their side; paste all of it",
+		)
 	}
 	return nil
 }
@@ -404,7 +417,10 @@ func (m model) renameContact(name string) (tea.Model, tea.Cmd) {
 	if err := m.deps.Book.Save(); err != nil {
 		m.say("could not save the address book: "+err.Error(), true)
 	}
-	m.say(m.st.peer(m.contact.Name)+m.st.dim.Render(" is now ")+m.st.peer(name)+m.st.dim.Render("."), false)
+	m.say(
+		m.st.peer(m.contact.Name)+m.st.dim.Render(" is now ")+m.st.peer(name)+m.st.dim.Render("."),
+		false,
+	)
 	m.contact.Name = name
 	m.menu = newMenu(m.deps.Book)
 	return m, nil
@@ -435,7 +451,10 @@ func (m model) forgetContact() (tea.Model, tea.Cmd) {
 func (m model) reset() (tea.Model, tea.Cmd) {
 	failed := m.deps.Reset()
 	if len(failed) > 0 {
-		m.say("could not delete "+strings.Join(failed, ", ")+"; some of it is still on the disk.", true)
+		m.say(
+			"could not delete "+strings.Join(failed, ", ")+"; some of it is still on the disk.",
+			true,
+		)
 	} else {
 		m.say("your identity, your address book and your settings are gone. start homa again and it will ask the first-run questions.", false)
 	}
@@ -449,7 +468,10 @@ func (m model) updateContacts(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	act, ok := m.contacts.key(k)
 	if !ok {
-		m.say("that is not one of the choices"+m.st.sep()+"press one of the keys on the left", false)
+		m.say(
+			"that is not one of the choices"+m.st.sep()+"press one of the keys on the left",
+			false,
+		)
 		return m, nil
 	}
 	switch act {
@@ -471,7 +493,10 @@ func (m model) updateContact(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	act, ok := contactKey(k)
 	if !ok {
-		m.say("that is not one of the choices"+m.st.sep()+"press one of the keys on the left", false)
+		m.say(
+			"that is not one of the choices"+m.st.sep()+"press one of the keys on the left",
+			false,
+		)
 		return m, nil
 	}
 	switch act {
@@ -482,7 +507,11 @@ func (m model) updateContact(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.openForm(formRename, newForm("rename "+m.contact.Name,
 			field{label: "a new name for them", def: m.contact.Name}), screenContact), nil
 	case contactAddress:
-		m.page = &page{title: m.contact.Name, body: blockRows(m.contact.Addr, m.width-4) + "\n", back: screenContact}
+		m.page = &page{
+			title: m.contact.Name,
+			body:  blockRows(m.contact.Addr, m.width-4) + "\n",
+			back:  screenContact,
+		}
 		m.screen = screenPage
 	case contactForget:
 		f := newForm("forget "+m.contact.Name,
@@ -514,8 +543,17 @@ func (m model) startConversation(l *line) (tea.Model, tea.Cmd) {
 	m.bar.clear()
 	m.screen = screenConversation
 	cfg := m.deps.Cfg
-	m.conv = newConversationWith(m.ctx, m.st, m.width, m.height, l, l.s.Peer().Nick, cfg.DownloadDir,
-		m.send, cfg.EnsureDownloadDir)
+	m.conv = newConversationWith(
+		m.ctx,
+		m.st,
+		m.width,
+		m.height,
+		l,
+		l.s.Peer().Nick,
+		cfg.DownloadDir,
+		m.send,
+		cfg.EnsureDownloadDir,
+	)
 	m.say("", false)
 	return m, runSession(m.ctx, l, m.send)
 }
@@ -566,13 +604,47 @@ func (m model) View() tea.View {
 	case screenConversation:
 		status, body, keys = m.conv.view(m.st, m.width)
 	case screenContacts:
-		status, body, keys = m.header(), m.withBarAndNotice(m.contacts.view(m.st)), m.footer("↑↓", "choose", "Enter", "open", "b", "back", "q", "quit")
+		status, body, keys = m.header(), m.withBarAndNotice(
+			m.contacts.view(m.st),
+		), m.footer(
+			"↑↓",
+			"choose",
+			"Enter",
+			"open",
+			"b",
+			"back",
+			"q",
+			"quit",
+		)
 	case screenContact:
-		status, body, keys = m.header(), m.withBarAndNotice("\n  "+m.st.you.Render(m.contact.Name)+"\n\n"+renderGroups(m.st, contactGroups(m.contact), -1)), m.footer("b", "back")
+		status, body, keys = m.header(), m.withBarAndNotice(
+			"\n  "+m.st.you.Render(
+				m.contact.Name,
+			)+"\n\n"+renderGroups(
+				m.st,
+				contactGroups(m.contact),
+				-1,
+			),
+		), m.footer(
+			"b",
+			"back",
+		)
 	case screenForm:
-		status, body, keys = m.header(), m.withBarAndNotice(m.form.view(m.st)), m.footer("Enter", "next", "Esc", "back")
+		status, body, keys = m.header(), m.withBarAndNotice(
+			m.form.view(m.st),
+		), m.footer(
+			"Enter",
+			"next",
+			"Esc",
+			"back",
+		)
 	case screenPage:
-		status, body, keys = m.header(), m.withBarAndNotice(m.page.view(m.st, m.width)), m.footer("any key", "back")
+		status, body, keys = m.header(), m.withBarAndNotice(
+			m.page.view(m.st, m.width),
+		), m.footer(
+			"any key",
+			"back",
+		)
 	default:
 		status, body, keys = m.header(), m.withBarAndNotice(m.menuBody()), m.menuFooter()
 	}
@@ -604,7 +676,14 @@ func (m model) menuFooter() string {
 	case m.bar.outgoing != "":
 		return m.footer("Enter", "give up")
 	case len(m.menu.contacts) > 0:
-		return m.footer("↑↓", "choose", "Enter", "call", "1-"+strconv.Itoa(len(m.menu.contacts)), "call by number")
+		return m.footer(
+			"↑↓",
+			"choose",
+			"Enter",
+			"call",
+			"1-"+strconv.Itoa(len(m.menu.contacts)),
+			"call by number",
+		)
 	}
 	return m.footer("n", "add a contact", "a", "your address", "h", "help")
 }
@@ -622,10 +701,16 @@ func (m model) menuBody() string {
 	rest := renderGroups(m.st, groups[1:], -1)
 
 	if m.width < menuTwoColumns {
-		return "\n  " + m.st.label.Render("PEOPLE") + "\n\n" + people + "\n  " + m.st.label.Render("HOMA") + "\n\n" + rest
+		return "\n  " + m.st.label.Render(
+			"PEOPLE",
+		) + "\n\n" + people + "\n  " + m.st.label.Render(
+			"HOMA",
+		) + "\n\n" + rest
 	}
 
-	left := lipgloss.NewStyle().Width(menuLeftColumn).Render("  " + m.st.label.Render("PEOPLE") + "\n\n" + people)
+	left := lipgloss.NewStyle().
+		Width(menuLeftColumn).
+		Render("  " + m.st.label.Render("PEOPLE") + "\n\n" + people)
 	right := "  " + m.st.label.Render("HOMA") + "\n\n" + rest
 	return "\n" + lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
@@ -654,7 +739,11 @@ func (m model) withBarAndNotice(body string) string {
 func progressBar(st *styles, pct int) string {
 	done := min(max(pct/10, 0), 10)
 	if !st.unicode {
-		return st.them.Render(strings.Repeat("#", done)) + st.dim.Render(strings.Repeat("-", 10-done))
+		return st.them.Render(
+			strings.Repeat("#", done),
+		) + st.dim.Render(
+			strings.Repeat("-", 10-done),
+		)
 	}
 	return st.them.Render(strings.Repeat("█", done)) + st.dim.Render(strings.Repeat("░", 10-done))
 }

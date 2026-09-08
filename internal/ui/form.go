@@ -154,7 +154,13 @@ func (f *form) view(st *styles) string {
 			inside = st.dim.Render(fld.def)
 			frame = frame.Faint(true)
 		}
-		b.WriteString("  " + strings.ReplaceAll(st.box(&frame, formFieldWidth, "", inside), "\n", "\n  ") + "\n")
+		b.WriteString(
+			"  " + strings.ReplaceAll(
+				st.box(&frame, formFieldWidth, "", inside),
+				"\n",
+				"\n  ",
+			) + "\n",
+		)
 		if i == f.cur && fld.err != "" {
 			b.WriteString("  " + st.warn.Render(fld.err) + "\n")
 		}

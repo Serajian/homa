@@ -102,7 +102,8 @@ func TestAnUnknownCommandIsSaidAndTheListShown(t *testing.T) {
 		t.Fatal("/nope left the conversation")
 	}
 	plain := stripANSI(strings.Join(c.lines, "\n"))
-	if !strings.Contains(plain, `no such command: "/nope"`) || !strings.Contains(plain, "/quit         leave the conversation") {
+	if !strings.Contains(plain, `no such command: "/nope"`) ||
+		!strings.Contains(plain, "/quit         leave the conversation") {
 		t.Errorf("pane:\n%s", plain)
 	}
 	if c.in.Value() != "" {

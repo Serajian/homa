@@ -35,7 +35,8 @@ func key(k string) tea.KeyPressMsg {
 // steer presses keys on a model; a multi-character string is typed.
 func steer(m model, keys ...string) model {
 	for _, k := range keys {
-		if len([]rune(k)) > 1 && k != "enter" && k != "esc" && k != "up" && k != "down" && k != "backspace" {
+		if len([]rune(k)) > 1 && k != "enter" && k != "esc" && k != "up" && k != "down" &&
+			k != "backspace" {
 			for _, r := range k {
 				next, _ := m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 				m = next.(model)
@@ -75,7 +76,8 @@ func TestTheContactsScreenOpensOneAndComesBack(t *testing.T) {
 		t.Fatalf("b did not open the contacts screen: %v", m.screen)
 	}
 	view := stripANSI(m.View().Content)
-	if !strings.Contains(view, "CONTACTS") || !strings.Contains(view, "1  alice") || !strings.Contains(view, "2  bob") {
+	if !strings.Contains(view, "CONTACTS") || !strings.Contains(view, "1  alice") ||
+		!strings.Contains(view, "2  bob") {
 		t.Errorf("contacts screen:\n%s", view)
 	}
 
@@ -108,7 +110,8 @@ func TestAddingAContactThroughTheForm(t *testing.T) {
 		t.Fatal("n did not open the form")
 	}
 	m = steer(m, "carol", "enter", "nonsense", "enter")
-	if m.screen != screenForm || !strings.Contains(stripANSI(m.View().Content), "does not look like a homa address") {
+	if m.screen != screenForm ||
+		!strings.Contains(stripANSI(m.View().Content), "does not look like a homa address") {
 		t.Fatalf("a bad address was not refused on the form:\n%s", stripANSI(m.View().Content))
 	}
 	addr := realAddr
@@ -144,7 +147,8 @@ func TestRenamingAndForgettingAContact(t *testing.T) {
 	}
 
 	m = steer(m, "f", "enter") // Enter alone is "cancel"
-	if m.screen != screenContact || !strings.Contains(stripANSI(m.View().Content), "ali is still there.") {
+	if m.screen != screenContact ||
+		!strings.Contains(stripANSI(m.View().Content), "ali is still there.") {
 		t.Fatalf("Enter did not cancel the forget:\n%s", stripANSI(m.View().Content))
 	}
 	m = steer(m, "f", "forget", "enter")
@@ -179,7 +183,8 @@ func TestResetNeedsTheWordAndThenQuits(t *testing.T) {
 	m := sized(newModel(t.Context(), deps, newStyles(true)))
 
 	m = steer(m, "r", "enter")
-	if wiped || m.screen != screenMenu || !strings.Contains(stripANSI(m.View().Content), "nothing was deleted.") {
+	if wiped || m.screen != screenMenu ||
+		!strings.Contains(stripANSI(m.View().Content), "nothing was deleted.") {
 		t.Fatalf("Enter alone reset, or did not say so; wiped=%v screen=%v", wiped, m.screen)
 	}
 
@@ -202,7 +207,8 @@ func TestResetNeedsTheWordAndThenQuits(t *testing.T) {
 func TestHelpAndAddressArePagesAnyKeyLeaves(t *testing.T) {
 	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
 	m = steer(m, "h")
-	if m.screen != screenPage || !strings.Contains(stripANSI(m.View().Content), "homa connects two people directly") {
+	if m.screen != screenPage ||
+		!strings.Contains(stripANSI(m.View().Content), "homa connects two people directly") {
 		t.Fatalf("h did not show the help:\n%s", stripANSI(m.View().Content))
 	}
 	m = steer(m, "x")

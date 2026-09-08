@@ -7,7 +7,11 @@ import "strings"
 // terminal and bannerCols of room; otherwise it is the one plain line.
 func bannerBlock(st *styles, width int) string {
 	if !st.unicode || width < len(bannerIndent)+bannerCols {
-		return bannerIndent + st.you.Render(bannerPlain) + "   " + st.dim.Render(bannerTagline) + "\n"
+		return bannerIndent + st.you.Render(
+			bannerPlain,
+		) + "   " + st.dim.Render(
+			bannerTagline,
+		) + "\n"
 	}
 
 	var b strings.Builder
@@ -17,8 +21,16 @@ func bannerBlock(st *styles, width int) string {
 		if len(r) > bannerSplit {
 			prompt, bubble = r[:bannerSplit], r[bannerSplit:]
 		}
-		b.WriteString(bannerIndent + st.you.Render(string(prompt)) + st.them.Render(string(bubble)) + "\n")
+		b.WriteString(
+			bannerIndent + st.you.Render(string(prompt)) + st.them.Render(string(bubble)) + "\n",
+		)
 	}
-	b.WriteString("\n" + bannerIndent + st.them.Render(bannerWordmark) + "   " + st.dim.Render(bannerTagline) + "\n")
+	b.WriteString(
+		"\n" + bannerIndent + st.them.Render(
+			bannerWordmark,
+		) + "   " + st.dim.Render(
+			bannerTagline,
+		) + "\n",
+	)
 	return b.String()
 }

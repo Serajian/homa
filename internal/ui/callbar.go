@@ -49,13 +49,29 @@ func (b *callBar) view(st *styles, width int, now time.Time) string {
 	switch {
 	case b.incoming != nil:
 		who := " " + st.peer(b.incoming.name) + " is calling"
-		who += strings.Repeat(" ", max(inner-lipgloss.Width(who)-lipgloss.Width(left.String())-1, 0)) + st.dim.Render(left.String())
+		who += strings.Repeat(
+			" ",
+			max(inner-lipgloss.Width(who)-lipgloss.Width(left.String())-1, 0),
+		) + st.dim.Render(
+			left.String(),
+		)
 		return "  " + strings.ReplaceAll(st.box(st.boxThem(), width-4, "incoming call",
 			who, " "+st.keys("y", "take the call", "n", "not now")), "\n", "\n  ")
 
 	case b.outgoing != "":
-		who := " " + st.dim.Render("calling ") + st.peer(b.outgoing) + st.dim.Render(st.sep()+"waiting for them to answer")
-		who += strings.Repeat(" ", max(inner-lipgloss.Width(who)-lipgloss.Width(left.String())-1, 0)) + st.dim.Render(left.String())
+		who := " " + st.dim.Render(
+			"calling ",
+		) + st.peer(
+			b.outgoing,
+		) + st.dim.Render(
+			st.sep()+"waiting for them to answer",
+		)
+		who += strings.Repeat(
+			" ",
+			max(inner-lipgloss.Width(who)-lipgloss.Width(left.String())-1, 0),
+		) + st.dim.Render(
+			left.String(),
+		)
 		return "  " + strings.ReplaceAll(st.box(st.boxDim(), width-4, "calling",
 			who, " "+st.keys("Enter", "give up")), "\n", "\n  ")
 	}

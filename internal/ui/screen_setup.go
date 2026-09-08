@@ -15,12 +15,17 @@ import (
 // so changing one means pressing Enter past the other. The first run and
 // the settings screen ask the same two; the wording is version 1's.
 func settingsForm(title string, current *config.Config) *form {
-	return newForm(title,
-		field{label: "The name shown beside your messages", def: current.Nick, check: func(s string) error {
-			candidate := *current
-			candidate.Nick = s
-			return candidate.Validate()
-		}},
+	return newForm(
+		title,
+		field{
+			label: "The name shown beside your messages",
+			def:   current.Nick,
+			check: func(s string) error {
+				candidate := *current
+				candidate.Nick = s
+				return candidate.Validate()
+			},
+		},
 		field{label: "Where received files should go", def: current.DownloadDir},
 	)
 }

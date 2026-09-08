@@ -90,12 +90,18 @@ func TestAWordFormNeedsTheWord(t *testing.T) {
 	t.Parallel()
 
 	st := newStyles(true)
-	f := newForm("reset", field{label: "type the word reset to confirm", def: "cancel", word: "reset"})
+	f := newForm(
+		"reset",
+		field{label: "type the word reset to confirm", def: "cancel", word: "reset"},
+	)
 	done, cancel := press(f, st, "enter")
 	if done || !cancel {
 		t.Errorf("Enter alone: done=%v cancel=%v; want cancel", done, cancel)
 	}
-	f = newForm("reset", field{label: "type the word reset to confirm", def: "cancel", word: "reset"})
+	f = newForm(
+		"reset",
+		field{label: "type the word reset to confirm", def: "cancel", word: "reset"},
+	)
 	done, cancel = press(f, st, "reset", "enter")
 	if !done || cancel {
 		t.Errorf("the word: done=%v cancel=%v; want done", done, cancel)

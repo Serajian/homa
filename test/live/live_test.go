@@ -67,7 +67,14 @@ func start(t *testing.T, name string) *instance {
 		t.Fatalf("starting homa on a pty: %v", err)
 	}
 
-	in := &instance{t: t, name: name, cmd: cmd, tty: tty, home: home, scr: newScreen(ttyRows, ttyCols)}
+	in := &instance{
+		t:    t,
+		name: name,
+		cmd:  cmd,
+		tty:  tty,
+		home: home,
+		scr:  newScreen(ttyRows, ttyCols),
+	}
 
 	go func() {
 		buf := make([]byte, 4096)
@@ -179,7 +186,10 @@ func (i *instance) await(what string) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	i.mu.Lock()
-	dump := filepath.Join(os.TempDir(), "homa-live-"+i.name+"-"+strings.ReplaceAll(i.t.Name(), "/", "_")+".raw")
+	dump := filepath.Join(
+		os.TempDir(),
+		"homa-live-"+i.name+"-"+strings.ReplaceAll(i.t.Name(), "/", "_")+".raw",
+	)
 	_ = os.WriteFile(dump, i.raw, 0o600)
 	i.mu.Unlock()
 	i.t.Fatalf("%s: waited for %q. Sequences seen: %s. Raw output kept at %s. Screen was:\n%s",
@@ -224,8 +234,14 @@ func (i *instance) address() string {
 		addr := strings.Join(parts, "")
 		if len(addr) >= 200 && addr == last {
 			if !peer.ValidAddr(addr) {
-				i.t.Fatalf("%s: read an address off the page that does not parse (%d chars): %q\nrows: %q\nscreen:\n%s",
-					i.name, len(addr), addr, parts, i.screen())
+				i.t.Fatalf(
+					"%s: read an address off the page that does not parse (%d chars): %q\nrows: %q\nscreen:\n%s",
+					i.name,
+					len(addr),
+					addr,
+					parts,
+					i.screen(),
+				)
 			}
 			i.key("x") // any key leaves the page
 			i.await("PEOPLE")

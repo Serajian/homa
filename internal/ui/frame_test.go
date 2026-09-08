@@ -17,7 +17,8 @@ func TestFrameIsExactlyTheTerminalTall(t *testing.T) {
 	if len(lines) != 6 {
 		t.Fatalf("%d lines, want 6:\n%s", len(lines), got)
 	}
-	if lines[0] != "status" || lines[1] != "rule" || lines[2] != "a" || lines[3] != "b" || lines[5] != "keys" {
+	if lines[0] != "status" || lines[1] != "rule" || lines[2] != "a" || lines[3] != "b" ||
+		lines[5] != "keys" {
 		t.Errorf("wrong placement:\n%q", lines)
 	}
 	for i, l := range lines {
@@ -63,7 +64,8 @@ func TestHeaderRightAlignsTheStatus(t *testing.T) {
 		t.Fatalf("%d lines, want 2: %q", len(lines), got)
 	}
 	// two columns of margin on each side: the line is width-2 wide
-	if !strings.HasPrefix(lines[0], "  >_ homa") || !strings.HasSuffix(lines[0], "mohsen") || lipgloss.Width(lines[0]) != 38 {
+	if !strings.HasPrefix(lines[0], "  >_ homa") || !strings.HasSuffix(lines[0], "mohsen") ||
+		lipgloss.Width(lines[0]) != 38 {
 		t.Errorf("header line %q", lines[0])
 	}
 	if lipgloss.Width(lines[1]) != 39 {
