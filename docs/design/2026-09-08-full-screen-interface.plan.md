@@ -333,7 +333,7 @@ This is the step after which `homa` runs on the new interface with a working men
       menu   menuModel
       notice string          // one grey line under the body, cleared on the next key
   }
-  func newModel(deps Deps, st styles) model
+  func newModel(ctx context.Context, deps Deps, st *styles) model   // ctx: the program's; a call being placed gets a child of it
   func (m model) Init() tea.Cmd
   func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd)
   func (m model) View() tea.View
@@ -544,14 +544,15 @@ After this task the two faults of version 1 are gone: a call is taken with `y`, 
 - Consumes: `peer.Listener.Accept(ctx) (net.Conn, error)`, `peer.Dial(ctx, id, addr)`, `session.Start(conn, nick, h) (*Session, error)`, `Session.SignalsAcceptance/SendAccept/WaitAccepted/SendText/Run/Close/Peer`, `peer.RemoteKey/RemoteKeyPrefix`, `contacts.Book.ByPubKey/ByPubKeyPrefix/SetPubKey/Save`.
 - Produces (`msgs.go`):
   ```go
-  type callArrived struct{ c *call }              // c: the parked call struct moved from menu.go (name, known, conn, session, deadline, claim)
-  type callAnswered struct{ s *session.Session; conn net.Conn; name string; known bool }
-  type callRefused struct{ reason string }        // "they are not taking calls right now", "no answer", "busy"
+  type callArrived struct{ l *line }              // line: the greeted connection (conn, s, name, known, deadline, claim) — named line, not call, because the old call type lives on in menu.go until Task 5
+  type callAnswered struct{ l *line }
+  type callRefused struct{ name, format string }  // format takes the name: "the call from %s was not taken."
   type callFailed struct{ name string; err error }
   type peerSaid struct{ text string }
   type peerLeft struct{ err error }               // nil: they hung up cleanly
   type tickMsg time.Time
-  type lineSent struct{}                          // SendText succeeded; nothing to show
+  type warnMsg string                             // a noticeMsg in yellow
+  type callGone struct{ l *line }                 // a parked call that ran out
   type sendFailed struct{ err error }
   ```
   `adapter.go`:
@@ -588,10 +589,10 @@ After this task the two faults of version 1 are gone: a call is taken with `y`, 
       lines []string           // rendered lines; the pane's content is their join
       leaving bool
   }
-  func newConversation(st styles, width, height int, s *session.Session, name string, known bool, files string) conversation
+  func newConversation(st *styles, width, height int, l *line, nick, files string) *conversation   // held by pointer on the model
   func (c *conversation) say(line string)            // append + SetContent + GotoBottom when it was at the bottom
-  func (c conversation) view(st styles, width, height int) (status, body, keys string)
-  func (c conversation) update(msg tea.Msg) (conversation, tea.Cmd)   // keys: enter → send or command; up/down → history; pgup/pgdn/wheel → pane; else textinput
+  func (c *conversation) view(st *styles, width int) (status, body, keys string)
+  func (c *conversation) update(st *styles, msg tea.Msg) (cmd tea.Cmd, leave bool)   // keys: enter → send or command; up/down → history; pgup/pgdn/wheel → pane; else textinput; leave: back to the menu
   ```
 
 - [ ] **Step 1: Failing tests**

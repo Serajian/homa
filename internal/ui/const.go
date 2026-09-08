@@ -53,6 +53,18 @@ const (
 	frameMinWidth = 50
 )
 
+// The keys the screens match on, as bubbletea names them
+// (tea.KeyPressMsg.String). Named once so a typo is a compile error rather
+// than a key that does nothing.
+const (
+	keyEnter  = "enter"
+	keyUp     = "up"
+	keyDown   = "down"
+	keyPgUp   = "pgup"
+	keyPgDown = "pgdown"
+	keyQuit   = "ctrl+c"
+)
+
 // The words on the way out of a screen. They are typed as well as shown,
 // so the menu and the switch that reads it have to agree on them.
 const (

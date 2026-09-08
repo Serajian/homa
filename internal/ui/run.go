@@ -41,7 +41,15 @@ func Run(ctx context.Context, deps Deps) error {
 		opts = append(opts, tea.WithColorProfile(colorprofile.Ascii))
 	}
 
-	_, err := tea.NewProgram(newModel(deps, st), opts...).Run()
+	// The model needs a way to hand messages to the program from other
+	// goroutines, and the program does not exist until the model does: the
+	// closure fills in once both are made, before Run starts anything.
+	var p *tea.Program
+	m := newModel(ctx, deps, st)
+	m.send = func(msg tea.Msg) { p.Send(msg) }
+	p = tea.NewProgram(m, opts...)
+
+	_, err := p.Run()
 	if errors.Is(err, tea.ErrInterrupted) || errors.Is(err, tea.ErrProgramKilled) || ctx.Err() != nil {
 		return context.Canceled
 	}

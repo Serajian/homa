@@ -19,7 +19,7 @@ func testDeps(t *testing.T, names ...string) Deps {
 func TestQuitFromTheMenu(t *testing.T) {
 	t.Parallel()
 
-	m := newModel(testDeps(t), newStyles(true))
+	m := newModel(t.Context(), testDeps(t), newStyles(true))
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	if cmd == nil {
 		t.Fatal("q did nothing")
@@ -32,7 +32,7 @@ func TestQuitFromTheMenu(t *testing.T) {
 func TestViewIsTheTerminalsSizeAndStaysOnTheMainScreen(t *testing.T) {
 	t.Parallel()
 
-	m := newModel(testDeps(t, "alice"), newStyles(true))
+	m := newModel(t.Context(), testDeps(t, "alice"), newStyles(true))
 	next, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 12})
 	v := next.(model).View()
 	if n := strings.Count(v.Content, "\n") + 1; n != 12 {
@@ -46,7 +46,7 @@ func TestViewIsTheTerminalsSizeAndStaysOnTheMainScreen(t *testing.T) {
 func TestAWrongKeySaysSoUnderTheMenu(t *testing.T) {
 	t.Parallel()
 
-	m := newModel(testDeps(t), newStyles(true))
+	m := newModel(t.Context(), testDeps(t), newStyles(true))
 	next, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	next, _ = next.(model).Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	got := stripANSI(next.(model).View().Content)
@@ -65,8 +65,8 @@ func TestAWrongKeySaysSoUnderTheMenu(t *testing.T) {
 func TestScreensChangeNothingButColor(t *testing.T) {
 	t.Parallel()
 
-	colored := newModel(testDeps(t, "alice", "~bob"), newStyles(true))
-	plain := newModel(testDeps(t, "alice", "~bob"), plainStyles(true))
+	colored := newModel(t.Context(), testDeps(t, "alice", "~bob"), newStyles(true))
+	plain := newModel(t.Context(), testDeps(t, "alice", "~bob"), plainStyles(true))
 	size := tea.WindowSizeMsg{Width: 70, Height: 20}
 	c, _ := colored.Update(size)
 	p, _ := plain.Update(size)

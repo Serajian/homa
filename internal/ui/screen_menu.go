@@ -72,17 +72,17 @@ func (mm *menuModel) chosen() contacts.Contact { return mm.contacts[mm.cursor] }
 // calls whoever the cursor is on; up and down only move it.
 func (mm *menuModel) key(k string) (menuAction, bool) {
 	switch k {
-	case "up":
+	case keyUp:
 		if mm.cursor > 0 {
 			mm.cursor--
 		}
 		return actNone, true
-	case "down":
+	case keyDown:
 		if mm.cursor < len(mm.contacts)-1 {
 			mm.cursor++
 		}
 		return actNone, true
-	case "enter":
+	case keyEnter:
 		if len(mm.contacts) == 0 {
 			return actNone, false
 		}
