@@ -22,6 +22,10 @@ type callBar struct {
 	outgoing string    // the name being called, or ""
 	deadline time.Time // when whichever it is runs out
 
+	// lastRing is when the bell last rang for the incoming call, so it can
+	// ring again every callRingEvery while the call waits.
+	lastRing time.Time
+
 	// cancel gives up an outgoing call: it ends the wait for the far side
 	// to answer, which reports back as the call being stopped by us.
 	cancel context.CancelFunc

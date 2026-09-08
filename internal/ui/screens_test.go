@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
@@ -163,16 +164,145 @@ func TestRenamingAndForgettingAContact(t *testing.T) {
 func TestSettingsAreSavedAndReplaced(t *testing.T) {
 	sandboxHome(t)
 	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
-	m = steer(m, "s", "zed", "enter", "enter")
+	m = steer(m, "s", "zed", "enter", "enter", "backspace", "n", "enter")
 	if m.screen != screenMenu {
 		t.Fatalf("screen %v after the settings", m.screen)
 	}
-	if m.deps.Cfg.Nick != "zed" {
-		t.Errorf("nick = %q", m.deps.Cfg.Nick)
+	if m.deps.Cfg.Nick != "zed" || m.deps.Cfg.Bell {
+		t.Errorf("settings after the form: %+v", m.deps.Cfg)
 	}
 	saved, err := config.Load()
-	if err != nil || saved.Nick != "zed" {
+	if err != nil || saved.Nick != "zed" || saved.Bell {
 		t.Errorf("saved settings: %+v, %v", saved, err)
+	}
+}
+
+// The third question takes y or n and nothing else; the bell is on by
+// default, so Enter past it leaves it on.
+func TestTheBellQuestionTakesOnlyYesOrNo(t *testing.T) {
+	sandboxHome(t)
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	m = steer(m, "s", "enter", "enter", "backspace", "maybe", "enter")
+	if m.screen != screenForm {
+		t.Fatalf("\"maybe\" was taken as an answer; screen %v", m.screen)
+	}
+	m = steer(m, "backspace", "backspace", "backspace", "backspace", "backspace", "yes", "enter")
+	if m.screen != screenMenu || !m.deps.Cfg.Bell {
+		t.Errorf("screen %v, settings %+v", m.screen, m.deps.Cfg)
+	}
+}
+
+// ringing collects what a command sends, and reports whether the bell is
+// among it.
+func ringing(cmd tea.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	switch msg := cmd().(type) {
+	case tea.RawMsg:
+		return msg.Msg == bell
+	case tea.BatchMsg:
+		for _, c := range msg {
+			if ringing(c) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// callAnswered starts the conversation on both sides; the bell is for the
+// side that dialed and waited, not the one that just pressed y.
+func TestATakenCallRingsForTheCallerOnly(t *testing.T) {
+	t.Parallel()
+
+	caller := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	caller.bar = callBar{outgoing: "alice"}
+	if !ringing(caller.ringIfWaiting()) {
+		t.Error("the caller was not rung")
+	}
+	answerer := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	answerer.bar = callBar{incoming: testLine("alice", true)}
+	if ringing(answerer.ringIfWaiting()) {
+		t.Error("the answerer was rung for their own y")
+	}
+}
+
+// A call that waits rings again every callRingEvery, and not between.
+func TestAWaitingCallKeepsRinging(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	next, _ := m.Update(callArrived{l: testLine("~bob", false)})
+	m = next.(model)
+	arrived := m.bar.lastRing
+
+	next, cmd := m.Update(tickMsg(arrived.Add(time.Second)))
+	m = next.(model)
+	if ringing(cmd) {
+		t.Error("rang a second after arriving")
+	}
+	next, cmd = m.Update(tickMsg(arrived.Add(callRingEvery)))
+	m = next.(model)
+	if !ringing(cmd) {
+		t.Error("did not ring again when the time came")
+	}
+	if _, cmd = m.Update(tickMsg(arrived.Add(callRingEvery + time.Second))); ringing(cmd) {
+		t.Error("rang twice for one interval")
+	}
+
+	// Answered or gone, the ringing stops with the box.
+	m.bar.clear()
+	if _, cmd = m.Update(tickMsg(arrived.Add(3 * callRingEvery))); ringing(cmd) {
+		t.Error("rang for a call no longer on the screen")
+	}
+}
+
+// The outcome of your own call rings, because you may have looked away
+// while it waited; stopping it yourself does not.
+func TestTheOutcomeOfYourCallRings(t *testing.T) {
+	t.Parallel()
+
+	waiting := func() model {
+		m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+		m.bar = callBar{outgoing: "alice"}
+		return m
+	}
+	if _, cmd := waiting().Update(callRefused{name: "alice", format: "%s is not taking calls"}); !ringing(
+		cmd,
+	) {
+		t.Error("a refusal did not ring")
+	}
+	if _, cmd := waiting().Update(callFailed{name: "alice", err: errNoOffer}); !ringing(cmd) {
+		t.Error("a failure did not ring")
+	}
+	if _, cmd := waiting().Update(callRefused{name: "alice", format: "you stopped calling %s.", quiet: true}); ringing(
+		cmd,
+	) {
+		t.Error("stopping your own call rang")
+	}
+}
+
+func TestACallRingsTheBellWhenTheSettingSaysSo(t *testing.T) {
+	t.Parallel()
+
+	for _, on := range []bool{true, false} {
+		deps := testDeps(t)
+		deps.Cfg.Bell = on
+		m := sized(newModel(t.Context(), deps, newStyles(true)))
+		_, cmd := m.Update(callArrived{l: testLine("~bob", false)})
+		if ringing(cmd) != on {
+			t.Errorf("bell %v: a call rang %v", on, ringing(cmd))
+		}
+		if _, cmd = m.Update(fileProgress{name: "x", pct: 10}); ringing(cmd) {
+			t.Error("progress rang")
+		}
+		if _, cmd = m.Update(sent{}); ringing(cmd) != on {
+			t.Errorf("bell %v: a file sent rang %v", on, ringing(cmd))
+		}
+		if _, cmd = m.Update(fileFailed{name: "x", err: errNoOffer}); ringing(cmd) != on {
+			t.Errorf("bell %v: a failed file rang %v", on, ringing(cmd))
+		}
 	}
 }
 
@@ -219,7 +349,7 @@ func TestHelpAndAddressArePagesAnyKeyLeaves(t *testing.T) {
 
 func TestTheFirstRunAsksTwoQuestionsUnderTheBanner(t *testing.T) {
 	sandboxHome(t)
-	sm := setupModel{st: newStyles(true), form: settingsForm("Welcome", config.Default())}
+	sm := setupModel{st: newStyles(true), form: settingsForm("Welcome", config.Default(), true)}
 	next, _ := sm.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
 	view := stripANSI(next.(setupModel).View().Content)
 	for _, want := range []string{"█", "H O M A", "This is the first run, so two questions.", "The name shown beside your messages"} {

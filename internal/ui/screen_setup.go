@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
@@ -11,13 +12,13 @@ import (
 	"github.com/Serajian/homa/internal/config"
 )
 
-// settingsForm is the two questions, with the current values as defaults
-// so changing one means pressing Enter past the other. The first run and
-// the settings screen ask the same two; the wording is version 1's.
-func settingsForm(title string, current *config.Config) *form {
-	return newForm(
-		title,
-		field{
+// settingsForm is the questions, with the current values as defaults so
+// changing one means pressing Enter past the others. The first run asks
+// the two homa cannot guess; the settings screen asks those and the bell,
+// which has a right default and so is not worth a first-run question.
+func settingsForm(title string, current *config.Config, firstRun bool) *form {
+	fields := []field{
+		{
 			label: "The name shown beside your messages",
 			def:   current.Nick,
 			check: func(s string) error {
@@ -26,22 +27,58 @@ func settingsForm(title string, current *config.Config) *form {
 				return candidate.Validate()
 			},
 		},
-		field{label: "Where received files should go", def: current.DownloadDir},
-	)
+		{label: "Where received files should go", def: current.DownloadDir},
+	}
+	if !firstRun {
+		fields = append(fields, field{
+			label: "Ring the bell when something arrives (y/n)",
+			def:   yesNo(current.Bell),
+			check: func(s string) error {
+				_, err := parseYesNo(s)
+				return err
+			},
+		})
+	}
+	return newForm(title, fields...)
 }
 
 // applySettings writes a finished settings form into a copy of the
 // settings and saves it. The copy is returned rather than the original
 // written through, as version 1 did, so nothing else holding the pointer
-// sees a half-changed value.
+// sees a half-changed value. A third answer is the bell; the first run
+// gives two and leaves it as it was.
 func applySettings(current *config.Config, answers []string) (*config.Config, error) {
 	edited := *current
 	edited.Nick, edited.DownloadDir = answers[0], answers[1]
+	if len(answers) > 2 {
+		edited.Bell, _ = parseYesNo(answers[2])
+	}
 	if err := edited.Save(); err != nil {
 		return nil, err
 	}
 	return &edited, nil
 }
+
+// yesNo is how a yes-or-no setting is shown in a field, and parseYesNo
+// how the answer is read: y, yes, n or no, in any case.
+func yesNo(b bool) string {
+	if b {
+		return "y"
+	}
+	return "n"
+}
+
+func parseYesNo(s string) (bool, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "y", "yes":
+		return true, nil
+	case "n", "no":
+		return false, nil
+	}
+	return false, errYesNo
+}
+
+var errYesNo = errors.New("ui: answer y or n")
 
 // setupModel is the first run: the banner, a line saying there are two
 // questions, and the two questions. A program of its own, because it runs
@@ -106,7 +143,7 @@ func RunSetup(ctx context.Context, noColor bool) (*config.Config, error) {
 
 	_, _ = os.Stdout.WriteString(clearScreen) // see clearScreen
 
-	m := setupModel{st: st, form: settingsForm("Welcome", config.Default())}
+	m := setupModel{st: st, form: settingsForm("Welcome", config.Default(), true)}
 	final, err := tea.NewProgram(m, opts...).Run()
 	if err != nil {
 		return nil, ErrSetupCanceled

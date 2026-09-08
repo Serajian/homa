@@ -109,12 +109,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		if m.bar.showing() && m.screen != screenConversation {
-			return m, tick()
+			return m, tea.Batch(tick(), m.ringAgain(time.Time(msg)))
 		}
 		return m, nil
 
 	case callArrived:
-		return m.callArrived(msg.l)
+		next, cmd := m.callArrived(msg.l)
+		return next, tea.Batch(cmd, m.ring())
 	case callGone:
 		if m.bar.incoming == msg.l {
 			m.bar.clear()
@@ -122,23 +123,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case callRefused:
+		var ring tea.Cmd
+		if !msg.quiet {
+			ring = m.ringIfWaiting()
+		}
 		m.bar.clear()
 		m.say(sayCall(m.st, msg.format, msg.name), false)
-		return m, nil
+		return m, ring
 	case callFailed:
+		ring := m.ringIfWaiting()
 		m.bar.clear()
 		m.say(sayCall(m.st, "could not reach %s: ", msg.name)+reason(msg.err), true)
-		return m, nil
+		return m, ring
 	case callAnswered:
-		return m.startConversation(msg.l)
+		ring := m.ringIfWaiting()
+		next, cmd := m.startConversation(msg.l)
+		return next, tea.Batch(cmd, ring)
 
 	case peerSaid:
 		if m.conv != nil {
 			m.conv.msg(m.st, m.conv.l.name, msg.text, false)
 		}
-		return m, nil
+		return m, m.ring()
 	case peerLeft:
-		return m.peerLeft(msg.err)
+		next, cmd := m.peerLeft(msg.err)
+		return next, tea.Batch(cmd, m.ring())
 	case sendFailed:
 		if m.conv != nil && !m.conv.ended {
 			m.conv.alert(m.st, "could not send: "+reason(msg.err))
@@ -146,7 +155,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case fileOffered, offerTimedOut, fileProgress, fileDone, fileFailed, sending, sent, sendFileFailed:
+	case fileOffered, fileDone, fileFailed, sent:
+		// sent is the one thing of your own doing that rings: a large file
+		// takes minutes, and nobody watches a progress bar for minutes.
+		m.fileEvent(msg)
+		return m, m.ring()
+	case offerTimedOut, fileProgress, sending, sendFileFailed:
 		m.fileEvent(msg)
 		return m, nil
 
@@ -218,11 +232,42 @@ func (m *model) fileEvent(msg tea.Msg) {
 // callArrived parks a caller on the bar. A second caller while one waits
 // is turned away as busy; a caller during a conversation waits unseen
 // until it ends, and the bar's own timer hangs up if that is too long.
+// ring is the bell, when the setting says so: for what arrives from the
+// far side, never for what you did yourself. tea.Raw sends the byte down
+// the program's own output, between two frames and never inside one.
+func (m model) ring() tea.Cmd {
+	if m.deps.Cfg == nil || !m.deps.Cfg.Bell {
+		return nil
+	}
+	return tea.Raw(bell)
+}
+
+// ringAgain is the bell for a call still waiting on the screen: once every
+// callRingEvery since it last rang, the way a phone keeps ringing until it
+// is picked up. now comes from the tick so a test can move time.
+func (m *model) ringAgain(now time.Time) tea.Cmd {
+	if m.bar.incoming == nil || now.Sub(m.bar.lastRing) < callRingEvery {
+		return nil
+	}
+	m.bar.lastRing = now
+	return m.ring()
+}
+
+// ringIfWaiting is the bell for a call taken. The same message starts the
+// conversation on both sides; only the side that dialed and waited is
+// told, because the side that pressed y is looking at the screen.
+func (m model) ringIfWaiting() tea.Cmd {
+	if m.bar.outgoing == "" {
+		return nil
+	}
+	return m.ring()
+}
+
 func (m model) callArrived(l *line) (tea.Model, tea.Cmd) {
 	if m.bar.showing() {
 		return m, turnAway(l)
 	}
-	m.bar = callBar{incoming: l, deadline: l.deadline}
+	m.bar = callBar{incoming: l, deadline: l.deadline, lastRing: time.Now()}
 	if m.screen == screenConversation {
 		return m, nil
 	}
@@ -309,7 +354,11 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenPage
 		return m, nil
 	case actSettings:
-		return m.openForm(formSettings, settingsForm("settings", m.deps.Cfg), screenMenu), nil
+		return m.openForm(
+			formSettings,
+			settingsForm("settings", m.deps.Cfg, false),
+			screenMenu,
+		), nil
 	case actHelp:
 		m.page = &page{title: "help", body: helpText, back: screenMenu}
 		m.screen = screenPage

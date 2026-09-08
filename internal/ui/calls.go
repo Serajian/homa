@@ -183,7 +183,7 @@ func dial(ctx context.Context, deps Deps, c contacts.Contact, send func(tea.Msg)
 		conn, err := peer.Dial(dialCtx, deps.ID, c.Addr)
 		if err != nil {
 			if ctx.Err() != nil {
-				return callRefused{name: c.Name, format: "you stopped calling %s."}
+				return callRefused{name: c.Name, format: "you stopped calling %s.", quiet: true}
 			}
 			return callFailed{name: c.Name, err: err}
 		}
@@ -204,7 +204,7 @@ func dial(ctx context.Context, deps Deps, c contacts.Contact, send func(tea.Msg)
 		if err := s.WaitAccepted(ctx); err != nil {
 			_ = s.Close()
 			if ctx.Err() != nil {
-				return callRefused{name: c.Name, format: "you stopped calling %s."}
+				return callRefused{name: c.Name, format: "you stopped calling %s.", quiet: true}
 			}
 			return callFailed{name: c.Name, err: err}
 		}

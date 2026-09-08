@@ -309,7 +309,10 @@ appear in his menu as `1  call alice`.
 **4. Bob calls, you answer.** He presses `1`. A box appears on your screen:
 `~bob is calling`, with `y` to take the call and `n` not to — `y` puts him
 through, `n` or Enter does not, and after a minute with no answer he is told
-nobody picked up. The `~` means the name is the one he chose for himself; once
+nobody picked up. Your terminal's bell rings, and keeps ringing every ten
+seconds until you answer, as it rings once for every message and file that
+arrives, so homa can sit in a window you are not looking at; `s` turns that
+off. The `~` means the name is the one he chose for himself; once
 you save him with `n`, he appears under the name you gave him instead.
 
 **5. Talk.** Lines you type are sent; lines starting with `/` are commands.

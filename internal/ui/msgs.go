@@ -30,6 +30,10 @@ type callAnswered struct{ l *line }
 // callRefused is a call that ended before a conversation, with what to
 // say about it; format takes the far side's name.
 type callRefused struct {
+	// quiet is the person's own doing — they stopped calling — which the
+	// bell has no reason to announce.
+	quiet bool
+
 	name   string
 	format string
 }

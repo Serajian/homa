@@ -64,6 +64,13 @@ the full-screen interface, is built; what is left of version 2 is in
   Enter take the one marked, and a word that is no command is warned about
   before Enter. `/help` and the hint read one table, so they cannot disagree
 
+- a bell when something arrives from the far side — a call, which keeps ringing
+  every ten seconds until answered, your call's outcome, a message, a file
+  offered, finished or failed, the peer leaving, and a file of yours that
+  finished sending — so homa can be left in a window nobody is watching. On by
+  default; the settings screen turns it off. What the terminal does with the
+  bell (sound, flash, nothing) is its own
+
 Tests: `make test` runs them, with the race detector, and they are hermetic —
 no network, no relay, nothing outside a temporary directory. `make test-live`
 runs the other kind: whole homa processes reaching each other through a relay,

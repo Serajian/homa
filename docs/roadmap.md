@@ -29,58 +29,23 @@ line only. It is recorded there rather than repeated here.
 - keep `proto`, `peer` and `session` free of any desktop assumption: no direct
   terminal reads, no assumptions about file paths. Everything is injected
 
-## Version 2: a sound when a call arrives
+## Version 2: a bell when something arrives — built
 
-homa can be left running in a window nobody is looking at, and today the only
-sign of a call is a line of text on a screen that is not in front of anyone.
+The terminal bell, `\a`, sent through the program's own output so it lands
+between two frames: for a call arriving (and again every ten seconds while it
+waits), your call's outcome, a message, a file offered, finished or failed,
+the peer leaving — everything from the far side — and a file of yours that
+finished sending. On by default, a y/n question on the settings screen, not
+on the first run. The plan here had it ring for calls only; it
+was widened when built, on the reasoning in [decisions.md](decisions.md).
 
-**The terminal bell is the mechanism.** `\a`, one byte, written to a terminal
-homa already owns. No dependency, no audio file to ship, no CGO — and CGO is
-the reason nothing heavier is worth it: it would break `make build-linux` and
-complicate the `gomobile` work in this same version. Playing a real sound means
-either shelling out to `afplay` or `paplay`, which is a dependency on whatever
-the machine happens to have, or linking an audio library, which is a dependency
-on a C toolchain. Neither buys enough.
+## Version 2: commands offered as they are typed — built
 
-**Where it rings**, and no more than that:
-
-- a call arrives. This is the one that matters: the screen is not being watched
-- your call is taken, so the person who dialled can look away while it connects
-
-Not on every message. A conversation that beeps is a conversation people mute,
-and then it does not ring for a call either.
-
-**A setting decides.** `config.Config` gains a field and the settings screen a
-question. Not the first-run questions: those ask only what homa cannot guess,
-and this it can. Whether it defaults to ringing or to silence is a real choice —
-a program that makes noise on first use without asking is a program people
-distrust — and it should be made deliberately.
-
-**What must stay true.** The bell is a control character, so it lives behind a
-named constant in `internal/ui/const.go` with the others, and is never built
-from anything that arrived over the network. It is also best-effort: many
-terminals turn it into a visual flash and some ignore it entirely, so nothing
-may depend on it having been heard. And it is written unconditionally like
-`clearLine`, so redirected output gets the byte — the same wart, to be settled
-in the same place when terminal detection is added.
-
-## Version 2: commands offered as they are typed
-
-Typing `/` should show what can be typed after it, and typing `/se` should
-narrow that to `/send`. Neither is possible today for the same reason tab
-completion is not: the terminal collects a whole line and hands it over on
-Enter, so homa never sees a keystroke and cannot answer one.
-
-Version 1 does what can be done without that — a lone `/` lists the commands
-when it is entered, and an unrecognised one lists them rather than saying to
-go and look. This item is the live version, and it belongs to the full-screen
-interface rather than beside it: once that owns the input line it has every
-keystroke already, and offering commands is a small thing on top rather than a
-reason to go into raw mode.
-
-Worth deciding then: whether it filters as more is typed, whether it takes
-arrows and Enter to pick one, and whether the same thing offers contacts after
-`/send` — the listing from `/files` is already a numbered set of candidates.
+A `/` shows every command in the row above the input, letters narrow it,
+left and right walk it, Tab or Enter take the one marked. One table feeds the
+row, `/help` and the unknown-command listing. The open questions above were
+answered in [decisions.md](decisions.md); offering the numbered listing after
+`/send` was not built and is not planned.
 
 ## Version 2: `/store`
 

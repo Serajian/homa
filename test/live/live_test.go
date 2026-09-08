@@ -43,6 +43,9 @@ type instance struct {
 // and the header's status, tall enough for a conversation.
 const ttyRows, ttyCols = 30, 100
 
+// callRingEvery mirrors ui's: how often a waiting call rings again.
+const callRingEvery = 10 * time.Second
+
 func start(t *testing.T, name string) *instance {
 	t.Helper()
 
@@ -312,6 +315,14 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	// alice in his address book, so he sees the name he gave her.
 	alice.await("~bob is calling")
 	alice.snapshot("incoming")
+	// The call rang alice's bell, once: the one byte that reaches a window
+	// nobody is looking at. Nothing has rung on bob's side; he did it all.
+	if n := alice.scr.rung(); n != 1 {
+		t.Errorf("alice's bell rang %d times for one call", n)
+	}
+	if n := bob.scr.rung(); n != 0 {
+		t.Errorf("bob's bell rang %d times while calling", n)
+	}
 	alice.key("y")
 
 	alice.await("talking to ~bob")
@@ -319,6 +330,10 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 
 	bob.line("salam from bob")
 	alice.await("salam from bob")
+	// The taken call rang for bob, the message for alice.
+	if a, b := alice.scr.rung(), bob.scr.rung(); a != 2 || b != 1 {
+		t.Errorf("bells after the first message: alice %d, bob %d", a, b)
+	}
 
 	alice.line("salam from alice")
 	bob.await("salam from alice")
@@ -353,10 +368,20 @@ func TestARefusedCallIsNeverAConversation(t *testing.T) {
 
 	bob.key("1")
 	alice.await("incoming call")
+
+	// A call left on the screen keeps ringing, like a phone, until it is
+	// answered; the refusal then rings for bob, who has been waiting.
+	time.Sleep(callRingEvery + time.Second)
+	if n := alice.scr.rung(); n < 2 {
+		t.Errorf("alice's bell rang %d times in %s of waiting", n, callRingEvery+time.Second)
+	}
 	alice.key("n")
 
 	bob.await("not taking calls right now")
 	bob.refute("talking to alice")
+	if n := bob.scr.rung(); n != 1 {
+		t.Errorf("bob's bell rang %d times for the refusal", n)
+	}
 
 	alice.await("was not taken")
 }

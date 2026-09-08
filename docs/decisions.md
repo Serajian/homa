@@ -243,6 +243,27 @@ not only a color, and an alias (`/ls`) is taken when typed but never offered, so
 does not show one command twice. The commands are one table read by the hint, `/help` and
 the "no such command" listing alike, so the three cannot drift apart.
 
+**The bell rings for everything from the far side, and for nothing you did.** The
+roadmap had it ring for a call only, on the worry that a conversation that beeps is one
+people mute. The decision went the other way, because the reason for a bell — a window
+nobody is looking at — holds for a message and a file as much as for a call, and a person
+who is looking at the window is not startled by one byte; whoever finds it too much has
+one setting, on the settings screen, and it turns every ring off at once rather than asking
+six questions. A call left on the screen rings again every ten seconds until it is
+answered or runs out, the way a phone does, because one ring at the moment of arrival is
+the one most likely to be missed. The outcome of your own call — taken, refused, failed —
+rings too, because you may have looked away in the minute it waited; stopping it yourself
+does not. What never rings is your own doing: sending, progress, a command's answer — with
+one exception, a file that finished sending, because a large one takes minutes and nobody
+watches a progress bar for minutes.
+The byte goes through `tea.Raw`, the program's own output path, so it never lands inside
+a frame; it is a constant in `const.go`, never built from the network; and it is best
+effort — a terminal may flash or ignore it, and nothing depends on it having been heard.
+Default on, because a bell that has to be found before it works is a bell nobody hears
+the first time it matters; the first run does not ask, because the default is right.
+`Load` reads a settings file over the defaults, so a file from before the field existed
+keeps the bell on rather than getting the zero value.
+
 **Output that is not a terminal is refused.** A full-screen program has nowhere to draw
 in a pipe, and nobody chats through one. `homa: needs a terminal`, exit 1, before an
 identity is created or a listener opened. Version 1 stays downloadable as v0.1.0; there is

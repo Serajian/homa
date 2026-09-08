@@ -71,6 +71,11 @@ const (
 	keyQuit   = "ctrl+c"
 )
 
+// bell is the terminal's bell, rung when something arrives from the far
+// side and the setting says so. A control character, so it lives here with
+// the others and is never built from anything that came over the network.
+const bell = "\a"
+
 // pickUnicode and pickASCII mark the command picked in the hint row, so
 // the pick is a character and not only a color.
 const (
@@ -136,6 +141,11 @@ const dialTimeout = 60 * time.Second
 // screen. The caller has been waiting the whole time either way, and a call
 // parked behind a conversation has already spent some of it.
 const callAnswerTimeout = session.AnswerWindow
+
+// callRingEvery is how often the bell rings again while a call waits on
+// the screen unanswered: a phone that rang once and fell silent is a phone
+// nobody heard. Ten seconds is a few rings over the minute a call waits.
+const callRingEvery = 10 * time.Second
 
 // countdownStep is how often a line showing the time left is redrawn. Once a
 // second is what a person expects of a countdown, and anything faster is a

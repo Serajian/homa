@@ -26,7 +26,7 @@ func sandbox(t *testing.T) string {
 func TestSaveAndLoad(t *testing.T) {
 	sandbox(t)
 
-	want := &Config{Nick: "alice", DownloadDir: "/tmp/homa-files", AutoListen: true}
+	want := &Config{Nick: "alice", DownloadDir: "/tmp/homa-files", AutoListen: true, Bell: false}
 	if err := want.Save(); err != nil {
 		t.Fatalf("saving: %v", err)
 	}
@@ -187,4 +187,32 @@ func write(t *testing.T, content string) string {
 		t.Fatal(err)
 	}
 	return p
+}
+
+// A settings file from before the bell existed has no "bell" key. It must
+// load with the bell on, the default, not off, the zero value.
+func TestAFileWithoutAFieldLoadsThatFieldsDefault(t *testing.T) {
+	sandbox(t)
+
+	p, err := paths.File(configFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := []byte(
+		`{"nick": "alice", "download_dir": "/tmp/homa-files", "auto_listen": true}` + "\n",
+	)
+	if werr := paths.WriteAtomic(p, old); werr != nil {
+		t.Fatal(werr)
+	}
+
+	got, err := Load()
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+	if !got.Bell {
+		t.Error("the bell is off for a file that never mentioned it")
+	}
+	if got.Nick != "alice" {
+		t.Errorf("nick = %q", got.Nick)
+	}
 }

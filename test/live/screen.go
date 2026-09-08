@@ -36,6 +36,10 @@ type screen struct {
 	// finals counts the control sequences seen, by final byte, so a
 	// failure can say which ones the interpreter met.
 	finals map[rune]int
+
+	// bells counts the terminal bells rung: nothing to draw, but a thing
+	// homa promises to do when something arrives.
+	bells int
 }
 
 func newScreen(rows, cols int) *screen {
@@ -53,6 +57,13 @@ func blank(n int) []rune {
 		row[i] = ' '
 	}
 	return row
+}
+
+// rung is how many bells have been rung so far.
+func (s *screen) rung() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.bells
 }
 
 // seen is the control sequences met so far, by final byte.
@@ -100,6 +111,8 @@ func (s *screen) write(b []byte) {
 			}
 		case ch == '\t':
 			s.tab(1)
+		case ch == '\a':
+			s.bells++
 		case ch < ' ':
 			// other control bytes: nothing to draw
 		default:

@@ -33,6 +33,11 @@ type Config struct {
 	// AutoListen starts accepting incoming connections as soon as homa
 	// runs, rather than waiting for the person to ask.
 	AutoListen bool `json:"auto_listen"`
+
+	// Bell rings the terminal's bell when something arrives from the far
+	// side — a call, a message, a file — so homa can be left in a window
+	// nobody is watching. Best effort: the terminal may flash or ignore it.
+	Bell bool `json:"bell"`
 }
 
 // Default returns the settings a first run starts from. The caller is
@@ -42,6 +47,7 @@ func Default() *Config {
 		Nick:        defaultNick(),
 		DownloadDir: defaultDownloadDir(),
 		AutoListen:  true,
+		Bell:        true,
 	}
 }
 
@@ -69,7 +75,9 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("config: reading %s: %w", p, err)
 	}
 
-	var c Config
+	// Over the defaults, so a file written before a field existed keeps
+	// that field's default rather than its zero value.
+	c := *Default()
 	if err := json.Unmarshal(b, &c); err != nil {
 		return nil, fmt.Errorf("config: %s is not valid JSON (%w); "+
 			"fix it by hand or delete it to be asked again", p, err)

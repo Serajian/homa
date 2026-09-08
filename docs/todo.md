@@ -43,9 +43,6 @@ plan stay in [design/](design/) for the record.
 - **Android**: `gomobile bind` over the lower packages and a Compose interface.
   It is plausible at all because tailcat needs no VPN permission, and it is the
   reason `proto`, `peer` and `session` must stay free of any desktop assumption
-- **a sound when a call arrives**, so homa can be left in a window nobody is
-  watching. The terminal bell is the whole mechanism; anything richer costs a
-  dependency this project should not take. A setting decides whether it rings
 - **`/store`**, saving the conversation you have been having, typed at any point
   in it. Working at any point is the whole difficulty: it means homa keeps every
   conversation as it happens, whether or not it is ever asked to save one, and
