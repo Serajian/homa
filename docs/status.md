@@ -43,6 +43,10 @@ Everything version 1 needs is listed in [todo.md](todo.md). Working today:
   GitHub renders, and the call-setup one also as a pannable page
 - `make lint` clean, hooks wired, Makefile covering build, format, lint, test,
   cross-compile
+- a release, v0.1.0: `brew install --cask Serajian/homa/homa` on macOS, a `.deb`
+  on the release page for Debian and Ubuntu, archives for the rest, and
+  `homa -version` naming the tag — all of it built by GoReleaser from a tag,
+  the cask pushed to the tap by the same run
 
 Known warts, fixed by the full-screen interface in version 2 (see
 [roadmap.md](roadmap.md)):

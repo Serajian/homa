@@ -32,58 +32,26 @@ The first release: two people, text, files, contacts, a line-based interface
 that is worth looking at, tests under it, and a way to install it that is not
 "clone the repository".
 
-## 1. Install with brew and apt
+## 1. An apt repository
 
-### The symptom
+### What this is
 
-There is no way to install homa except to clone the repository and build it.
-Anyone who is not already a Go developer cannot run it at all.
-
-The roadmap had this after everything else. It is in version 1 because a
-release nobody can install is not a release.
-
-### What to build
-
-**GoReleaser**, configured so one tagged release produces everything:
-
-- binaries for macOS and Linux, amd64 and arm64
-- a `.deb`, which is what makes `apt` possible
-- a Homebrew formula pushed to a tap
-- checksums, and the version stamped in at build time with
-  `-ldflags -X main.version=...` so `homa -version` reports the tag rather than
-  `dev`
-
-**A Homebrew tap.** A second repository, `Serajian/homebrew-homa`, holding the
-formula GoReleaser writes. `brew install Serajian/homa/homa`.
-
-**An apt repository.** This is the harder half and worth being honest about:
-`apt` needs a signed repository served over HTTP, not just a `.deb` file. Two
-routes:
-
-1. Publish the `.deb` on the release page and tell people to
-   `dpkg -i homa_*.deb`. One line of documentation, no infrastructure, and not
-   really `apt`.
-2. A real repository, which means a GPG key, a signed `Release` file, and
-   somewhere to host it. GitHub Pages can serve it.
-
-Decide which before starting. Route 2 is what the item asks for; route 1 is
-what ships this week.
+v0.1.0 is released and installable: `brew install --cask Serajian/homa/homa` on macOS,
+and a `.deb` on the release page for Debian and Ubuntu, both verified from a clean
+install. What the item asked for beyond that, and what is not done, is `apt install
+homa`: a real repository, which means a GPG key, a signed `Release` file, and somewhere
+to serve it — GitHub Pages can. The `.deb` the pipeline already builds is the input.
 
 ### Files
 
-- `.goreleaser.yaml`: new
-- `.github/workflows/`: a workflow that runs GoReleaser on a tag
-- `Makefile`: a `release` target, or at least `snapshot` for testing locally
-- `README.md`: the install instructions, which are the point of all of this
-- `cmd/homa/version.go`: check that the ldflags path actually reaches `version`
+- `.goreleaser.yaml`: an `aptly`/`reprepro` publish step, or a small workflow of its own
+- `.github/workflows/`: publishing the repository on each release
+- `README.md`: `apt` instructions replacing `dpkg -i`
 
 ### Done when
 
-A tag produces a release with binaries, a `.deb` and a formula; `brew install`
-works from a clean machine; the documented Debian route works from a clean
-machine; and `homa -version` prints the tag.
-
----
+A machine with the repository added installs and upgrades homa with `apt`, and the
+`.deb` route still works for everybody else.
 
 ## 3. Security
 
