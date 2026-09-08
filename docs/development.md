@@ -39,7 +39,8 @@ only write to this repository.
 
 To release: `git tag v0.1.0 && git push origin v0.1.0`, then watch the Actions run.
 
-Publishing the release also runs `.github/workflows/apt.yml`, which takes the `.deb`s
+The release workflow ends by starting `.github/workflows/apt.yml` (a release made with
+`GITHUB_TOKEN` raises no event other workflows see, so it is dispatched by name), which takes the `.deb`s
 from the release, adds them to the apt repository on the `gh-pages` branch
 (`.github/apt/build.sh` builds the `pool/` and `dists/` tree and signs `Release`), and
 GitHub Pages serves it at https://serajian.github.io/homa. It signs with the

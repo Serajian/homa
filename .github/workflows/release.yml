@@ -4,6 +4,10 @@
 # GITHUB_TOKEN is provided by Actions and can only write to this repository.
 # Pushing the formula to the tap needs a token of its own, stored as the
 # HOMEBREW_TAP_GITHUB_TOKEN secret.
+#
+# The apt repository is published by apt.yml, started from here by hand at the
+# end: a release created with GITHUB_TOKEN raises no "published" event that
+# another workflow would see, and workflow_dispatch is the exception to that.
 name: release
 
 on:
@@ -12,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # to start apt.yml
 
 jobs:
   release:
@@ -33,3 +38,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+      - name: Publish to apt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run apt.yml -f tag="${{ github.ref_name }}"

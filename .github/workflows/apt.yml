@@ -3,6 +3,11 @@
 # https://serajian.github.io/homa. Runs when a release is published, and by
 # hand for a release that already exists.
 #
+# The release workflow dispatches this one at its end rather than relying on
+# the release event: a release created with GITHUB_TOKEN raises no events that
+# start other workflows, so the "published" trigger below only fires for a
+# release made by hand. workflow_dispatch is the documented exception.
+#
 # The packages come from the release itself, not from a build here, so this
 # publishes exactly what people can also download by hand. Signing needs the
 # APT_GPG_PRIVATE_KEY secret: a key made for this and nothing else.
@@ -50,7 +55,10 @@ jobs:
 
       - name: Check out gh-pages, or start it
         run: |
+          # The checkout is shallow and brings one branch; the pages branch
+          # has to be fetched by name before a worktree can be made of it.
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git fetch --no-tags origin gh-pages:gh-pages
             git worktree add site gh-pages
           else
             git worktree add --orphan -b gh-pages site
