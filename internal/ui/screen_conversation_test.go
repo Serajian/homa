@@ -110,3 +110,118 @@ func TestAnUnknownCommandIsSaidAndTheListShown(t *testing.T) {
 		t.Error("the command stayed in the input")
 	}
 }
+
+func pressKey(c *conversation, st *styles, code rune) {
+	_, _ = c.update(st, tea.KeyPressMsg{Code: code})
+}
+
+// The hint row: blank for a message, the commands for a slash, one command
+// as letters narrow it, and warning at once for a word that is nothing.
+func TestTheHintRowOffersCommandsAsTheyAreTyped(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
+	view := func() string {
+		_, body, _ := c.view(st, 100)
+		return stripANSI(body)
+	}
+
+	typeInto(c, st, "hi")
+	if strings.Contains(view(), "/help") {
+		t.Errorf("a message got a hint:\n%s", view())
+	}
+	c.in.Reset()
+
+	typeInto(c, st, "/")
+	if !strings.Contains(view(), "▸ /help  ·  /files [dir]  ·  /send <path>") {
+		t.Errorf("a slash did not offer the commands:\n%s", view())
+	}
+	typeInto(c, st, "s")
+	if !strings.Contains(view(), "/send <path>   offer a file  ·  Tab completes") {
+		t.Errorf("/s did not narrow to /send:\n%s", view())
+	}
+	typeInto(c, st, "x")
+	if !strings.Contains(view(), `no such command: "/sx"`) {
+		t.Errorf("/sx did not warn:\n%s", view())
+	}
+}
+
+func TestTabAndTheArrowsTakeFromTheHintRow(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
+
+	typeInto(c, st, "/s")
+	pressKey(c, st, tea.KeyTab)
+	if c.in.Value() != "/send " {
+		t.Errorf("Tab on /s gave %q", c.in.Value())
+	}
+	c.in.Reset()
+
+	// Right twice from /help is /send; left from /help wraps to /quit.
+	typeInto(c, st, "/")
+	pressKey(c, st, tea.KeyRight)
+	pressKey(c, st, tea.KeyRight)
+	if _, body, _ := c.view(st, 100); !strings.Contains(stripANSI(body), "▸ /send <path>") {
+		t.Errorf("two rights did not reach /send:\n%s", stripANSI(body))
+	}
+	pressKey(c, st, tea.KeyTab)
+	if c.in.Value() != "/send " {
+		t.Errorf("Tab on the pick gave %q", c.in.Value())
+	}
+	c.in.Reset()
+
+	typeInto(c, st, "/")
+	pressKey(c, st, tea.KeyLeft)
+	if _, body, _ := c.view(st, 100); !strings.Contains(stripANSI(body), "▸ /quit") {
+		t.Errorf("left did not wrap to /quit:\n%s", stripANSI(body))
+	}
+
+	// A letter typed resets the pick to the first candidate.
+	typeInto(c, st, "c")
+	if _, body, _ := c.view(st, 100); !strings.Contains(
+		stripANSI(body),
+		"/clear   wipe the screen",
+	) {
+		t.Errorf("/c:\n%s", stripANSI(body))
+	}
+}
+
+func TestEnterTakesThePickRunningItWhenItWantsNothing(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
+
+	// /s wants a path: Enter finishes the word and waits.
+	typeInto(c, st, "/s")
+	if _, leave := c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter}); leave {
+		t.Fatal("left")
+	}
+	if c.in.Value() != "/send " {
+		t.Errorf("Enter on /s gave %q", c.in.Value())
+	}
+	c.in.Reset()
+
+	// A lone slash is /help, as in version 1.
+	typeInto(c, st, "/")
+	_, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	if plain := stripANSI(strings.Join(c.lines, "\n")); !strings.Contains(
+		plain,
+		"/quit         leave the conversation",
+	) {
+		t.Errorf("a lone slash did not list the commands:\n%s", plain)
+	}
+	if c.in.Value() != "" {
+		t.Errorf("the slash stayed: %q", c.in.Value())
+	}
+
+	// An arrow to /quit and Enter leaves.
+	typeInto(c, st, "/")
+	pressKey(c, st, tea.KeyLeft)
+	if _, leave := c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter}); !leave {
+		t.Error("Enter on the picked /quit did not leave")
+	}
+}

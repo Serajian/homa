@@ -59,6 +59,11 @@ the full-screen interface, is built; what is left of version 2 is in
   PgUp/PgDn scroll what was said. Version 1's two warts, and the arrow keys
   that did nothing, went with the line-based interface they came from
 
+- commands offered as they are typed: a `/` shows every command in the row
+  above the input, each letter narrows the row, left and right walk it, Tab or
+  Enter take the one marked, and a word that is no command is warned about
+  before Enter. `/help` and the hint read one table, so they cannot disagree
+
 Tests: `make test` runs them, with the race detector, and they are hermetic —
 no network, no relay, nothing outside a temporary directory. `make test-live`
 runs the other kind: whole homa processes reaching each other through a relay,

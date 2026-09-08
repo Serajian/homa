@@ -228,6 +228,21 @@ event a message, every screen drawn whole, every `Update` on one goroutine. The 
 line-owning machinery of version 1 — the pump, the prompts and their erasing, the
 countdown, the hand-rolled palette — went with the line.
 
+**Commands are offered in the row that was already there, one line, cut to the width.**
+The blank row between the pane and the input box becomes the hint row when a line starts
+with `/`, and stays blank otherwise, so nothing on the screen moves when a command is begun.
+It is one line because a row that grows takes the pane with it and a person reading what
+was said would see it jump; when the row is wider than the terminal it starts where the
+marked command is still in view, and the frame cuts the rest. Left and right walk the row
+while a command word is being typed, because there is nothing to edit inside a word a few
+letters long and the row is what the eye is on; up and down stay history. Tab takes the
+marked command; so does Enter, running it when it wants nothing and putting it in the line
+when it wants an argument — which keeps the version-1 habit that a lone `/` and Enter is
+`/help`, by keeping `/help` first in the table. The marked command carries a mark, `▸`, and
+not only a color, and an alias (`/ls`) is taken when typed but never offered, so the row
+does not show one command twice. The commands are one table read by the hint, `/help` and
+the "no such command" listing alike, so the three cannot drift apart.
+
 **Output that is not a terminal is refused.** A full-screen program has nowhere to draw
 in a pipe, and nobody chats through one. `homa: needs a terminal`, exit 1, before an
 identity is created or a listener opened. Version 1 stays downloadable as v0.1.0; there is

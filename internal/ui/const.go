@@ -65,7 +65,17 @@ const (
 	keyDown   = "down"
 	keyPgUp   = "pgup"
 	keyPgDown = "pgdown"
+	keyLeft   = "left"
+	keyRight  = "right"
+	keyTab    = "tab"
 	keyQuit   = "ctrl+c"
+)
+
+// pickUnicode and pickASCII mark the command picked in the hint row, so
+// the pick is a character and not only a color.
+const (
+	pickUnicode = "▸ "
+	pickASCII   = "> "
 )
 
 // clearScreen erases the screen and puts the cursor at the top left: the

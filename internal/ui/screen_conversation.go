@@ -28,6 +28,11 @@ type conversation struct {
 	hist  history
 	lines []string
 
+	// pick is which of the commands the hint row offers is marked, moved
+	// with the left and right arrows and taken by Tab or Enter; it goes
+	// back to the first whenever the command word changes.
+	pick int
+
 	// ended is the far side gone or the line broken: the pane says so, the
 	// typed line stays, and Enter or /quit goes back to the menu.
 	ended bool
@@ -152,8 +157,11 @@ func (c *conversation) view(st *styles, width int) (status, body, keys string) {
 	}
 	status = header(st, width, brand(st)+"   "+who, st.dim.Render("files → "+c.filesDir))
 
-	body = c.pane.View() + "\n\n  " + strings.ReplaceAll(
-		st.box(st.boxDim(), width-4, "", c.in.View()), "\n", "\n  ")
+	// The row between the pane and the box is the hint row: what a line
+	// starting with a slash can become, and blank otherwise, so the layout
+	// is the same whether or not a command is being typed.
+	body = c.pane.View() + "\n    " + hint(st, c.in.Value(), c.pick, width-4) + "\n  " +
+		strings.ReplaceAll(st.box(st.boxDim(), width-4, "", c.in.View()), "\n", "\n  ")
 
 	if c.ended {
 		keys = footer(st, width, st.keys("Enter", "back to the menu"))
@@ -191,11 +199,55 @@ func (c *conversation) update(st *styles, msg tea.Msg) (cmd tea.Cmd, leave bool)
 		case keyPgUp, keyPgDown:
 			c.pane, cmd = c.pane.Update(msg)
 			return cmd, false
+		case keyLeft, keyRight:
+			// While a command word is being typed the arrows walk the
+			// hint row rather than the cursor: there is nothing to edit
+			// inside a word a few letters long, and the row is what the
+			// eye is on.
+			if n := len(c.candidates()); n > 1 {
+				if msg.String() == keyLeft {
+					c.pick = (c.pick + n - 1) % n
+				} else {
+					c.pick = (c.pick + 1) % n
+				}
+				return nil, false
+			}
+		case keyTab:
+			c.take()
+			return nil, false
 		}
+		before, _ := commandWord(c.in.Value())
 		c.in, cmd = c.in.Update(msg)
+		if after, _ := commandWord(c.in.Value()); after != before {
+			c.pick = 0
+		}
 		return cmd, false
 	}
 	return nil, false
+}
+
+// candidates is what the hint row is offering for the typed line: the
+// commands the word can still become, while no argument has begun.
+func (c *conversation) candidates() []command {
+	word, argBegun := commandWord(c.in.Value())
+	if word == "" || argBegun {
+		return nil
+	}
+	return matches(word)
+}
+
+// take puts the picked command in the line, with a space after it when it
+// wants an argument, and reports whether the line changed.
+func (c *conversation) take() bool {
+	typed := c.in.Value()
+	done := complete(typed, c.pick)
+	if done == typed {
+		return false
+	}
+	c.in.SetValue(done)
+	c.in.CursorEnd()
+	c.pick = 0
+	return true
 }
 
 // enter sends the typed line, or runs it as a command. A bare Enter is
@@ -207,6 +259,17 @@ func (c *conversation) enter(st *styles) (tea.Cmd, bool) {
 	}
 	if text == "" {
 		return nil, false
+	}
+
+	// Enter on a command word still being typed takes what the hint row
+	// offers, the way Tab does: a command that wants an argument goes in
+	// the line to be finished, one that wants nothing runs at once. So an
+	// arrow to /quit and Enter leaves, and a lone slash is /help.
+	if ms := c.candidates(); len(ms) > 0 && ms[c.pick].takesArg() {
+		c.take()
+		return nil, false
+	} else if len(ms) > 0 {
+		text = ms[c.pick].name
 	}
 	c.in.Reset()
 
@@ -247,9 +310,9 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 	switch cmd {
 	case "/quit":
 		return closeLine(c.l), true
-	case "/help", "/":
-		for _, l := range strings.Split(conversationCommands, "\n") {
-			c.note(st, st.dim.Render(strings.TrimSpace(l)))
+	case "/help":
+		for _, l := range helpLines() {
+			c.note(st, st.dim.Render(l))
 		}
 		return nil, false
 	case "/who":
@@ -285,23 +348,11 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 	}
 	c.alert(st, "no such command: "+quote(cmd))
 	c.note(st, st.dim.Render("these are the commands; a line that is not one is sent as a message"))
-	for _, l := range strings.Split(conversationCommands, "\n") {
-		c.note(st, st.dim.Render(strings.TrimSpace(l)))
+	for _, l := range helpLines() {
+		c.note(st, st.dim.Render(l))
 	}
 	return nil, false
 }
-
-// conversationCommands is what /help shows. It is content, kept beside the
-// code that shows it; whoever changes a command changes this too.
-const conversationCommands = `  /files [dir]  list a directory, numbered
-  /files <n>    list one from the last listing, .. included
-  /send <path>  offer a file
-  /send <n>     offer one from the last listing
-  /accept       take the file being offered, or just y
-  /reject       refuse it, or just n
-  /who          who you are talking to
-  /clear        wipe the screen
-  /quit         leave the conversation, not homa`
 
 // offered is the far side offering a file: one line, who, what, how big,
 // what to type, and the offer parked until the answer.

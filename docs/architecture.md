@@ -131,7 +131,10 @@ sending a file, closing a line — and end by sending a message back.
 `View` draws the whole screen every time: a two-line header, the body, a
 two-line footer, cut to the terminal's size so the renderer never scrolls it.
 The look is data in `styles.go`; the rules it follows are in
-[decisions.md](decisions.md). Output that is not a terminal is refused before
+[decisions.md](decisions.md). The conversation's commands are one table in
+`hints.go`, read by `/help`, by the "no such command" listing and by the hint
+row that offers them as they are typed; the functions that narrow and
+complete are pure and tested on their own. Output that is not a terminal is refused before
 anything else starts, and the screen is homed before the program draws,
 because it draws in place: see `clearScreen` in `const.go` for why that is not
 optional.

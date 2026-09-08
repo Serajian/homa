@@ -160,6 +160,7 @@ nobody answers is hung up on inside a minute with both sides told why.
 
 | Command | What it does |
 | --- | --- |
+| `/help` | this list, or just `/` |
 | `/files [dir]` | list a directory, numbered |
 | `/files <n>` | list one from the last listing, `..` included |
 | `/send <path>` | offer a file |
@@ -168,8 +169,28 @@ nobody answers is hung up on inside a minute with both sides told why.
 | `/reject` | refuse it, or just `n` |
 | `/who` | who you are talking to |
 | `/clear` | wipe the screen |
-| `/help` | this list, or just `/` |
 | `/quit` | leave the conversation, not homa |
+
+You do not have to remember them. A `/` shows what can follow it in the row
+above the input, and every letter narrows the row; `←` `→` walk it, Tab or
+Enter take the one marked, and a word that can become nothing says so before
+Enter:
+
+```
+  >_ homa   talking to alice  ·  they call themselves "alice"          files → /tmp/bob/homa-files
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+       me │ salam from bob
+    alice │ salam from alice
+    alice │ chetori?
+
+
+    ▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /clear  ·  /quit
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ /                                                                                            │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+   PgUp PgDn  scroll    ↑ ↓  history    /help  commands    /quit  leave
+```
 
 Anything not starting with `/` is a message.
 
@@ -295,8 +316,9 @@ you save him with `n`, he appears under the name you gave him instead.
 What was said scrolls in the pane (PgUp/PgDn), what you are typing stays in the
 box under it whatever arrives, and up and down walk what you sent. `/send
 ~/notes.md` offers a file, and Bob answers with `y` or `n`. `/files` lists a
-directory so you can send by number instead of typing a path. `/help` lists the
-rest; `/quit` leaves the conversation and returns to the menu.
+directory so you can send by number instead of typing a path. Type `/` alone and
+the commands appear above the input, narrowing as you type; Tab completes.
+`/quit` leaves the conversation and returns to the menu.
 
 **6. Leave.** `q` at the menu quits homa; so does Ctrl+C anywhere. Your
 address, your contacts and your settings stay on your disk for next time.

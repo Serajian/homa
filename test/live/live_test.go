@@ -330,6 +330,19 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	bob.await("chetori?")
 	bob.snapshot("conversation")
 	alice.snapshot("conversation-answering")
+
+	// A slash offers the commands in the row above the input; the left
+	// arrow walks the row backwards, wrapping to the last; Enter on a
+	// pick that wants nothing runs it. /who is what bob picks, and the
+	// answer names the contact he saved.
+	bob.key(strings.Repeat("\x7f", len("man dar")))
+	bob.key("/")
+	bob.await("/files [dir]")
+	bob.snapshot("commands")
+	bob.key("\x1b[D\x1b[D\x1b[D")
+	bob.await("▸ /who")
+	bob.key("\r")
+	bob.await("calling themselves \"alice\"")
 }
 
 func TestARefusedCallIsNeverAConversation(t *testing.T) {

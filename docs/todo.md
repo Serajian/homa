@@ -46,10 +46,6 @@ plan stay in [design/](design/) for the record.
 - **a sound when a call arrives**, so homa can be left in a window nobody is
   watching. The terminal bell is the whole mechanism; anything richer costs a
   dependency this project should not take. A setting decides whether it rings
-- **commands offered as they are typed**: `/` showing what can follow it, and
-  narrowing as more is typed. Impossible without raw mode, and nearly free once
-  the full-screen interface owns the input line. Version 1 answers a lone `/`
-  on Enter, which is what can be done from a line-based interface
 - **`/store`**, saving the conversation you have been having, typed at any point
   in it. Working at any point is the whole difficulty: it means homa keeps every
   conversation as it happens, whether or not it is ever asked to save one, and
