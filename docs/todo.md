@@ -28,32 +28,9 @@ their notes have been brought up to date.
 
 # Version 1
 
-The first release: two people, text, files, contacts, a line-based interface
-that is worth looking at, tests under it, and a way to install it that is not
-"clone the repository".
-
-## 3. Security
-
-**Version 1**, and last in it only because it has no content yet: an item
-without requirements cannot be ordered against items that have them. Placing it
-is the point of describing it.
-
-Not yet specified. The heading is here because the work is wanted; what it
-covers will be written down before anything is built.
-
-Whoever fills this in: the ground it starts from is
-[decisions.md](decisions.md), which already records what homa relies on and
-what it deliberately does not claim.
-
-- the tunnel authenticates, not the nick a peer announces, and not the address
-  book, which only chooses a label
-- an address is a secret and a capability: whoever holds it can call you, and
-  it can be forwarded to anyone
-- everything arriving from the network is sanitized before it is printed, and
-  `session/sanitize.go` is the only place that happens
-- a file name from a peer goes through `filepath.Base`, and a file is renamed
-  into place only after its digest matches
-- a frame is capped at 1 MiB so a peer cannot make homa allocate on request
+Complete, and released as v0.1.0: two people, text, files, contacts, an
+interface with a design, and installation through brew and apt. Nothing is
+left here.
 
 ---
 
@@ -84,6 +61,22 @@ Not to be started while version 1 is open. Detailed in
 
 # Version 3
 
+- **security**, the parts that are actually weak, decided after the questions
+  were answered (the tunnel is end to end and forward secret, and a compromised
+  machine is beyond any layer; a second encryption layer over tailcat buys
+  nothing and was rejected — see [decisions.md](decisions.md)):
+  - the address is the secret, and the channel people send it over is the
+    weakest link: shorten what has to travel, or verify the key after a first
+    call so a leaked address cannot be quietly replayed as somebody else
+  - `key.json` at rest: `0600` today; a passphrase would keep a copied file
+    useless, which is the one place a second layer belongs
+  - releases: checksums exist, signatures do not; sign the release and the
+    binaries, and put `govulncheck` in CI so the transport's advisories are
+    seen when they land
+  - what already holds and must keep holding: the tunnel authenticates, not
+    the nick; everything from the network goes through `session/sanitize.go`;
+    a file name goes through `filepath.Base` and is renamed into place only
+    after its digest matches; a frame is capped at 1 MiB
 - **rooms**: one host, several guests, join requests, broadcast, and rate
   limiting per guest. The first thing that breaks the two-equal-peers model, so
   it wants care and it wants the tests from version 1 already in place

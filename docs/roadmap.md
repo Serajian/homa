@@ -156,6 +156,25 @@ breaks the "two equal peers" model, so it needs care.
 
 The framing does not change. `proto` should need only new message types.
 
+## Version 3: security
+
+Decided after the three questions were asked and answered (the answers are in
+[decisions.md](decisions.md)): the tunnel is WireGuard, end to end and forward
+secret, with a pre-shared key that keeps even the relay out; a compromised
+endpoint defeats any layer; and a second encryption layer over tailcat protects
+nothing the first does not. So the work is where homa is actually weak:
+
+- **the address in transit.** It is a capability — whoever has it can call —
+  and people send it over whatever channel they have. Shorten what must travel,
+  or let a first call end with a key verification so a leaked address cannot
+  be replayed as somebody else.
+- **the key at rest.** `key.json` is `0600`; a passphrase makes a copied file
+  useless. This is the one place a second layer belongs, because its key is
+  held differently: typed, never stored.
+- **the releases.** Checksums, not signatures. Sign the release artifacts and
+  the binaries, and run `govulncheck` in CI so the transport's advisories are
+  seen when they land rather than when somebody remembers.
+
 ## Not placed in any version
 
 - a short human-readable invite code that resolves to an address, in the spirit

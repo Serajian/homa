@@ -276,15 +276,16 @@ build tag so the ordinary run stays quick.
 
 ## Roadmap
 
-- [ ] **Version 1** two people, text, files, contacts, a line-based interface
-      worth looking at, and installation through brew and apt. Most of it works;
-      what is left is in [docs/todo.md](docs/todo.md)
+- [x] **Version 1** two people, text, files, contacts, a line-based interface
+      worth looking at, and installation through brew and apt. Released as
+      v0.1.0
 - [ ] **Version 2** a full-screen interface, which brings line editing, history
       and tab completion with it, plus an Android build. The lower three
       packages are already free of any terminal assumption
 - [ ] **Version 3** rooms: one host, several guests, join requests. It breaks
       the two-equal-peers model everything else rests on, which is why it is
-      last
+      last. Also the security work: a passphrase on the key at rest, signed
+      releases, and a safer way to hand an address over
 
 ## Name
 

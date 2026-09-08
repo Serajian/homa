@@ -1,6 +1,7 @@
-# Current state: version 1 in progress
+# Current state: version 1 released
 
-Everything version 1 needs is listed in [todo.md](todo.md). Working today:
+v0.1.0 is out, and everything version 1 set out to do is in it. What comes next
+is version 2, in [todo.md](todo.md). Working today:
 
 - first-run setup, saved settings, a saved identity with a stable address
 - an address book: add, list, call by name, keys learned on first contact, and

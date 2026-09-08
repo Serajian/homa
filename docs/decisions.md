@@ -195,3 +195,13 @@ with anything from the far side in `x` is the mistake this rules out.
 what the menu is for, so the contacts come first; what belongs together sits together with
 a blank line between groups; and leaving and anything that cannot be undone sit last and
 recede in grey. Boxes, rules and bold are for the full-screen interface, if at all.
+
+**No second encryption layer over tailcat.** The tunnel is WireGuard end to end, with
+per-session keys (so recorded traffic stays closed if a key is stolen later) and a
+pre-shared key carried in the address (so even the relay operator, who sees both public
+keys, cannot join). A relay or anyone on the path learns who talks to whom, when, and how
+much — never what. A compromised machine reads everything, and no layer above the tunnel
+changes that, because its keys would live on the same machine. Encrypting again inside the
+tunnel would therefore protect nothing the tunnel does not, while adding code that can be
+wrong and confidence that is not earned. Where a second layer *does* belong is the key at
+rest — a passphrase held in a head rather than a file — and that is version 3 work.
