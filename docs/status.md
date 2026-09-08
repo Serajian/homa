@@ -1,7 +1,8 @@
-# Current state: version 1 released
+# Current state: version 2 in progress
 
-v0.1.0 is out, and everything version 1 set out to do is in it. What comes next
-is version 2, in [todo.md](todo.md). Working today:
+v0.1.0 is out with everything version 1 set out to do. Version 2's first item,
+the full-screen interface, is built; what is left of version 2 is in
+[todo.md](todo.md). Working today:
 
 - first-run setup, saved settings, a saved identity with a stable address
 - an address book: add, list, call by name, keys learned on first contact, and
@@ -52,17 +53,11 @@ is version 2, in [todo.md](todo.md). Working today:
   release's `.deb`s by a workflow on every release and served by GitHub Pages
   from the `gh-pages` branch, so `apt install homa` works on Debian and Ubuntu
 
-Known warts, fixed by the full-screen interface in version 2 (see
-[roadmap.md](roadmap.md)):
-
-- a message arriving while you type is printed over your half-finished line
-- a message typed but not yet sent when the peer leaves is dropped silently
-
-Both are the same limitation: input is a line at a time, and the terminal owns
-the line until Enter. It is also why the arrow keys do nothing — they are
-escape sequences dropped into the line rather than actions — though what they
-leave behind is now removed before anybody sees it. A full-screen interface
-owns the line instead; see [roadmap.md](roadmap.md).
+- a full-screen interface: the screen drawn whole, so a message arriving while
+  you type lands in the pane and never on your line, and a line not yet sent
+  when the far side leaves stays where it was; up and down walk what you sent;
+  PgUp/PgDn scroll what was said. Version 1's two warts, and the arrow keys
+  that did nothing, went with the line-based interface they came from
 
 Tests: `make test` runs them, with the race detector, and they are hermetic —
 no network, no relay, nothing outside a temporary directory. `make test-live`

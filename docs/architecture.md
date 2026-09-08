@@ -6,7 +6,7 @@ Dependencies point one way. Nothing below knows about anything above.
 cmd/homa
    |
    v
-internal/ui           menu, chat screen, prompts, everything a person sees
+internal/ui           the screens, drawn whole: everything a person sees
    |     \
    |      +---> internal/config     the settings a person chose
    |      +---> internal/contacts   the address book
@@ -30,15 +30,16 @@ package. Do not leak those types outward, even "just for now".
 
 **`internal/session` knows nothing about terminals; `internal/ui` knows nothing
 about wire formats.** A session reports through a `Handler` interface that the
-UI implements. This is the seam the full-screen interface will slot into, and
-the seam an Android UI would reuse.
+UI implements — in the full-screen interface, an adapter that turns each call
+into a message for the program. This is the seam the interface was rebuilt on
+without the packages below noticing, and the seam an Android UI would reuse.
 
 ## Package responsibilities
 
 | Package | Owns |
 | --- | --- |
 | `cmd/homa` | flags, logging setup, signals, wiring, exit codes |
-| `internal/ui` | menu, chat, prompts, first-run setup, all output |
+| `internal/ui` | the bubbletea program: one model, every event a message, every screen drawn whole; the first-run setup as a program of its own |
 | `internal/session` | handshake, read loop, text, file transfer, sanitizing |
 | `internal/proto` | frame layout, message structs, encode and decode |
 | `internal/peer` | identity, relay choice, listen, dial, remote key |
@@ -72,15 +73,15 @@ flowchart TD
 flowchart TD
     A[main] --> B[parse flags]
     B --> C[set up logging]
-    C --> D[start the keyboard pump]
+    C --> D[refuse anything that is not a terminal]
     D --> E{settings on disk?}
-    E -- no --> F[ask the first-run questions]
+    E -- no --> F[the first-run screen]
     E -- yes --> G[load them]
     F --> H[load the address book]
     G --> H
     H --> I[load or create the identity]
     I --> J[start listening]
-    J --> K[show the menu]
+    J --> K[take over the terminal: the menu]
 ```
 
 Creating an identity measures relay latency once and freezes the choice, because
@@ -114,3 +115,25 @@ How a call crosses these packages, end to end, is drawn in
 [protocol.md](protocol.md#setting-up-a-call).
 
 The reasoning behind these boundaries is in [decisions.md](decisions.md).
+
+## The interface
+
+`internal/ui` is a [bubbletea](https://github.com/charmbracelet/bubbletea)
+program. One `model` holds what is on the screen — which screen, the menu's
+cursor, the conversation's pane and input, a call on the bar, a form — and
+every `Update` runs on one goroutine, so nothing in the package is guarded by a
+lock. Everything that happens elsewhere arrives as a message: a caller greeted
+by the accept loop (one command that runs for the life of the program), a
+line said by the far side (through the `session.Handler` adapter), a file
+offered, a tick of a countdown. Commands do the blocking work — dialing,
+sending a file, closing a line — and end by sending a message back.
+
+`View` draws the whole screen every time: a two-line header, the body, a
+two-line footer, cut to the terminal's size so the renderer never scrolls it.
+The look is data in `styles.go`; the rules it follows are in
+[decisions.md](decisions.md). Output that is not a terminal is refused before
+anything else starts, and the screen is homed before the program draws,
+because it draws in place: see `clearScreen` in `const.go` for why that is not
+optional.
+
+The design and its plan are in [design/](design/).

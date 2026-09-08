@@ -9,7 +9,7 @@ make build
 make run
 make doc        # the public API of every internal package
 make test       # hermetic, with the race detector: no network, no relay
-make test-live  # whole processes over the real transport; needs the network
+make test-live  # whole processes on pseudo-terminals over the real transport; needs the network
 ```
 
 Testing across two machines: `make build-linux`, copy the binary to the second
@@ -45,3 +45,17 @@ from the release, adds them to the apt repository on the `gh-pages` branch
 GitHub Pages serves it at https://serajian.github.io/homa. It signs with the
 `APT_GPG_PRIVATE_KEY` secret, a key made for this alone. `workflow_dispatch` republishes an
 existing release, which is how the repository was first populated.
+
+## The live tests and the screen
+
+`test/live` starts each homa on a pseudo-terminal and applies what it writes to
+a small terminal grid (`screen.go`): cursor moves, tab stops, erasing, the
+lot. The full-screen interface draws in place, so what a person sees is the
+grid, not the byte stream, and every wait in those tests looks at the grid. A
+failure prints the screen, the control sequences met, and keeps the raw bytes
+in a file it names, which is how the grid itself was debugged.
+
+The README's screens come from the same place: `HOMA_FRAMES=<dir> go test
+-tags live -run 'TestACallIsAskedAboutAndPutThrough|TestAFileCrossesAndKeepsItsContents' ./test/live/`
+writes each snapshot the two scenarios take into the directory, from homes
+under `/tmp/<name>` so the paths on screen read as a person's would.

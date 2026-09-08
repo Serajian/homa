@@ -218,3 +218,25 @@ form's field, so it is clear what is being asked. Nothing else is boxed and noth
 underlined, because a frame that is everywhere is a frame nobody sees. The menu puts the
 people on the left and homa's own keys on the right when the terminal is wide enough, and
 one under the other when it is not.
+
+**The full-screen interface is bubbletea, not raw mode by hand.** `golang.org/x/term`'s
+`Terminal` was measured and would have fixed the input line — history, cursor movement,
+a prompt redrawn under arriving text — but only the input line: no pane that scrolls, no
+answer to a resize, no layout, and no place for commands offered as they are typed.
+bubbletea v2 gives all of that for three pure-Go modules and one shape: one model, every
+event a message, every screen drawn whole, every `Update` on one goroutine. The whole
+line-owning machinery of version 1 — the pump, the prompts and their erasing, the
+countdown, the hand-rolled palette — went with the line.
+
+**Output that is not a terminal is refused.** A full-screen program has nowhere to draw
+in a pipe, and nobody chats through one. `homa: needs a terminal`, exit 1, before an
+identity is created or a listener opened. Version 1 stays downloadable as v0.1.0; there is
+no line-mode fallback, because two interfaces would mean every later feature twice.
+
+**No alternate screen, and the screen is homed first.** When homa exits, what was on the
+screen stays in the terminal's scrollback, the way version 1 left it; `vim`-style wiping
+would take the conversation with it. Drawing in place has one condition the live tests
+found the hard way: the frame must begin at the top of the screen, because the renderer
+repaints only the lines that changed, from where it believes the frame began, and lines
+scrolled away by a frame drawn lower stay wrong for good. So the screen is cleared and
+the cursor homed once, before the program starts. The scrollback is not touched.

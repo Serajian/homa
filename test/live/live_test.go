@@ -47,6 +47,16 @@ func start(t *testing.T, name string) *instance {
 	t.Helper()
 
 	home := t.TempDir()
+	if os.Getenv("HOMA_FRAMES") != "" {
+		// Screens for the README: a home whose paths read as a person's
+		// would, not a test's.
+		home = filepath.Join("/tmp", name) // short, so the header keeps its right-hand side
+		_ = os.RemoveAll(home)
+		if err := os.MkdirAll(home, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.RemoveAll(home) })
+	}
 	cmd := exec.CommandContext(t.Context(), homaBinary(t),
 		"-log", filepath.Join(home, "homa.log"), "-debug")
 	cmd.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
@@ -139,6 +149,21 @@ func (i *instance) typeSlowly(s string) {
 }
 
 func (i *instance) screen() string { return i.scr.text() }
+
+// snapshot writes the screen to HOMA_FRAMES/<name>.txt when that variable
+// names a directory. It is how the README's screens are taken: from the
+// real program on a real pseudo-terminal, never retyped.
+func (i *instance) snapshot(name string) {
+	i.t.Helper()
+	dir := os.Getenv("HOMA_FRAMES")
+	if dir == "" {
+		return
+	}
+	time.Sleep(400 * time.Millisecond) // let the frame settle
+	if err := os.WriteFile(filepath.Join(dir, name+".txt"), []byte(i.screen()), 0o600); err != nil {
+		i.t.Fatalf("snapshot %s: %v", name, err)
+	}
+}
 
 // await waits for something to be on the screen, and says what was on it
 // when it gives up. A failure that only says "timed out" is a failure
@@ -258,8 +283,10 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	alice, bob := start(t, "alice"), start(t, "bob")
 	bob.addContact("alice", alice.address())
 
+	bob.snapshot("menu")
 	bob.key("1")
 	bob.await("waiting for them to answer")
+	bob.snapshot("calling")
 
 	// Nothing has been agreed to, so nothing may claim otherwise.
 	bob.refute("talking to alice")
@@ -268,6 +295,7 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	// for himself, marked so it cannot pass for one she gave. bob has
 	// alice in his address book, so he sees the name he gave her.
 	alice.await("~bob is calling")
+	alice.snapshot("incoming")
 	alice.key("y")
 
 	alice.await("talking to ~bob")
@@ -278,6 +306,14 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 
 	alice.line("salam from alice")
 	bob.await("salam from alice")
+
+	// A half-typed line on bob's side while alice speaks: the fault that
+	// started version 2, and the screen that shows it gone.
+	bob.typeSlowly("man dar")
+	alice.line("chetori?")
+	bob.await("chetori?")
+	bob.snapshot("conversation")
+	alice.snapshot("conversation-answering")
 }
 
 func TestARefusedCallIsNeverAConversation(t *testing.T) {
@@ -415,10 +451,12 @@ func TestAFileCrossesAndKeepsItsContents(t *testing.T) {
 
 	bob.line("/send " + src)
 	alice.await("offers")
+	alice.snapshot("offer")
 	alice.line("y")
 
 	alice.await("saved")
 	bob.await("sent.")
+	alice.snapshot("received")
 
 	got := findFile(t, alice.home, "poster.txt")
 	if string(got) != content {

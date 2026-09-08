@@ -37,15 +37,9 @@ left here.
 # Version 2
 
 Version 1 is closed; this is the open front. Detailed in
-[roadmap.md](roadmap.md). The full-screen interface is in progress: design in
-[design/2026-09-08-full-screen-interface.md](design/2026-09-08-full-screen-interface.md),
-plan beside it.
+[roadmap.md](roadmap.md). The full-screen interface is done; its design and
+plan stay in [design/](design/) for the record.
 
-- **a full-screen interface**, on bubbletea and lipgloss: a chat pane, a
-  separate input line, a contact list. It removes the two warts version 1 lives
-  with, because input stops being a line the terminal owns. Only `internal/ui`
-  should change; if anything below it has to, something has leaked and that is
-  the bug to fix first
 - **Android**: `gomobile bind` over the lower packages and a Compose interface.
   It is plausible at all because tailcat needs no VPN permission, and it is the
   reason `proto`, `peer` and `session` must stay free of any desktop assumption

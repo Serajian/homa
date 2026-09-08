@@ -22,8 +22,8 @@ address. Give it to the other person, press `n` to save theirs, and call.
 
 - **A chat between exactly two people.** Rooms are version 3.
 - **A file transfer**, in both directions, with a digest checked at the end.
-- **A terminal program**, line-based today. A full-screen interface, with line
-  editing and history, is version 2.
+- **A terminal program**, full-screen: a pane for what was said, an input line
+  that is yours until you press Enter, and a menu with the people first.
 
 ## What it is not
 
@@ -34,57 +34,122 @@ address. Give it to the other person, press `n` to save theirs, and call.
 
 ## A real session
 
-Verbatim, from the side that placed the call:
+Screens from two homa processes on pseudo-terminals, taken by the live tests
+(`make test-live`), never retyped. Bob has saved Alice; Alice has never saved
+Bob, so she sees him under the name he chose, marked with a `~`.
+
+Bob's menu, with Alice in it:
 
 ```
-What now?
-  1  call alice
+  >_ homa                                                  bob  ·  tcpGFwWCBzGk...  ·  ● listening
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-  n  add a contact
-  b  contacts: rename, forget, call
-  a  show my address
+  PEOPLE                                      HOMA
 
-  s  settings
-  c  clear the screen
-  h  help
+  ▸  1  call alice                               n  add a contact
+                                                 b  contacts: rename, forget, call
+                                                 a  show my address
 
-  r  start over: forget everything
-  q  quit homa
+                                                 s  settings
+                                                 c  clear the screen
+                                                 h  help
 
-> 
-1
-  calling alice...
-  waiting for alice to answer... 59s  (Enter to give up)
+                                                 r  start over: forget everything
+                                                 q  quit homa
 
-  talking to alice  ·  they call themselves "alice"
-  /help commands  ·  /quit leave  ·  files go to ~/homa-files
+  alice added.
 
-[me] salam
-[alice] khoobam, to chetori?
-[me] /send ~/notes.md
-  offering /tmp/bob/notes.md, waiting for them to accept...
-  sending: 100%
-  sent.
+
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+   ↑↓  choose    Enter  call    1-1  call by number
 ```
 
-The other side is asked before any of that happens, and sees the file arrive:
+Bob presses `1`. On Alice's screen, the one box the interface draws:
 
 ```
-  ~bob is calling (expires in 1m0s).
+  >_ homa                                                alice  ·  tcpGFwWCAtMd...  ·  ● listening
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
 
-> take the call from ~bob? [59s] [y/N]: y
-  connected to ~bob
+  PEOPLE                                      HOMA
 
-  talking to ~bob  ·  the name is theirs; they are not in your contacts
-  /help commands  ·  /quit leave  ·  files go to ~/homa-files
+    nobody yet                                   n  add a contact
+    n adds a contact, a shows your address       b  contacts: rename, forget, call
+                                                 a  show my address
 
-[~bob] salam
-[me] khoobam, to chetori?
+                                                 s  settings
+                                                 c  clear the screen
+                                                 h  help
 
-  ~bob offers notes.md (11 B)  ·  y to accept, n to reject
-[me] y
-  receiving notes.md  ·  100%
-  notes.md saved to /tmp/alice/homa-files/notes.md
+                                                 r  start over: forget everything
+                                                 q  quit homa
+
+  ╭─ incoming call ──────────────────────────────────────────────────────────────────────────────╮
+  │  ~bob is calling                                                                        1m0s │
+  │   y  take the call    n  not now                                                             │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+   y  take the call    n  not now
+```
+
+Alice presses `y`. Bob's side of the conversation — with a line half typed
+while Alice's message arrived, untouched:
+
+```
+  >_ homa   talking to alice  ·  they call themselves "alice"          files → /tmp/bob/homa-files
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+       me │ salam from bob
+    alice │ salam from alice
+    alice │ chetori?
+
+
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+  │ man dar                                                                                      │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+   PgUp PgDn  scroll    ↑ ↓  history    /help  commands    /quit  leave
+```
+
+Alice's side, where the name is the one he chose for himself:
+
+```
+  >_ homa   talking to ~bob                                          files → /tmp/alice/homa-files
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+          │ the name is theirs; they are not in your contacts
+     ~bob │ salam from bob
+       me │ salam from alice
+       me │ chetori?
+
+
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+  │                                                                                              │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+   PgUp PgDn  scroll    ↑ ↓  history    /help  commands    /quit  leave
+```
+
+A file, offered with `/send` on Bob's side and accepted with `y` on Alice's:
+
+```
+  >_ homa   talking to ~bob                                          files → /tmp/alice/homa-files
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+          │ the name is theirs; they are not in your contacts
+
+          │ ~bob offers poster.txt (128.9 KB)    y  accept    n  reject
+          │ receiving poster.txt  ██░░░░░░░░  20%
+          │ receiving poster.txt  ████░░░░░░  40%
+          │ receiving poster.txt  ███████░░░  70%
+          │ receiving poster.txt  █████████░  90%
+          │ receiving poster.txt  ██████████  100%
+          │ poster.txt saved to /tmp/alice/homa-files/poster.txt
+
+
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+  │                                                                                              │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+ ──────────────────────────────────────────────────────────────────────────────────────────────────
+   PgUp PgDn  scroll    ↑ ↓  history    /help  commands    /quit  leave
 ```
 
 Having somebody's address is not the same as being welcome to talk to them, so
@@ -220,16 +285,18 @@ whoever has it can call you — so not in a public place.
 **3. Bob adds you.** On his side: `n`, a name for you, your address. You now
 appear in his menu as `1  call alice`.
 
-**4. Bob calls, you answer.** He presses `1`. Your screen says `~bob is calling`
-and asks `take the call from ~bob? [y/N]` — `y` puts him through, Enter or `n`
-does not, and after a minute with no answer he is told nobody picked up. The
-`~` means the name is the one he chose for himself; once you save him with
-`n`, he appears under the name you gave him instead.
+**4. Bob calls, you answer.** He presses `1`. A box appears on your screen:
+`~bob is calling`, with `y` to take the call and `n` not to — `y` puts him
+through, `n` or Enter does not, and after a minute with no answer he is told
+nobody picked up. The `~` means the name is the one he chose for himself; once
+you save him with `n`, he appears under the name you gave him instead.
 
 **5. Talk.** Lines you type are sent; lines starting with `/` are commands.
-`/send ~/notes.md` offers a file, and Bob answers with `y` or `n`. `/files`
-lists a directory so you can send by number instead of typing a path. `/help`
-lists the rest; `/quit` leaves the conversation and returns to the menu.
+What was said scrolls in the pane (PgUp/PgDn), what you are typing stays in the
+box under it whatever arrives, and up and down walk what you sent. `/send
+~/notes.md` offers a file, and Bob answers with `y` or `n`. `/files` lists a
+directory so you can send by number instead of typing a path. `/help` lists the
+rest; `/quit` leaves the conversation and returns to the menu.
 
 **6. Leave.** `q` at the menu quits homa; so does Ctrl+C anywhere. Your
 address, your contacts and your settings stay on your disk for next time.
@@ -279,6 +346,8 @@ build tag so the ordinary run stays quick.
 - [x] **Version 1** two people, text, files, contacts, a line-based interface
       worth looking at, and installation through brew and apt. Released as
       v0.1.0
+- [x] **Version 2, first item** the full-screen interface; the rest of version 2 is
+      below
 - [ ] **Version 2** a full-screen interface, which brings line editing, history
       and tab completion with it, plus an Android build. The lower three
       packages are already free of any terminal assumption

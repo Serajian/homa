@@ -7,29 +7,17 @@ Rooms used to be next and are now last. They break the two-equal-peers model
 that everything else rests on, and they want the tests from version 1 already in
 place before they add concurrency to a program that has none.
 
-## Version 2: a full-screen interface
+## Version 2: a full-screen interface — built
 
-Using bubbletea and lipgloss, the same tools chat-tails uses.
+Built on bubbletea, bubbles and lipgloss v2, in the shape recorded in
+[decisions.md](decisions.md): one model, every event a message, every screen
+drawn whole, only `internal/ui` changed (plus the call into it and `go.mod`).
+Both warts of version 1 are gone with the line that caused them. The design
+and the plan it was built from are in [design/](design/).
 
-- a chat pane, a separate input line, a contact list
-- this removes both warts version 1 lives with, because input stops being a
-  line the terminal owns until Enter
-- only `internal/ui` changes. If anything below has to change, something has
-  leaked, and that is the bug to fix first
-
-**There is a smaller door into the same room, and it was measured rather than
-guessed.** `golang.org/x/term` is already in the module graph as an indirect
-dependency, and its `Terminal` reads lines in raw mode with history on the up
-and down arrows, cursor movement, an autocomplete callback for tab, and a
-`Write` that redraws the prompt with whatever was half-typed. That is arrow
-keys, tab completion, and both of version 1's warts, without bubbletea.
-
-It was considered for version 1 and deliberately left here. Raw mode means
-owning the terminal, including restoring it through a panic or a signal, and
-it replaces the input layer version 1 built: the prompt, its erasing and
-redrawing, and the constants behind them. Doing it twice would be the waste, so
-whoever builds the full-screen interface should decide between the two rather
-than reaching for bubbletea by default.
+The smaller door — `golang.org/x/term`'s raw-mode `Terminal`, already in the
+module graph — was measured before choosing, and would have fixed the input
+line only. It is recorded there rather than repeated here.
 
 ## Version 2: Android
 
