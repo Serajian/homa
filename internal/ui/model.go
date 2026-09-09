@@ -273,7 +273,9 @@ func (m model) ring() tea.Cmd {
 	if m.deps.Cfg == nil || !m.deps.Cfg.Bell {
 		return nil
 	}
-	return tea.Raw(bell)
+	// The bell byte for a terminal that rings, and a sound through a tool
+	// the machine has for the many that do not; see sound.go.
+	return tea.Batch(tea.Raw(bell), playSound(soundTool()))
 }
 
 // ringAgain is the bell for a call still waiting on the screen: once every

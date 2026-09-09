@@ -118,6 +118,17 @@ host and no guest. The menu keys are always on the screen; `h` explains the
 ones that are not obvious, and `s` changes the settings: your name, where files
 go, and whether the bell rings.
 
+**Sound.** When something arrives — a call (again every ten seconds until you
+answer), a message, a file — homa rings the terminal's bell and, since most
+terminals keep that bell silent, also plays a short system sound through a
+tool the machine already has: `afplay` on macOS, `paplay`, `pw-play` or
+`canberra-gtk-play` on Linux, whichever is there. Never over ssh, where the
+sound would come out of the wrong machine. `s` turns both off. If you would
+rather hear the terminal's own bell: Terminal.app has *Audible bell* under
+Profiles → Advanced and needs the system *Alert volume* up; iTerm2 has
+*Silence bell* under Profiles → Terminal; GNOME Terminal has *Terminal bell*
+under the profile's Sound; under tmux, `set -g bell-action any`.
+
 Colour is on when the terminal can show it, and never carries anything the
 text does not: `NO_COLOR`, `TERM=dumb` or `homa -no-color` turn it off, and a
 pipe or a log file gets plain text.

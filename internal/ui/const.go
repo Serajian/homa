@@ -76,6 +76,10 @@ const (
 // the others and is never built from anything that came over the network.
 const bell = "\a"
 
+// soundTimeout bounds the sound tool: a short system sound is over in a
+// second, and a player that hangs must not pile up.
+const soundTimeout = 5 * time.Second
+
 // pickUnicode and pickASCII mark the command picked in the hint row, so
 // the pick is a character and not only a color.
 const (

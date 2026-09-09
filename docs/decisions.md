@@ -243,6 +243,17 @@ not only a color, and an alias (`/ls`) is taken when typed but never offered, so
 does not show one command twice. The commands are one table read by the hint, `/help` and
 the "no such command" listing alike, so the three cannot drift apart.
 
+**A sound through a tool the machine has, beside the bell.** The bell was chosen for
+version 2 because it costs no dependency, and then it was tested on two machines and heard
+on neither: most terminals today keep it silent or flash instead. A mechanism nobody hears
+is not a mechanism. So homa also plays a short system sound through whatever player the
+machine already has — `afplay` and a system sound on macOS, `paplay`, `pw-play` or
+`canberra-gtk-play` with the freedesktop bell on Linux — the same shape as the clipboard:
+one optional `exec`, nothing linked, nothing shipped, and the bell byte still sent for the
+terminals that do ring. Never over ssh, because the sound has to come out of the machine the
+person sits at and a server has no speaker; the bell still crosses ssh. One setting for
+both, because a person who wants silence wants all of it.
+
 **The bell rings for everything from the far side, and for nothing you did.** The
 roadmap had it ring for a call only, on the worry that a conversation that beeps is one
 people mute. The decision went the other way, because the reason for a bell — a window

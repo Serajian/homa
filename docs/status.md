@@ -82,8 +82,10 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   every ten seconds until answered, your call's outcome, a message, a file
   offered, finished or failed, the peer leaving, and a file of yours that
   finished sending — so homa can be left in a window nobody is watching. On by
-  default; the settings screen turns it off. What the terminal does with the
-  bell (sound, flash, nothing) is its own
+  default; the settings screen turns it off. Since most terminals keep the
+  bell silent, a short system sound is played too, through a tool the machine
+  has (`afplay`, `paplay`, `pw-play`, `canberra-gtk-play`), never over ssh; a
+  machine with none of them gets the bell alone
 
 Tests: `make test` runs them, with the race detector, and they are hermetic —
 no network, no relay, nothing outside a temporary directory. `make test-live`

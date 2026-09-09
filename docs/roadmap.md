@@ -22,7 +22,8 @@ line only. It is recorded there rather than repeated here.
 ## Version 2: a bell when something arrives — built
 
 The terminal bell, `\a`, sent through the program's own output so it lands
-between two frames: for a call arriving (and again every ten seconds while it
+between two frames — and, because most terminals keep that bell silent, a
+system sound through a tool the machine already has, never over ssh — for a call arriving (and again every ten seconds while it
 waits), your call's outcome, a message, a file offered, finished or failed,
 the peer leaving — everything from the far side — and a file of yours that
 finished sending. On by default, a y/n question on the settings screen, not
