@@ -40,6 +40,13 @@ type FileDone struct {
 	SHA256 string `json:"sha256"`
 }
 
+// Address is one peer handing the other the address they would need to call
+// back. It is a secret and it is given deliberately: nothing sends it but a
+// person asking for it to be sent.
+type Address struct {
+	Addr string `json:"addr"`
+}
+
 // DecodeJSON unmarshals a frame's payload into v.
 func DecodeJSON(f Frame, v any) error {
 	if err := json.Unmarshal(f.Payload, v); err != nil {

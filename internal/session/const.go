@@ -10,6 +10,12 @@ const handshakeTimeout = 15 * time.Second
 // enough that nobody can flood a terminal with a single line.
 const MaxTextLen = 4096
 
+// MaxAddrLen bounds an address arriving from a peer. A homa address runs to
+// a couple of hundred characters; this leaves room for a longer one, made by
+// a peer that embeds its whole relay, and refuses anything that is not an
+// address at all.
+const MaxAddrLen = 1024
+
 // MaxNickLen bounds how much of a peer's announced name we will display.
 const MaxNickLen = 32
 

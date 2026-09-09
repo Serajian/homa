@@ -59,8 +59,12 @@ type conversation struct {
 	width int
 
 	// me answers /me: the three groups about this machine, and the address
-	// to copy. nil in tests that do not need it.
+	// to copy or hand over. nil in tests that do not need it.
 	me func(width int) (body, addr string)
+
+	// card is the address the peer handed over, held until the person
+	// saves it or the conversation ends. Nothing is written without /save.
+	card string
 
 	// ctx and send are what /send needs to run a transfer in the
 	// background and report on it; downloadDir is where an accepted file
@@ -339,7 +343,7 @@ func (c *conversation) enter(st *styles) (tea.Cmd, bool) {
 	// offers, the way Tab does: a command that wants an argument goes in
 	// the line to be finished, one that wants nothing runs at once. So an
 	// arrow to /quit and Enter leaves, and a lone slash is /help.
-	if ms := c.candidates(); len(ms) > 0 && ms[c.pick].takesArg() {
+	if ms := c.candidates(); len(ms) > 0 && ms[c.pick].needsArg() {
 		c.take()
 		return nil, false
 	} else if len(ms) > 0 {
@@ -397,6 +401,8 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		return probePath(c.ctx, c.l.conn), false
 	case "/me":
 		return c.showMe(st, arg), false
+	case "/add":
+		return c.keepAddress(st, arg), false
 	case "/clear":
 		c.lines = nil
 		c.pane.SetContent("")
@@ -434,8 +440,8 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 // over without leaving the conversation. "copy" puts the address on the
 // clipboard, since the page's c is an ordinary letter in here.
 func (c *conversation) showMe(st *styles, arg string) tea.Cmd {
-	if arg != "" && arg != "copy" {
-		c.alert(st, "/me takes nothing, or the word copy")
+	if arg != "" && arg != "copy" && arg != "send" {
+		c.alert(st, "/me takes nothing, or the word copy, or the word send")
 		return nil
 	}
 	if c.me == nil {
@@ -448,14 +454,87 @@ func (c *conversation) showMe(st *styles, arg string) tea.Cmd {
 	for _, line := range strings.Split(strings.TrimRight(body, "\n"), "\n") {
 		c.note(st, line)
 	}
-	if arg != "copy" {
+	if arg == "" {
+		// The nudge belongs here rather than in the groups: it is only
+		// true inside a conversation, and only with a peer new enough.
+		if c.l.s != nil && c.l.s.CanTakeAddress() {
+			c.note(st, st.dim.Render("/me send gives them this address, so they can call you"))
+		}
 		return nil
 	}
 	if addr == "" {
-		c.alert(st, "there is no address to copy")
+		c.alert(st, "there is no address to "+arg)
 		return nil
 	}
-	return copyToClipboard(addr)
+	if arg == "copy" {
+		return copyToClipboard(addr)
+	}
+	return c.sendAddress(st, addr)
+}
+
+// sendAddress hands this machine's address to the peer, which is the only
+// way somebody who was called can ever call back. An older peer drops what
+// it does not recognize, so it is told rather than left believing it went.
+func (c *conversation) sendAddress(st *styles, addr string) tea.Cmd {
+	if c.l.s == nil {
+		return nil
+	}
+	if !c.l.s.CanTakeAddress() {
+		c.alert(st, "they are running an older homa and cannot take an address")
+		c.note(
+			st,
+			st.dim.Render("read it to them, or send it another way; it is a secret either way"),
+		)
+		return nil
+	}
+	l := c.l
+	return func() tea.Msg { return addressSent{err: l.s.SendAddress(addr)} }
+}
+
+// gotAddress is the peer handing theirs over. It is held, not saved: a
+// contact needs a name, and the name is the person's to choose.
+func (c *conversation) gotAddress(st *styles, addr string) {
+	c.card = addr
+	c.blank()
+	c.note(st, st.peer(c.l.name)+st.dim.Render(" sent you their address, so you can call them"))
+	if c.l.known {
+		c.note(st, st.dim.Render("they are already in your address book as "+c.l.name))
+		return
+	}
+	c.note(st, st.dim.Render("/add keeps them as ")+st.you.Render(c.nick)+
+		st.dim.Render(", or /add <name>"))
+}
+
+// keepAddress asks the model to keep what was sent: the book is the model's,
+// not the conversation's.
+func (c *conversation) keepAddress(st *styles, arg string) tea.Cmd {
+	// Already known comes first, because it is also the answer after a
+	// successful /add, which clears the address it kept.
+	if c.l.known {
+		c.alert(st, "they are already in your address book as "+c.l.name)
+		return nil
+	}
+	if c.card == "" {
+		c.alert(st, "nobody has sent you an address")
+		c.note(st, st.dim.Render("/me send gives them yours; theirs is theirs to send"))
+		return nil
+	}
+
+	name := strings.TrimSpace(arg)
+	if name == "" {
+		name = c.nick
+	}
+	addr := c.card
+	return func() tea.Msg { return keepAddress{name: name, addr: addr} }
+}
+
+// saved is the model reporting that the contact is on disk. The header and
+// every later line use the name from now on, the way a saved caller's would.
+func (c *conversation) saved(st *styles, name string) {
+	c.card = ""
+	c.l.name, c.l.known = name, true
+	c.note(st, st.dim.Render("saved as ")+st.peer(name)+
+		st.dim.Render("; they are in the menu next time homa starts"))
 }
 
 // who is the first line /who says: the name and where it came from, and

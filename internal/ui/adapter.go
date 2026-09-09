@@ -21,6 +21,10 @@ func newAdapter(send func(tea.Msg)) *adapter {
 }
 
 // OnText is a chat message from the peer, already sanitized.
+// OnAddress is the peer handing over their address. It only reaches the
+// screen; keeping it is a decision made there.
+func (a *adapter) OnAddress(addr string) { a.send(addressGiven{addr: addr}) }
+
 func (a *adapter) OnText(text string) { a.send(peerSaid{text}) }
 
 // OnFileOffer announces the offer and waits for the person to answer it in

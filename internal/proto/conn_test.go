@@ -54,7 +54,7 @@ func TestRoundTripEveryFrameType(t *testing.T) {
 			name:    "hello",
 			send:    func(c *Conn) error { return c.WriteJSON(TypeHello, Hello{Nick: "bob", Version: Version}) },
 			want:    TypeHello,
-			payload: []byte(`{"nick":"bob","version":2}`),
+			payload: []byte(`{"nick":"bob","version":3}`),
 		},
 		{
 			name:    "text",

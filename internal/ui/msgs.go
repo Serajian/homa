@@ -58,6 +58,18 @@ type peerLeft struct{ err error }
 // broken.
 type sendFailed struct{ err error }
 
+// addressGiven is the peer handing over the address that would let this
+// machine call them back. Nothing is saved until the person says so.
+type addressGiven struct{ addr string }
+
+// addressSent is what came of handing ours over.
+type addressSent struct{ err error }
+
+// keepAddress is the person asking, with /add, to keep the address they were
+// given, under a name. The model owns the address book, so the conversation
+// asks rather than writing it itself.
+type keepAddress struct{ name, addr string }
+
 // pathProbed is how the conversation travels, asked by /who and answered
 // off the update loop.
 type pathProbed struct {

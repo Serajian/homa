@@ -442,3 +442,104 @@ func TestAWrappedLineKeepsItsColorOnEveryRow(t *testing.T) {
 		}
 	}
 }
+
+// The fault this closes: the side that answered a call held ten bytes of a
+// key and nothing to dial. An address handed over can be kept with /add,
+// and nothing is written until it is.
+func TestAnAddressHandedOverIsKeptOnlyWhenAsked(t *testing.T) {
+	sandboxHome(t)
+
+	deps := testDeps(t)
+	m := sized(newModel(t.Context(), deps, newStyles(true)))
+	m.screen = screenConversation
+	m.conv = newConversation(m.st, 100, 24, testLine("~bob", false), "bob", "")
+
+	// It arrives, and says how to keep it. Nothing is in the book yet.
+	next, _ := m.Update(addressGiven{addr: realAddr})
+	m = next.(model)
+	pane := stripANSI(m.conv.render())
+	if !strings.Contains(pane, "sent you their address") ||
+		!strings.Contains(pane, `/add keeps them as bob`) {
+		t.Errorf("pane:\n%s", pane)
+	}
+	if deps.Book.Len() != 0 {
+		t.Fatal("an address was saved before anybody asked")
+	}
+
+	// /add with no name keeps them under the name they announced.
+	typeInto(m.conv, m.st, "/add")
+	cmd, _ := m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("/add did nothing")
+	}
+	next, _ = m.Update(cmd())
+	m = next.(model)
+
+	c, err := deps.Book.ByName("bob")
+	if err != nil || c.Addr != realAddr {
+		t.Fatalf("book has %+v, %v", c, err)
+	}
+	pane = stripANSI(m.conv.render())
+	if !strings.Contains(pane, "saved as bob") {
+		t.Errorf("pane:\n%s", pane)
+	}
+	// The header calls them by the name from now on.
+	if !m.conv.l.known || m.conv.l.name != "bob" {
+		t.Errorf("line is %q known=%v", m.conv.l.name, m.conv.l.known)
+	}
+	// A second /add has nothing to keep and says so.
+	typeInto(m.conv, m.st, "/add")
+	_, _ = m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	if !strings.Contains(stripANSI(m.conv.render()), "already in your address book") {
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+}
+
+func TestAddWithNothingSentAndABadAddressAreRefused(t *testing.T) {
+	sandboxHome(t)
+
+	deps := testDeps(t)
+	m := sized(newModel(t.Context(), deps, newStyles(true)))
+	m.screen = screenConversation
+	m.conv = newConversation(m.st, 100, 24, testLine("~bob", false), "bob", "")
+
+	typeInto(m.conv, m.st, "/add")
+	if cmd, _ := m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
+		t.Error("/add kept something nobody sent")
+	}
+	if !strings.Contains(stripANSI(m.conv.render()), "nobody has sent you an address") {
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+
+	// Something that is not an address never reaches the book.
+	next, _ := m.Update(addressGiven{addr: "tcpNOTANADDRESS"})
+	m = next.(model)
+	next, _ = m.Update(keepAddress{name: "bob", addr: "tcpNOTANADDRESS"})
+	m = next.(model)
+	if deps.Book.Len() != 0 {
+		t.Error("a bad address was saved")
+	}
+	if !strings.Contains(stripANSI(m.conv.render()), "does not look like a homa address") {
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+}
+
+// /me send needs a peer new enough to understand it, and says so when the
+// peer is not, rather than letting a silent drop pass for a delivery.
+func TestMeSendTellsYouWhenThePeerIsTooOld(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 24, testLine("alice", true), "alice", "")
+	c.me = func(int) (string, string) { return "ADDRESS\ntcpX", "tcpX" }
+
+	// testLine has no session at all, which is the same as having nothing
+	// to send through: the command must not pretend it went.
+	typeInto(c, st, "/me send")
+	if cmd, _ := c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
+		t.Error("an address was sent with no session")
+	}
+	if strings.Contains(stripANSI(c.render()), "went to") {
+		t.Errorf("pane:\n%s", stripANSI(c.render()))
+	}
+}

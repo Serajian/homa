@@ -37,6 +37,25 @@ func sanitizeText(s string) string {
 	return truncateRunes(s, MaxTextLen)
 }
 
+// sanitizeAddr makes an address arriving from a peer safe to hold. It is
+// the strictest of the three: an address is base64url with a prefix, so
+// nothing that is not one of those characters can belong to it, and what is
+// left is bounded. Whether the result is really an address is decided above
+// this package, by whoever knows what one looks like.
+func sanitizeAddr(s string) string {
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			return r
+		case r == '-', r == '_':
+			return r
+		}
+		return -1 // drop
+	}, s)
+
+	return truncateRunes(s, MaxAddrLen)
+}
+
 // sanitizeNick makes a peer's announced name safe to print. It is stricter
 // than sanitizeText: a name sits inside a line of chat, so not even a
 // newline or a tab belongs in it.

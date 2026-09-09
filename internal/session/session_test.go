@@ -632,3 +632,56 @@ func TestAnUnreadableRefusalEndsTheWait(t *testing.T) {
 		t.Fatal("the sender was left waiting")
 	}
 }
+
+// addressRecorder is a Handler that also takes an address.
+type addressRecorder struct {
+	*recorder
+	addrs chan string
+}
+
+func (a addressRecorder) OnAddress(addr string) { a.addrs <- addr }
+
+func TestAnAddressCrossesAndArrivesSanitized(t *testing.T) {
+	t.Parallel()
+
+	ra := addressRecorder{recorder: newRecorder(t), addrs: make(chan string, 2)}
+	as, bs := talk(t, ra, newRecorder(t))
+
+	if !as.CanTakeAddress() || !bs.CanTakeAddress() {
+		t.Fatal("two current peers cannot hand over an address")
+	}
+	// The newline and the space are what a copy off the address page
+	// brings along; nothing but the address survives them.
+	if err := bs.SendAddress("tcpABC\n  DEF"); err != nil {
+		t.Fatalf("sending an address: %v", err)
+	}
+	if got := waitFor(t, ra.addrs, "the address"); got != "tcpABCDEF" {
+		t.Errorf("arrived as %q", got)
+	}
+
+	if err := bs.SendAddress("   "); err == nil {
+		t.Error("an empty address was sent")
+	}
+	if err := bs.SendAddress(strings.Repeat("a", MaxAddrLen+1)); err == nil {
+		t.Error("an address longer than the limit was sent")
+	}
+}
+
+// A handler with nowhere to put an address ignores it and keeps talking,
+// the way one that cannot take files refuses them.
+func TestAnAddressToAHandlerThatCannotTakeOneIsIgnored(t *testing.T) {
+	t.Parallel()
+
+	ra := newRecorder(t) // no OnAddress
+	_, bs := talk(t, ra, newRecorder(t))
+
+	if err := bs.SendAddress("tcpABC"); err != nil {
+		t.Fatal(err)
+	}
+	if err := bs.SendText("still here"); err != nil {
+		t.Fatal(err)
+	}
+	if got := waitFor(t, ra.got, "the message after it"); got != "still here" {
+		t.Errorf("got %q", got)
+	}
+}

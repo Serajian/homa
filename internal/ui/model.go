@@ -116,6 +116,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.say(copiedNotice(msg.tool), false)
 		return m, nil
+	case addressGiven:
+		if m.conv != nil {
+			m.conv.gotAddress(m.st, msg.addr)
+		}
+		return m, nil
+	case addressSent:
+		if m.conv == nil {
+			return m, nil
+		}
+		if msg.err != nil {
+			m.conv.alert(m.st, "your address did not go: "+reason(msg.err))
+			return m, nil
+		}
+		m.conv.note(m.st, m.st.dim.Render("your address went to ")+m.st.peer(m.conv.l.name))
+		return m, nil
+	case keepAddress:
+		return m.keepAddress(msg)
+
 	case pathProbed:
 		if m.conv != nil {
 			m.conv.pathLine(m.st, msg)
@@ -282,6 +300,31 @@ func (m model) ring() tea.Cmd {
 	// The bell byte for a terminal that rings, and a sound through a tool
 	// the machine has for the many that do not; see sound.go.
 	return tea.Batch(tea.Raw(bell), playSound(soundTool()))
+}
+
+// keepAddress keeps an address the peer handed over, under the name the person
+// chose. The address book is the model's, which is why the conversation asks
+// rather than writing it itself.
+func (m model) keepAddress(msg keepAddress) (tea.Model, tea.Cmd) {
+	if m.conv == nil {
+		return m, nil
+	}
+	if !peer.ValidAddr(msg.addr) {
+		m.conv.alert(m.st, "what they sent does not look like a homa address")
+		return m, nil
+	}
+	if err := m.deps.Book.Add(contacts.Contact{Name: msg.name, Addr: msg.addr}); err != nil {
+		m.conv.alert(m.st, reason(err))
+		m.conv.note(m.st, m.st.dim.Render("/add <name> keeps them under another name"))
+		return m, nil
+	}
+	if err := m.deps.Book.Save(); err != nil {
+		m.conv.alert(m.st, "could not save the address book: "+reason(err))
+		return m, nil
+	}
+	m.menu = newMenu(m.deps.Book)
+	m.conv.saved(m.st, msg.name)
+	return m, nil
 }
 
 // meBody is the page under m and the answer to /me: who this machine is on

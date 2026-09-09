@@ -18,6 +18,7 @@ const (
 	TypeFileDone   Type = 0x07
 	TypeBye        Type = 0x08
 	TypeAccept     Type = 0x09
+	TypeAddress    Type = 0x0a
 )
 
 func (t Type) String() string {
@@ -36,6 +37,8 @@ func (t Type) String() string {
 		return "FILE_CHUNK"
 	case TypeFileDone:
 		return "FILE_DONE"
+	case TypeAddress:
+		return "ADDRESS"
 	case TypeBye:
 		return "BYE"
 	case TypeAccept:

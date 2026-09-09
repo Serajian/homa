@@ -27,10 +27,14 @@ type use struct {
 // arg is what the hint offers after the word: the first use's shape.
 func (c command) arg() string { return c.uses[0].arg }
 
-// takesArg reports whether the command wants something after the word,
-// which decides whether taking it from the hint row runs it or only
-// puts it in the line.
+// takesArg reports whether anything may follow the word, which is what
+// decides whether completing it leaves a space to type in.
 func (c command) takesArg() bool { return c.arg() != "" }
+
+// needsArg reports whether the command cannot run without an argument, in
+// which case Enter on the word finishes it and waits rather than running
+// it. The shape says which: <path> must be given, [dir] may be.
+func (c command) needsArg() bool { return strings.HasPrefix(c.arg(), "<") }
 
 // commands in the order the hint row offers them. /help is first so that
 // a lone slash and Enter, the version-1 way of asking, still answers with
@@ -51,6 +55,10 @@ var commands = []command{
 	{name: "/me", uses: []use{
 		{"", "your address, relay and key"},
 		{"copy", "put your address on the clipboard"},
+		{"send", "give them your address, so they can call you back"},
+	}},
+	{name: "/add", uses: []use{
+		{"[name]", "keep the address they sent you"},
 	}},
 	{name: "/clear", uses: []use{{"", "wipe the screen"}}},
 	{name: "/quit", uses: []use{{"", "leave the conversation, not homa"}}},

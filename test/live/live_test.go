@@ -381,17 +381,19 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	bob.snapshot("conversation")
 	alice.snapshot("conversation-answering")
 
-	// A slash offers the commands in the row above the input; the left
-	// arrow walks the row backwards, wrapping to the last; Enter on a
-	// pick that wants nothing runs it. /who is what bob picks, and the
-	// answer names the contact he saved.
+	// A slash offers the commands in the row above the input. The arrows
+	// walk the row and wrap; the anchors are the ends, which do not move
+	// when a command is added in the middle. Letters then narrow the row
+	// to one command, and Enter runs it.
 	bob.key(strings.Repeat("\x7f", len("fine, I was")))
 	bob.key("/")
 	bob.await("/files [dir]")
 	bob.snapshot("commands")
-	bob.key("\x1b[D\x1b[D\x1b[D\x1b[D")
-	bob.await("▸ /who")
-	bob.key("\r")
+	bob.key("\x1b[D")
+	bob.await("▸ /quit")
+	bob.key("\x1b[C")
+	bob.await("▸ /help")
+	bob.key("who\r")
 	bob.await("calling themselves \"alice\"")
 	// The key fingerprint bob's book matched, then how the line travels,
 	// once the probe answers; direct or relayed are both right answers.
@@ -408,8 +410,19 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	bob.await("sent to the clipboard through the terminal")
 	bob.snapshot("me-in-a-conversation")
 
+	// alice took the call and so has nothing to dial bob with. He hands
+	// his address over, she keeps it, and he is in her menu from then on.
+	alice.refute("/add keeps them as")
+	bob.line("/me send")
+	bob.await("your address went to alice")
+	alice.await("sent you their address")
+	alice.snapshot("address-given")
+	alice.line("/add")
+	alice.await("saved as bob")
+	alice.await("talking to bob")
+
 	alice.line("/who")
-	alice.await("not in your book")
+	alice.await("matches your book")
 	alice.awaitAny("direct", "through the relay", "through a relay", "not known on the side")
 	alice.snapshot("who-answering")
 }

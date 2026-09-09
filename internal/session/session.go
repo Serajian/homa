@@ -27,6 +27,16 @@ type Handler interface {
 	OnText(text string)
 }
 
+// AddressHandler is the part of a Handler that takes an address the peer
+// has decided to hand over. A Handler that does not implement it is a
+// session that ignores the gift, the way one without a FileHandler refuses
+// files. Nothing is saved here: this only says one arrived.
+type AddressHandler interface {
+	// OnAddress is the peer's own address, sanitized but not validated.
+	// Whether it is really an address is for the caller to decide.
+	OnAddress(addr string)
+}
+
 // Peer is what the far side told us about itself. None of it is proof:
 // a name is announced, not authenticated. Identity comes from the key
 // underneath the tunnel.
@@ -130,6 +140,26 @@ var ErrNotTaken = errors.New("session: the call was not taken")
 // to wait for and nothing to tell the person about waiting.
 func (s *Session) SignalsAcceptance() bool {
 	return s.peer.Version >= proto.VersionAccept
+}
+
+// CanTakeAddress reports whether the peer is new enough to understand an
+// address being handed over. An older one drops what it does not know,
+// silently, so the person has to be told before they try rather than left
+// believing it arrived.
+func (s *Session) CanTakeAddress() bool {
+	return s.peer.Version >= proto.VersionAddress
+}
+
+// SendAddress hands the peer this machine's address, so they can call back.
+// It is a secret, and it goes only because somebody asked for it to go.
+func (s *Session) SendAddress(addr string) error {
+	if strings.TrimSpace(addr) == "" {
+		return errors.New("session: there is no address to send")
+	}
+	if len(addr) > MaxAddrLen {
+		return fmt.Errorf("session: an address of %d bytes is not one", len(addr))
+	}
+	return s.c.WriteJSON(proto.TypeAddress, proto.Address{Addr: addr})
 }
 
 // SendAccept tells the caller that the person took the call. The side that
@@ -260,6 +290,9 @@ func (s *Session) Run(ctx context.Context) error {
 			// that is already running.
 			lg.Debug("ignoring a repeated acceptance")
 
+		case proto.TypeAddress:
+			s.onAddress(f)
+
 		default:
 			// File frames land here. A failure inside one transfer is
 			// reported to the person and the conversation carries on:
@@ -320,4 +353,29 @@ func (s *Session) Close() error {
 		}
 	}
 	return s.conn.Close()
+}
+
+// onAddress takes the address a peer has handed over and passes it up. A
+// handler that cannot take one is not an error: the address is simply not
+// kept, which is what a session with no interface would want anyway.
+func (s *Session) onAddress(f proto.Frame) {
+	ah, ok := s.handler.(AddressHandler)
+	if !ok {
+		lg.Debug("ignoring an address: this peer has nowhere to put one")
+		return
+	}
+
+	var msg proto.Address
+	if err := proto.DecodeJSON(f, &msg); err != nil {
+		lg.Warn("unreadable address", "err", err)
+		return
+	}
+
+	addr := sanitizeAddr(msg.Addr)
+	if addr == "" {
+		lg.Warn("an address arrived with nothing left in it after sanitizing")
+		return
+	}
+	lg.Info("the peer handed over an address")
+	ah.OnAddress(addr)
 }

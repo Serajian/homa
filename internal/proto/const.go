@@ -9,11 +9,20 @@ import "time"
 // 2: TypeAccept, so a caller learns when the other person actually took the
 //
 //	call rather than assuming the handshake meant yes.
-const Version = 2
+//
+// 3: TypeAddress, so somebody who was called can be given the address they
+//
+//	need to call back.
+const Version = 3
 
 // VersionAccept is the first version whose peers send TypeAccept. A caller
 // talking to anything older has nothing to wait for, and must not wait.
 const VersionAccept = 2
+
+// VersionAddress is the first version whose peers understand TypeAddress.
+// An older peer drops what it does not recognize, silently and by design, so
+// the sender has to know before offering rather than after being ignored.
+const VersionAddress = 3
 
 // AnswerTimeout is how long the person being called may take to answer before
 // the caller is entitled to give up. It is an agreement between two peers, not

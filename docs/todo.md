@@ -36,39 +36,21 @@ as they are typed, and the bell. The interface's design and plan stay in
 [design/](design/) for the record. Android was planned here and is now
 unplaced, at the bottom. Nothing is left here.
 
-# Faults
-
-Found by reading and running the app on 2026-09-09, after v0.2.7. These are
-wrong in what is already released, so they come before anything new.
-
-- **The README says a caller can be saved, and they cannot.** `proto.Hello`
-  carries a nick and a version and nothing else, and a contact without an
-  address does not validate, so the side that answered holds ten bytes of the
-  caller's key and no way to dial them. Both READMEs say "once you save him
-  with `n`, he appears under the name you gave him". Correct the sentence in
-  both languages now; the way to make it true is the first item under Next.
-  Files: `README.md`, `README.fa.md`. Done when neither README claims a caller
-  can be saved without their address
-
 # Next
 
-Six things the same review turned up. They are small beside version 3's items
-and they belong to what is already built, so they ship in the 0.2 line, in this
-order.
+What a review on 2026-09-09 turned up, less what has since been done. These are
+small beside version 3's items and they belong to what is already built, so
+they ship in the 0.2 line, in this order.
 
-- **Swap addresses, so both sides can call back.** Today only the caller can
-  reach the callee; the callee has nothing to dial and cannot save them. Build
-  an exchange inside a conversation that both sides agree to, one command and
-  one question, after which each may save the other. It is a new frame type
-  and a reply, which old peers ignore the way the framing has always ignored
-  what it does not know. Consent on both sides is the whole point: an address
-  is a bearer capability, and nobody's should travel because the other person
-  typed a command. Files: `internal/proto` (a type, a message),
-  `internal/session` (send, receive, a handler callback), `internal/ui` (the
-  command, the question, the saving), both READMEs, `docs/decisions.md`. Done
-  when alice calls bob, they swap, bob quits homa, and bob calls alice from his
-  own address book; a live scenario proves it; refusing saves nothing on either
-  side
+- **Update a contact's address when they hand over a new one.** `/add` refuses
+  when the key already names a contact, because the alternative is overwriting
+  an address without being asked. But a peer whose address changed is exactly
+  the case where the new one is wanted, and the key match is what makes it
+  safe: only they hold the private half. Decide whether `/add` offers it, and
+  whether the person confirms, then write down which and why. Files:
+  `internal/ui/screen_conversation.go`, `internal/contacts`, `docs/decisions.md`.
+  Done when a contact whose key matches can take a new address on purpose, and
+  never by accident
 
 - **Call an address without saving it.** The menu can only call a contact, so a
   one-off call or a single file means inventing a contact and deleting it

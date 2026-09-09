@@ -59,6 +59,12 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   PgUp/PgDn scroll what was said. Version 1's two warts, and the arrow keys
   that did nothing, went with the line-based interface they came from
 
+- an address handed over inside a conversation: `/me send` gives the far side
+  yours, and `/add` keeps what they gave you under a name you choose, so the
+  person who answered a call is no longer stuck with a key and nothing to
+  dial. Nothing is saved until `/add`, and a peer running an older homa is
+  told rather than left believing it arrived
+
 - a message wider than the terminal wraps under the name column instead of
   being cut, so a pasted paragraph can be read; making the window wider or
   narrower wraps again what is already on the screen

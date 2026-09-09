@@ -91,11 +91,13 @@ appear in his menu as `1  call alice`.
 **4. Bob calls, you answer.** He presses `1`. A box appears on your screen:
 `~bob is calling`, with `y` to take the call and `n` not to — `y` puts him
 through, `n` or Enter does not, and after a minute with no answer he is told
-nobody picked up. Your terminal's bell rings, and keeps ringing every ten
+nobody picked up. Alice has his address; Bob has nothing to call her back
+with until she sends it, which is `/me send` below. Your terminal's bell rings, and keeps ringing every ten
 seconds until you answer, as it rings once for every message and file that
 arrives, so homa can sit in a window you are not looking at; `s` turns that
-off. The `~` means the name is the one he chose for himself; once
-you save him with `n`, he appears under the name you gave him instead.
+off. The `~` means the name is the one he chose for himself: you have no address
+for him, so he cannot be saved until he hands one over with `/me send`, and
+then `/add` keeps him under a name you choose.
 
 **5. Talk.** Lines you type are sent; lines starting with `/` are commands.
 What was said scrolls in the pane (PgUp/PgDn), what you are typing stays in the
@@ -273,6 +275,8 @@ nobody answers is hung up on inside a minute with both sides told why.
 | `/who` | who you are talking to: their key, whether it matches your book, and whether the line is direct or through a relay |
 | `/me` | the same page `m` shows, without leaving the conversation |
 | `/me copy` | put your address on the clipboard |
+| `/me send` | give them your address, so they can call you back |
+| `/add [name]` | keep the address they sent you, under a name |
 | `/clear` | wipe the screen |
 | `/quit` | leave the conversation, not homa |
 

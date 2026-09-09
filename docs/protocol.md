@@ -22,12 +22,22 @@ a length, a type, and a payload:
 | `0x07` | FILE_DONE | JSON | id, sha256 |
 | `0x08` | BYE | empty | I am leaving |
 | `0x09` | ACCEPT | empty | the person took your call |
+| `0x0a` | ADDRESS | JSON | here is my address, so you can call me back |
 
 ACCEPT is version 2 of the protocol, and the only frame a caller waits for. A
 peer announcing version 1 never sends it, so a caller seeing version 1 does not
 wait; a version 1 peer receiving it skips it as an unknown type, which is what
-the framing has always done with anything it does not recognise. A version
+the framing has always done with anything it does not recognize. A version
 mismatch is never fatal.
+
+ADDRESS is version 3, and the only frame that carries a secret on purpose. The
+side that answers a call knows the caller by key and has no way to reach them,
+so this is how somebody hands over the address that would let the other call
+back. It goes only when a person asks for it to go, it is never sent back
+automatically, and the receiving side saves nothing until they choose a name for
+it. Because an older peer would drop it in silence, the sender checks the
+announced version first and says so rather than letting the silence pass for a
+delivery.
 
 Metadata is JSON because it is readable and extensible. File chunks are raw
 bytes with a four byte id, because base64 inside JSON would add a third to every

@@ -228,6 +228,29 @@ event a message, every screen drawn whole, every `Update` on one goroutine. The 
 line-owning machinery of version 1 — the pump, the prompts and their erasing, the
 countdown, the hand-rolled palette — went with the line.
 
+**An address is given, not swapped.** The side that answers a call learns the caller's key
+and nothing else, so it could never call back or even save them: a contact needs an address,
+and nothing on the wire carried one. The fix could have been a two-sided swap, one command
+that trades both addresses at once, and it was rejected: an address is your own secret, and
+handing it over is a decision one person makes about themselves, the way you give somebody
+your phone number. A trade turns it into a bargain, where refusing costs you theirs, and
+that pressure has no place in the one thing homa asks people to be careful with. So `/me
+send` gives yours, once, deliberately; if both want it, both type it, which is two decisions
+and exactly right. On the other side nothing is written until `/add`, because a contact needs
+a name and only the person can choose it. The command is `/add` rather than `/save` to match
+what the menu already calls that act, and to stay clear of `/store`, which version 3 plans
+for saving a conversation. The frame is a new type and the protocol version goes to 3: an
+older peer drops what it does not know, silently and by design, so the sender is told before
+it tries rather than left believing an address arrived. What comes in is stripped to the
+characters an address can contain and bounded before anything else looks at it, and it must
+parse as an address before it can reach the book.
+
+**Enter runs a command whose argument is optional.** The row of commands marks a required
+argument `<like this>` and an optional one `[like this]`, and Enter used to wait for either,
+so `/files` needed a second Enter to list the directory you were already in. Enter now
+finishes the word and waits only when the shape says the argument is required. Tab still
+leaves a space after any command that can take one.
+
 **What cannot be read is answered anyway, when there is enough of it left to answer.** A
 message about a file that will not decode used to be logged and dropped, and the far side,
 which is standing there waiting, learned nothing until the offer ran out five minutes
