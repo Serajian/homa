@@ -36,16 +36,15 @@ left here.
 
 # Version 2
 
-Version 1 is closed; this is the open front. Detailed in
-[roadmap.md](roadmap.md). The full-screen interface, the commands offered as
-they are typed and the bell are done and released as v0.2.0; the design and
-plan of the interface stay in [design/](design/) for the record.
-
-- **Android**: `gomobile bind` over the lower packages and a Compose interface.
-  It is plausible at all because tailcat needs no VPN permission, and it is the
-  reason `proto`, `peer` and `session` must stay free of any desktop assumption
+Complete, and released as v0.2.0: the full-screen interface, commands offered
+as they are typed, and the bell. The interface's design and plan stay in
+[design/](design/) for the record. Android was planned here and is now
+unplaced, at the bottom. Nothing is left here.
 
 # Version 3
+
+Version 2 is closed; this is the open front. Detailed in
+[roadmap.md](roadmap.md).
 
 - **`/store`**, saving the conversation you have been having, typed at any point
   in it. Working at any point is the whole difficulty: it means homa keeps every
@@ -81,4 +80,9 @@ Named in the roadmap and belonging to no version yet:
   to paste two hundred characters. The single biggest usability win still on
   the table
 - a self-hosted DERP relay, so a group can run homa without touching
-  Tailscale's
+  Tailscale's. tailcat supports it already; what homa needs is written up in
+  the roadmap
+- **Android**: `gomobile bind` over the lower packages and a Compose interface.
+  Moved out of version 2 after its cost was weighed; the lower packages and
+  tailcat are known to compile for `GOOS=android`, so it stays plausible and
+  `proto`, `peer` and `session` must stay free of any desktop assumption

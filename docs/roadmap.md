@@ -19,16 +19,6 @@ The smaller door — `golang.org/x/term`'s raw-mode `Terminal`, already in the
 module graph — was measured before choosing, and would have fixed the input
 line only. It is recorded there rather than repeated here.
 
-## Version 2: Android
-
-- `gomobile bind` over the lower packages, a Kotlin and Compose interface
-- tailcat needs no VPN permission because everything is userspace, which is the
-  reason this is even plausible
-- the hard parts are the foreground service for staying connected and battery
-  behavior, not the networking
-- keep `proto`, `peer` and `session` free of any desktop assumption: no direct
-  terminal reads, no assumptions about file paths. Everything is injected
-
 ## Version 2: a bell when something arrives — built
 
 The terminal bell, `\a`, sent through the program's own output so it lands
@@ -135,7 +125,20 @@ nothing the first does not. So the work is where homa is actually weak:
 - a short human-readable invite code that resolves to an address, in the spirit
   of croc, so nobody has to paste two hundred characters. This is the single
   biggest usability win still on the table
-- self-hosted DERP, so a group can run homa without touching Tailscale's relays
+- self-hosted DERP, so a group can run homa without touching Tailscale's relays.
+  tailcat already allows it: a `tailcfg.DERPRegion` naming the relay's host can
+  be put into the identity instead of a region number, and the address then
+  carries the relay, so the far side needs nothing. What homa would add is one
+  setting (the relay host) at first run or in the settings, and the relay
+  itself is Tailscale's `derper` on a host with a name and a TLS certificate
+- Android: `gomobile bind` over the lower packages, a Kotlin and Compose
+  interface. Weighed and set aside: what is known is that the lower packages
+  and tailcat compile for `GOOS=android` without cgo, and that tailcat needs no
+  VPN permission. What made it expensive is not the networking but staying
+  alive — a foreground service, a permanent notification, battery, and the
+  vendors' own process killers — or, without that, an app nobody can call
+  unless it is open. `proto`, `peer` and `session` stay free of any desktop
+  assumption so the door stays open
 
 Packaging used to be here. It is item 9 of version 1 now: a release nobody can
 install is not a release.
