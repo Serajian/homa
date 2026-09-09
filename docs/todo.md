@@ -42,16 +42,6 @@ What a review on 2026-09-09 turned up, less what has since been done. These are
 small beside version 3's items and they belong to what is already built, so
 they ship in the 0.2 line, in this order.
 
-- **Update a contact's address when they hand over a new one.** `/add` refuses
-  when the key already names a contact, because the alternative is overwriting
-  an address without being asked. But a peer whose address changed is exactly
-  the case where the new one is wanted, and the key match is what makes it
-  safe: only they hold the private half. Decide whether `/add` offers it, and
-  whether the person confirms, then write down which and why. Files:
-  `internal/ui/screen_conversation.go`, `internal/contacts`, `docs/decisions.md`.
-  Done when a contact whose key matches can take a new address on purpose, and
-  never by accident
-
 - **Call an address without saving it.** The menu can only call a contact, so a
   one-off call or a single file means inventing a contact and deleting it
   afterwards. Add a menu action that takes an address, dials it, and offers to

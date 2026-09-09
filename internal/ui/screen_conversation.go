@@ -508,12 +508,6 @@ func (c *conversation) gotAddress(st *styles, addr string) {
 // keepAddress asks the model to keep what was sent: the book is the model's,
 // not the conversation's.
 func (c *conversation) keepAddress(st *styles, arg string) tea.Cmd {
-	// Already known comes first, because it is also the answer after a
-	// successful /add, which clears the address it kept.
-	if c.l.known {
-		c.alert(st, "they are already in your address book as "+c.l.name)
-		return nil
-	}
 	if c.card == "" {
 		c.alert(st, "nobody has sent you an address")
 		c.note(st, st.dim.Render("/me send gives them yours; theirs is theirs to send"))
@@ -521,17 +515,20 @@ func (c *conversation) keepAddress(st *styles, arg string) tea.Cmd {
 	}
 
 	name := strings.TrimSpace(arg)
-	if name == "" {
+	named := name != ""
+	if !named {
 		name = c.nick
 	}
 	addr := c.card
-	return func() tea.Msg { return keepAddress{name: name, addr: addr} }
+	return func() tea.Msg { return keepAddress{name: name, addr: addr, named: named} }
 }
 
 // saved is the model reporting that the contact is on disk. The header and
 // every later line use the name from now on, the way a saved caller's would.
 func (c *conversation) saved(st *styles, name string) {
-	c.card = ""
+	// The address stays held: asking again is then answered with "you
+	// already have that", which is the truth, rather than with a line
+	// about nobody having sent anything.
 	c.l.name, c.l.known = name, true
 	c.note(st, st.dim.Render("saved as ")+st.peer(name)+
 		st.dim.Render("; they are in the menu next time homa starts"))

@@ -245,6 +245,19 @@ it tries rather than left believing an address arrived. What comes in is strippe
 characters an address can contain and bounded before anything else looks at it, and it must
 parse as an address before it can reach the book.
 
+**A changed address is taken, but only when the contact is named.** An address is frozen
+into a key file, so it changes when somebody moves relays or starts over, and the one case
+where a saved address is stale is exactly the case where the person can hand over the new
+one. Refusing that, as `/add` first did, leaves the book wrong with no way to fix it from
+inside a conversation. Taking it silently is worse: it replaces a way of reaching somebody
+that is known to work with one that has not been tried, and a person who typed `/add`
+meaning "keep this" would not expect to lose anything. So the address is replaced only when
+the contact is named — `/add bob` — and only when that name was typed, because the name
+homa fills in by itself is the one the peer announced, which is usually the same word and
+would turn `/add` alone into a confirmation nobody made. Who they are is not in question:
+the tunnel proved the key before any of this, which is what makes the replacement theirs to
+ask for at all.
+
 **Enter runs a command whose argument is optional.** The row of commands marks a required
 argument `<like this>` and an optional one `[like this]`, and Enter used to wait for either,
 so `/files` needed a second Enter to list the directory you were already in. Enter now

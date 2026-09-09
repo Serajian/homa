@@ -276,7 +276,7 @@ nobody answers is hung up on inside a minute with both sides told why.
 | `/me` | the same page `m` shows, without leaving the conversation |
 | `/me copy` | put your address on the clipboard |
 | `/me send` | give them your address, so they can call you back |
-| `/add [name]` | keep the address they sent you, under a name |
+| `/add [name]` | keep the address they sent you, under a name; naming somebody you already have replaces the address you had for them |
 | `/clear` | wipe the screen |
 | `/quit` | leave the conversation, not homa |
 

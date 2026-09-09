@@ -63,7 +63,9 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   yours, and `/add` keeps what they gave you under a name you choose, so the
   person who answered a call is no longer stuck with a key and nothing to
   dial. Nothing is saved until `/add`, and a peer running an older homa is
-  told rather than left believing it arrived
+  told rather than left believing it arrived. A contact whose address has
+  changed takes the new one when they are named, `/add bob`, because that
+  replaces what is on disk and the tunnel has already proved they are bob
 
 - a message wider than the terminal wraps under the name column instead of
   being cut, so a pasted paragraph can be read; making the window wider or

@@ -68,7 +68,14 @@ type addressSent struct{ err error }
 // keepAddress is the person asking, with /add, to keep the address they were
 // given, under a name. The model owns the address book, so the conversation
 // asks rather than writing it itself.
-type keepAddress struct{ name, addr string }
+type keepAddress struct {
+	name, addr string
+
+	// named is the person having typed the name rather than homa having
+	// filled in the one the peer announced. Replacing an address already
+	// on disk takes a typed name, and the two are often the same word.
+	named bool
+}
 
 // pathProbed is how the conversation travels, asked by /who and answered
 // off the update loop.

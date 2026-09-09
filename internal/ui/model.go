@@ -313,6 +313,9 @@ func (m model) keepAddress(msg keepAddress) (tea.Model, tea.Cmd) {
 		m.conv.alert(m.st, "what they sent does not look like a homa address")
 		return m, nil
 	}
+	if m.conv.l.known {
+		return m.replaceAddress(msg)
+	}
 	if err := m.deps.Book.Add(contacts.Contact{Name: msg.name, Addr: msg.addr}); err != nil {
 		m.conv.alert(m.st, reason(err))
 		m.conv.note(m.st, m.st.dim.Render("/add <name> keeps them under another name"))
@@ -324,6 +327,45 @@ func (m model) keepAddress(msg keepAddress) (tea.Model, tea.Cmd) {
 	}
 	m.menu = newMenu(m.deps.Book)
 	m.conv.saved(m.st, msg.name)
+	return m, nil
+}
+
+// replaceAddress takes a new address for somebody already in the book. The
+// tunnel proved they are that contact, so the address is theirs to change;
+// but it replaces what is on disk, and the way to say yes to that is to
+// name them, which is a thing nobody types by accident.
+func (m model) replaceAddress(msg keepAddress) (tea.Model, tea.Cmd) {
+	saved := m.conv.l.name
+
+	known, err := m.deps.Book.ByName(saved)
+	if err != nil {
+		// They were called from the book and are no longer in it.
+		m.conv.alert(m.st, reason(err))
+		return m, nil
+	}
+	if known.Addr == msg.addr {
+		m.conv.note(m.st, m.st.dim.Render("that is the address you already have for ")+
+			m.st.peer(saved))
+		return m, nil
+	}
+	if !msg.named || msg.name != saved {
+		m.conv.alert(m.st, "they are already in your address book as "+saved)
+		m.conv.note(m.st, m.st.dim.Render("their address has changed since you saved it; ")+
+			m.st.you.Render("/add "+saved)+m.st.dim.Render(" replaces the one you have"))
+		return m, nil
+	}
+
+	if _, err := m.deps.Book.SetAddr(saved, msg.addr); err != nil {
+		m.conv.alert(m.st, reason(err))
+		return m, nil
+	}
+	if err := m.deps.Book.Save(); err != nil {
+		m.conv.alert(m.st, "could not save the address book: "+reason(err))
+		return m, nil
+	}
+	m.menu = newMenu(m.deps.Book)
+	m.conv.note(m.st, m.st.peer(saved)+
+		m.st.dim.Render("'s address is replaced with the one they just sent"))
 	return m, nil
 }
 

@@ -295,6 +295,35 @@ func (b *Book) Remove(name string) error {
 	return nil
 }
 
+// SetAddr replaces a contact's address with one they handed over
+// themselves. It reports whether anything changed, which tells the caller
+// whether the book is worth saving.
+//
+// Whether the peer is really this contact is decided before this is called:
+// the book knows names and addresses, not who proved what.
+func (b *Book) SetAddr(name, addr string) (bool, error) {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return false, fmt.Errorf("contact %q cannot have an empty address", name)
+	}
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	i := b.indexByName(name)
+	if i < 0 {
+		return false, fmt.Errorf("%w: %q", ErrNotFound, name)
+	}
+	if b.list[i].Addr == addr {
+		return false, nil
+	}
+
+	b.list[i].Addr = addr
+
+	lg.Info("contact address replaced", "name", name)
+	return true, nil
+}
+
 // SetPubKey records the public key learned from a conversation, so the next
 // connection from that peer can be recognized. It reports whether anything
 // changed, which tells the caller whether the book is worth saving.

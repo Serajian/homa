@@ -337,3 +337,28 @@ func TestAllReturnsACopy(t *testing.T) {
 		t.Error("editing what All returned changed the book")
 	}
 }
+
+func TestSetAddrReplacesOnlyWhatChanged(t *testing.T) {
+	t.Parallel()
+
+	b := &Book{}
+	if err := b.Add(Contact{Name: "bob", Addr: "tcpOLD"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if changed, err := b.SetAddr("bob", "tcpOLD"); changed || err != nil {
+		t.Errorf("the same address reported changed=%v, %v", changed, err)
+	}
+	if changed, err := b.SetAddr("bob", "  tcpNEW  "); !changed || err != nil {
+		t.Errorf("a new address reported changed=%v, %v", changed, err)
+	}
+	if c, _ := b.ByName("bob"); c.Addr != "tcpNEW" {
+		t.Errorf("address is %q", c.Addr)
+	}
+	if _, err := b.SetAddr("bob", "   "); err == nil {
+		t.Error("an empty address was accepted")
+	}
+	if _, err := b.SetAddr("nobody", "tcpX"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("err = %v", err)
+	}
+}

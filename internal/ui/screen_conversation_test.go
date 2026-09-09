@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/Serajian/homa/internal/contacts"
 	"github.com/Serajian/homa/internal/peer"
 )
 
@@ -487,11 +488,68 @@ func TestAnAddressHandedOverIsKeptOnlyWhenAsked(t *testing.T) {
 	if !m.conv.l.known || m.conv.l.name != "bob" {
 		t.Errorf("line is %q known=%v", m.conv.l.name, m.conv.l.known)
 	}
-	// A second /add has nothing to keep and says so.
+	// Asking again is answered with the truth: you already have it.
 	typeInto(m.conv, m.st, "/add")
-	_, _ = m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter})
-	if !strings.Contains(stripANSI(m.conv.render()), "already in your address book") {
+	cmd, _ = m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	next, _ = m.Update(cmd())
+	m = next.(model)
+	if !strings.Contains(stripANSI(m.conv.render()), "that is the address you already have") {
 		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+}
+
+// A contact whose address has changed can take the new one, but only when
+// they are named: it replaces what is on disk.
+func TestANewAddressReplacesTheSavedOneOnlyWhenNamed(t *testing.T) {
+	sandboxHome(t)
+
+	deps := testDeps(t, "bob")
+	old, err := deps.Book.ByName("bob")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m := sized(newModel(t.Context(), deps, newStyles(true)))
+	m.screen = screenConversation
+	m.conv = newConversation(m.st, 100, 24, testLine("bob", true), "bob", "")
+
+	next, _ := m.Update(addressGiven{addr: realAddr})
+	m = next.(model)
+	if !strings.Contains(stripANSI(m.conv.render()), "already in your address book as bob") {
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+
+	// /add alone will not replace an address that is already there.
+	typeInto(m.conv, m.st, "/add")
+	cmd, _ := m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	next, _ = m.Update(cmd())
+	m = next.(model)
+	if got, _ := deps.Book.ByName("bob"); got.Addr != old.Addr {
+		t.Fatal("the address was replaced without being asked for")
+	}
+	if !strings.Contains(stripANSI(m.conv.render()), "/add bob replaces the one you have") {
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+
+	// Naming them is the yes.
+	typeInto(m.conv, m.st, "/add bob")
+	cmd, _ = m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	next, _ = m.Update(cmd())
+	m = next.(model)
+	got, err := deps.Book.ByName("bob")
+	if err != nil || got.Addr != realAddr {
+		t.Fatalf("book has %+v, %v", got, err)
+	}
+	if !strings.Contains(stripANSI(m.conv.render()), "address is replaced") {
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+	// And it is on disk, not only in memory.
+	reloaded, err := contacts.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c, err := reloaded.ByName("bob"); err != nil || c.Addr != realAddr {
+		t.Errorf("on disk: %+v, %v", c, err)
 	}
 }
 
