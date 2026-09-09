@@ -120,3 +120,100 @@ func underListing(last, arg string) (string, error) {
 	}
 	return full, nil
 }
+
+// pathMatch is one candidate for completing a half-typed path.
+type pathMatch struct {
+	name  string
+	isDir bool
+}
+
+// text is the candidate as it goes into the line: a directory carries its
+// separator, so completing one leaves the cursor ready for what is inside.
+func (p pathMatch) text() string {
+	if p.isDir {
+		return p.name + string(filepath.Separator)
+	}
+	return p.name
+}
+
+// splitPath cuts a half-typed path where the last separator is: what is
+// settled, and the piece being typed that is matched against a directory.
+func splitPath(arg string) (settled, prefix string) {
+	i := strings.LastIndex(arg, string(filepath.Separator))
+	if i < 0 {
+		return "", arg
+	}
+	return arg[:i+1], arg[i+1:]
+}
+
+// entriesIn lists the names in one directory for completion. It is not
+// readDir: no cap, no sizes, and no sort, because none of that matters to a
+// prefix match, and hidden files are kept so a prefix that starts with a dot
+// can find them.
+func entriesIn(last, dir string) ([]pathMatch, error) {
+	full, err := underListing(last, dir)
+	if err != nil {
+		return nil, err
+	}
+	if full == "" {
+		full = "."
+	}
+
+	des, err := os.ReadDir(full)
+	if err != nil {
+		return nil, fmt.Errorf("ui: reading %s: %w", full, err)
+	}
+
+	found := make([]pathMatch, 0, len(des))
+	for _, de := range des {
+		found = append(found, pathMatch{name: de.Name(), isDir: de.IsDir()})
+	}
+	return found, nil
+}
+
+// matchPath picks out of a directory's names the ones a half-typed path
+// could still become. Hidden names are left out unless the person has typed
+// the dot that asks for them, the way a listing leaves them out.
+func matchPath(all []pathMatch, prefix string) []pathMatch {
+	wantHidden := strings.HasPrefix(prefix, ".")
+
+	var found []pathMatch
+	for _, p := range all {
+		if !wantHidden && strings.HasPrefix(p.name, ".") {
+			continue
+		}
+		if !strings.HasPrefix(p.name, prefix) {
+			continue
+		}
+		found = append(found, p)
+	}
+
+	// Directories first, then files, both by name: the same order a
+	// listing uses, so the row and the listing agree.
+	sort.Slice(found, func(i, j int) bool {
+		if found[i].isDir != found[j].isDir {
+			return found[i].isDir
+		}
+		return found[i].name < found[j].name
+	})
+	return found
+}
+
+// commonPrefix is as far as several candidates can be completed without
+// choosing between them.
+func commonPrefix(found []pathMatch) string {
+	if len(found) == 0 {
+		return ""
+	}
+
+	common := found[0].name
+	for _, p := range found[1:] {
+		for !strings.HasPrefix(p.name, common) {
+			common = common[:len(common)-1]
+			if common == "" {
+				return ""
+			}
+		}
+	}
+	return common
+}

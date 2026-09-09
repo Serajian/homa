@@ -62,6 +62,12 @@ type conversation struct {
 	// to copy or hand over. nil in tests that do not need it.
 	me func(width int) (body, addr string)
 
+	// dirCache is the names in one directory, read once for completing a
+	// path rather than on every keystroke. It is dropped whenever /files
+	// runs, which is the moment somebody would expect it to be fresh.
+	dirCache  map[string][]pathMatch
+	cachedFor string
+
 	// stopped is what this side asked to stop, so the failure that comes
 	// back for it is not reported twice in different words.
 	stopped map[string]bool
@@ -272,7 +278,7 @@ func (c *conversation) view(st *styles, width int) (status, body, keys string) {
 	// The row between the pane and the box is the hint row: what a line
 	// starting with a slash can become, and blank otherwise, so the layout
 	// is the same whether or not a command is being typed.
-	body = c.pane.View() + "\n    " + hint(st, c.in.Value(), c.pick, width-4) + "\n  " +
+	body = c.pane.View() + "\n    " + c.hintRow(st, width-4) + "\n  " +
 		strings.ReplaceAll(st.box(st.boxDim(), width-4, "", c.in.View()), "\n", "\n  ")
 
 	if c.ended {
@@ -281,6 +287,19 @@ func (c *conversation) view(st *styles, width int) (status, body, keys string) {
 		keys = footer(st, width, st.keys("PgUp PgDn", "scroll", "↑ ↓", "history", "/help", "commands", "/quit", "leave"))
 	}
 	return status, body, keys
+}
+
+// hintRow is what sits between the pane and the input: the commands a word
+// could become, or, once an argument has begun on a command that takes a
+// path, what that path could become.
+func (c *conversation) hintRow(st *styles, width int) string {
+	typed := c.in.Value()
+	if word, argBegun := commandWord(typed); argBegun && takesPath(word) {
+		if r := c.pathRow(st, typed, width); r != "" {
+			return r
+		}
+	}
+	return hint(st, typed, c.pick, width)
 }
 
 // update handles a key or a wheel. leave is the person going back to the
@@ -356,10 +375,17 @@ func (c *conversation) candidates() []command {
 	return matches(word)
 }
 
-// take puts the picked command in the line, with a space after it when it
-// wants an argument, and reports whether the line changed.
+// take completes what is being typed: the picked command while the word is
+// still being written, and the path after it once one has begun. It reports
+// whether the line changed.
 func (c *conversation) take() bool {
 	typed := c.in.Value()
+
+	word, argBegun := commandWord(typed)
+	if argBegun && takesPath(word) {
+		return c.takePath(word, typed)
+	}
+
 	done := complete(typed, c.pick)
 	if done == typed {
 		return false
@@ -368,6 +394,70 @@ func (c *conversation) take() bool {
 	c.in.CursorEnd()
 	c.pick = 0
 	return true
+}
+
+// takePath completes the path after a command: the one candidate when there
+// is one, and as far as they agree when there are several. A directory
+// takes its separator, so the next Tab looks inside it.
+func (c *conversation) takePath(word, typed string) bool {
+	_, arg, _ := strings.Cut(typed, " ")
+	settled, prefix := splitPath(arg)
+
+	found := c.pathCandidates(settled, prefix)
+	if len(found) == 0 {
+		return false
+	}
+
+	grown := commonPrefix(found)
+	if len(found) == 1 {
+		grown = found[0].text()
+	}
+	if grown == "" || grown == prefix {
+		return false
+	}
+
+	c.in.SetValue(word + " " + settled + grown)
+	c.in.CursorEnd()
+	return true
+}
+
+// pathCandidates is what the piece being typed could become, read from the
+// directory it is being typed in. The directory is read once and kept: a
+// row is drawn on every keystroke, and a directory is not.
+func (c *conversation) pathCandidates(settled, prefix string) []pathMatch {
+	last := ""
+	if c.files != nil {
+		last = c.files.dir
+	}
+	key := last + "\x00" + settled
+
+	if c.dirCache == nil || c.cachedFor != key {
+		all, err := entriesIn(last, settled)
+		if err != nil {
+			c.dirCache, c.cachedFor = nil, ""
+			return nil
+		}
+		c.dirCache, c.cachedFor = map[string][]pathMatch{key: all}, key
+	}
+	return matchPath(c.dirCache[key], prefix)
+}
+
+// pathRow is the hint row while a path is being typed: what it could still
+// become, in the order a listing would show them.
+func (c *conversation) pathRow(st *styles, typed string, width int) string {
+	_, arg, _ := strings.Cut(typed, " ")
+	settled, prefix := splitPath(arg)
+
+	found := c.pathCandidates(settled, prefix)
+	if len(found) == 0 {
+		return ""
+	}
+
+	items := make([]string, len(found))
+	for i, p := range found {
+		items[i] = p.text()
+	}
+	return row(st, items, -1, width)
 }
 
 // enter sends the typed line, or runs it as a command. A bare Enter is
@@ -736,6 +826,8 @@ func (c *conversation) answerOffer(st *styles, accept bool) {
 // showFiles lists a directory in the pane and remembers it, so /send can
 // take a number from what was shown.
 func (c *conversation) showFiles(st *styles, arg string) {
+	c.dirCache, c.cachedFor = nil, ""
+
 	dir, err := dirFromArg(c.files, arg)
 	if err != nil {
 		c.alert(st, reason(err))

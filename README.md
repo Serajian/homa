@@ -304,9 +304,12 @@ Enter:
 
 Anything not starting with `/` is a message.
 
-Typing a path exactly right, with no completion and nothing to look at, is not
-a thing to ask of somebody mid-conversation. `/files` shows a directory and
-`/send` takes a number out of it:
+Typing a path exactly right is not a thing to ask of somebody mid-conversation.
+Tab completes one after `/send` and `/files`: the row above the input shows what
+the piece you have typed could still become, directories first, and Tab takes it
+as far as the candidates agree. A directory completes with its separator, so the
+next Tab looks inside it. `/files` also shows a directory so `/send` can take a
+number out of it:
 
 ```
 [me] /files ~/Downloads

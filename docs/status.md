@@ -59,6 +59,10 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   PgUp/PgDn scroll what was said. Version 1's two warts, and the arrow keys
   that did nothing, went with the line-based interface they came from
 
+- Tab completes a path after `/send` and `/files`, against the directory being
+  typed in, with the candidates in the row above the input, directories first
+  and their separator included, so the next Tab looks inside
+
 - a transfer that says how fast it is going and roughly how much longer, once
   there has been enough of it to measure, and `/cancel`, which stops whatever
   is moving in either direction and tells the far side so their end stops too;

@@ -228,6 +228,18 @@ event a message, every screen drawn whole, every `Update` on one goroutine. The 
 line-owning machinery of version 1 — the pump, the prompts and their erasing, the
 countdown, the hand-rolled palette — went with the line.
 
+**A path is completed by Tab, and the arrows stay with the cursor.** The row above the
+input picks commands with the arrows, because there is nothing to edit inside a word a few
+letters long. A path is the opposite: it is long, and a character in the middle of one is
+exactly the kind of thing that wants fixing, so the arrows keep moving the cursor there and
+Tab alone does the completing. It takes the candidates as far as they agree, the way a shell
+does, rather than choosing between them; the row says what they are, in the order a listing
+would show them, so what to type next is on the screen. A directory completes with its
+separator because the next thing anybody does is look inside it. Hidden names are left out
+unless the typed piece starts with the dot that asks for them. The directory is read once
+and kept, because the row is drawn on every keystroke and a directory is not; `/files`
+drops what was kept, since that is the moment somebody expects the names to be fresh.
+
 **A transfer can be stopped from either end.** The side pushing a file is not the side that
 most wants out of it: a person taking a file discovers halfway through that it is bigger
 than the line they are on, and until now their only way out was to leave the conversation,

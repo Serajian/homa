@@ -16,6 +16,10 @@ type command struct {
 	name  string
 	uses  []use
 	alias string
+
+	// path is a command whose argument names a file or a directory, so
+	// what has been typed of it can be completed against the disk.
+	path bool
 }
 
 // use is one way of using a command: the argument's shape, and what the
@@ -41,11 +45,11 @@ func (c command) needsArg() bool { return strings.HasPrefix(c.arg(), "<") }
 // the list.
 var commands = []command{
 	{name: "/help", uses: []use{{"", "this list, or just /"}}},
-	{name: "/files", alias: "/ls", uses: []use{
+	{name: "/files", alias: "/ls", path: true, uses: []use{
 		{"[dir]", "list a directory, numbered"},
 		{"<n>", "list one from the last listing, .. included"},
 	}},
-	{name: "/send", uses: []use{
+	{name: "/send", path: true, uses: []use{
 		{"<path>", "offer a file"},
 		{"<n>", "offer one from the last listing"},
 	}},
@@ -75,6 +79,13 @@ func helpLines() []string {
 		}
 	}
 	return out
+}
+
+// takesPath reports whether the argument of the command a word names is a
+// path, which is what makes completing it against the disk meaningful.
+func takesPath(word string) bool {
+	c, ok := exact(word)
+	return ok && c.path
 }
 
 // exact is the command a whole word names, by its name or its alias.
@@ -167,40 +178,49 @@ func hint(st *styles, typed string, pick, width int) string {
 		return st.dim.Render(line)
 	}
 
-	pick = min(max(pick, 0), len(ms)-1)
+	items := make([]string, len(ms))
+	for i, c := range ms {
+		items[i] = strings.TrimSpace(c.name + " " + c.arg())
+	}
+	return row(st, items, pick, width)
+}
+
+// row lays candidates out in one line, marking the picked one when there is
+// a pick and saying at either end when it had to leave some out. Nothing
+// wider than the room is returned: the frame would cut it anyway, and a row
+// that ends in its own mark reads as a row with more in it rather than as a
+// line that stopped mid-separator.
+func row(st *styles, items []string, pick, width int) string {
 	mark, more := pickASCII, "..."
 	if st.unicode {
 		mark, more = pickUnicode, "…"
 	}
-	items := make([]string, len(ms))
-	for i, c := range ms {
-		s := strings.TrimSpace(c.name + " " + c.arg())
+
+	shown := make([]string, len(items))
+	for i, s := range items {
 		if i == pick {
-			items[i] = mark + s
-		} else {
-			items[i] = st.dim.Render(s)
+			shown[i] = mark + s
+			continue
 		}
+		shown[i] = st.dim.Render(s)
 	}
 	sep := st.dim.Render(st.sep())
 
 	// Drop candidates from the front until the pick fits, marking that
-	// something was dropped; what follows the pick is cut by the frame.
+	// something was dropped; what follows the pick is cut below.
 	start := 0
-	for start < pick && lipgloss.Width(more+strings.Join(items[start:pick+1], sep)) > width {
+	for start < pick && lipgloss.Width(more+strings.Join(shown[start:pick+1], sep)) > width {
 		start++
 	}
-	row := strings.Join(items[start:], sep)
+	out := strings.Join(shown[start:], sep)
 	if start > 0 {
-		row = st.dim.Render(more) + row
+		out = st.dim.Render(more) + out
 	}
-	// The tail is cut by the frame anyway; cutting it here instead lets it
-	// end in the same mark the front uses, so a row with more in it says
-	// so at both ends rather than stopping mid-separator.
-	if lipgloss.Width(row) > width {
+	if lipgloss.Width(out) > width {
 		room := max(width-lipgloss.Width(more), 1)
-		row = lipgloss.NewStyle().MaxWidth(room).Render(row) + st.dim.Render(more)
+		out = lipgloss.NewStyle().MaxWidth(room).Render(out) + st.dim.Render(more)
 	}
-	return row
+	return out
 }
 
 // usage is one command's first use and doc, as the hint shows it.

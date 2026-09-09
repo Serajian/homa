@@ -49,17 +49,6 @@ they ship in the 0.2 line, in this order.
   form, the model), both READMEs. Done when an address pasted at the menu calls,
   and nothing reaches `contacts.json` unless the person asks for it
 
-- **Tab completes a path after `/send` and `/files`.** The hint row completes
-  commands; the question left open when it was built was whether the same
-  mechanism should offer paths, and `/files` plus a number exists precisely
-  because typing a path exactly right is not a thing to ask of somebody
-  mid-conversation. Complete against the directory being typed: one match
-  completes it, a directory completes with its separator, several complete to
-  the common prefix. Files: `internal/ui/hints.go`,
-  `internal/ui/screen_conversation.go`. Done when `/send ~/Down` and Tab
-  completes, and the hint row says what the candidates are the way it does for
-  commands
-
 - **Refuse a caller by key, and a do-not-disturb.** An address is a bearer
   capability with no revocation short of a reset, which changes your address
   for everyone who has it; today somebody you refuse can call again

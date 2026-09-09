@@ -583,7 +583,14 @@ func TestAFileCrossesAndKeepsItsContents(t *testing.T) {
 	alice.key("y")
 	bob.await("talking to alice")
 
-	bob.line("/send " + src)
+	// Tab completes the path rather than making somebody type it exactly.
+	// The row above the input says what the candidates are.
+	bob.key("/send " + filepath.Dir(src) + "/post")
+	bob.await("poster.txt")
+	bob.snapshot("completing-a-path")
+	// Tab and Enter: that the offer arrives at all is the proof that what
+	// Tab put in the line was the whole path.
+	bob.key("\t\r")
 	alice.await("offers")
 	alice.snapshot("offer")
 	alice.line("y")
