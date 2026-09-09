@@ -1,6 +1,6 @@
 <p align="center">
   <img src="./docs/assets/hero.svg" width="100%"
-       alt="homa, a peer-to-peer terminal chat. Two terminals side by side showing one real conversation: sara calls mohsen and waits, mohsen is asked whether to take the call and accepts, and the two exchange messages.">
+       alt="homa, a peer-to-peer terminal chat. Two terminals side by side on the full-screen interface: mohsen is asked whether to take a call from ~sara, y to take it and n not to; on sara's side afterwards, what was said sits in a pane with the names in a column and the line she is typing in a box under it.">
 </p>
 
 <p align="center"><b>English</b> · <a href="README.fa.md">فارسی</a></p>

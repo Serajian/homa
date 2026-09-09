@@ -1,52 +1,115 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 592" width="1200" height="592" role="img" aria-labelledby="t d">
   <title id="t">homa: a peer-to-peer terminal chat</title>
-  <desc id="d">Two terminals side by side showing one real conversation. On the left, sara calls mohsen and waits to be let in. On the right, mohsen is asked whether to take the call, accepts, and the two exchange messages. Nothing sits between them.</desc>
+  <desc id="d">Two terminals side by side showing one real conversation on homa's full-screen interface. On the left, mohsen's screen asks whether to take a call from ~sara, with y to take it and n not to. On the right, sara's screen after he did: what was said in a pane with the names in a column, and the line she is typing in a box under it. Nothing sits between the two but the link.</desc>
 
-  <rect width="1200" height="592" rx="14" fill="#0d0f12"/>
+  <rect width="1200" height="592" rx="14" fill="#080F12"/>
 
-  <!-- identity -->
-  <text x="48" y="86" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="58" font-weight="700" fill="#e6e3dd">homa</text>
-  <text x="215" y="86" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="22" fill="#d8a657">peer-to-peer terminal chat</text>
-  <text x="48" y="126" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="21" fill="#9aa1ae">Two machines exchange one address, then talk directly.</text>
-  <text x="48" y="156" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="21" fill="#9aa1ae">Encrypted, through NAT, with no account and no server in the middle.</text>
-
-  <!-- the gap between them is the point: nothing is drawn in it but the link -->
-  <line x1="583" y1="361" x2="617" y2="361" stroke="#d8a657" stroke-width="2"/>
-  <circle cx="583" cy="361" r="4" fill="#d8a657"/>
-  <circle cx="617" cy="361" r="4" fill="#d8a657"/>
-
-  <!-- left terminal: the caller -->
-  <rect x="48" y="206" width="535" height="310" rx="10" fill="#14171c" stroke="#242932" stroke-width="1"/>
-  <rect x="48" y="206" width="535" height="40" rx="10" fill="#1a1e25"/>
-  <rect x="48" y="236" width="535" height="10" fill="#1a1e25"/>
-  <text x="70" y="233" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17" fill="#7c8391">sara's terminal</text>
-  <text x="561" y="233" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17" fill="#5b6270">calling</text>
-
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18">
-    <text x="70" y="288" fill="#7c8391">&gt; choice: <tspan fill="#e6e3dd">1</tspan></text>
-    <text x="70" y="322" fill="#9aa1ae">  calling mohsen...</text>
-    <text x="70" y="356" fill="#9aa1ae">  waiting for mohsen to answer... 56s</text>
-    <text x="70" y="412" fill="#d8a657">[me]<tspan fill="#e6e3dd"> hi</tspan></text>
-    <text x="70" y="446" fill="#7c8391">[mohsen]<tspan fill="#e6e3dd"> hi sara, how are you</tspan></text>
-    <text x="70" y="480" fill="#d8a657">[me] <tspan fill="#e6e3dd">█</tspan></text>
+  <!-- identity: the mark and wordmark as the interface draws them, the tagline as the logo has it -->
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="48" y="86" font-size="58" font-weight="700" fill="#F1F1E8">&gt;_ homa</text>
+    <text x="318" y="86" font-size="22" fill="#22E6A7">peer-to-peer terminal chat</text>
+    <text x="48" y="126" font-size="21" fill="#9AA3AD">Two machines exchange one address, then talk directly.</text>
+    <text x="48" y="156" font-size="21" fill="#9AA3AD">Encrypted, through NAT, with no account and no server in the middle.</text>
   </g>
 
-  <!-- right terminal: the one being called -->
-  <rect x="617" y="206" width="535" height="310" rx="10" fill="#14171c" stroke="#242932" stroke-width="1"/>
-  <rect x="617" y="206" width="535" height="40" rx="10" fill="#1a1e25"/>
-  <rect x="617" y="236" width="535" height="10" fill="#1a1e25"/>
-  <text x="639" y="233" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17" fill="#7c8391">mohsen's terminal</text>
-  <text x="1130" y="233" text-anchor="end" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17" fill="#5b6270">being called</text>
+  <!-- the gap between them is the point: nothing is drawn in it but the link -->
+  <line x1="583" y1="361" x2="617" y2="361" stroke="#22E6A7" stroke-width="2"/>
+  <circle cx="583" cy="361" r="4" fill="#22E6A7"/>
+  <circle cx="617" cy="361" r="4" fill="#22E6A7"/>
 
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18">
-    <text x="639" y="288" fill="#9aa1ae">  ~sara is calling (expires in 1m0s).</text>
-    <text x="639" y="322" fill="#7c8391">&gt; take the call from ~sara? [56s] [y/N]: <tspan fill="#e6e3dd">y</tspan></text>
-    <text x="639" y="356" fill="#9aa1ae">  connected to ~sara</text>
-    <text x="639" y="412" fill="#7c8391">[~sara]<tspan fill="#e6e3dd"> hi</tspan></text>
-    <text x="639" y="446" fill="#d8a657">[me]<tspan fill="#e6e3dd"> hi sara, how are you</tspan></text>
-    <text x="639" y="480" fill="#d8a657">[me] <tspan fill="#e6e3dd">█</tspan></text>
+  <!-- left terminal: mohsen, being called -->
+  <g id="left" transform="translate(48 206)">
+    <rect width="535" height="310" rx="10" fill="#0E1317" stroke="#2B2F36" stroke-width="1"/>
+    <rect width="535" height="40" rx="10" fill="#161B21"/>
+    <rect y="30" width="535" height="10" fill="#161B21"/>
+    <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17">
+      <text x="22" y="27" fill="#9AA3AD">mohsen's terminal</text>
+      <text x="513" y="27" text-anchor="end" fill="#5B6270">being called</text>
+    </g>
+
+    <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18">
+      <!-- the app's header line -->
+      <text x="22" y="76" font-weight="700" fill="#F1F1E8">&gt;_ homa</text>
+      <text x="513" y="76" text-anchor="end" fill="#9AA3AD">mohsen  ·  <tspan fill="#22E6A7">●</tspan> listening</text>
+      <line x1="14" y1="90" x2="521" y2="90" stroke="#2B2F36" stroke-width="1"/>
+
+      <!-- the menu, people first -->
+      <text x="22" y="124" font-size="15" fill="#9AA3AD" letter-spacing="1.5">PEOPLE</text>
+      <text x="300" y="124" font-size="15" fill="#9AA3AD" letter-spacing="1.5">HOMA</text>
+      <text x="36" y="154" fill="#5B6270">nobody yet</text>
+      <rect x="300" y="138" width="22" height="22" rx="3" fill="#2B2F36"/>
+      <text x="311" y="154" text-anchor="middle" font-weight="700" fill="#F1F1E8">n</text>
+      <text x="332" y="154" fill="#9AA3AD">add a contact</text>
+
+      <!-- the one box the interface draws in the far side's colour -->
+      <rect x="22" y="182" width="491" height="82" rx="6" fill="none" stroke="#22E6A7" stroke-width="1.5"/>
+      <rect x="36" y="172" width="122" height="20" fill="#0E1317"/>
+      <text x="42" y="188" font-size="15" fill="#22E6A7">incoming call</text>
+      <text x="40" y="214" fill="#22E6A7">~sara<tspan fill="#F1F1E8" dx="10">is calling</tspan></text>
+      <text x="495" y="214" text-anchor="end" fill="#9AA3AD">56s</text>
+      <rect x="40" y="232" width="22" height="22" rx="3" fill="#2B2F36"/>
+      <text x="51" y="248" text-anchor="middle" font-weight="700" fill="#F1F1E8">y</text>
+      <text x="72" y="248" fill="#9AA3AD">take the call</text>
+      <rect x="220" y="232" width="22" height="22" rx="3" fill="#2B2F36"/>
+      <text x="231" y="248" text-anchor="middle" font-weight="700" fill="#F1F1E8">n</text>
+      <text x="252" y="248" fill="#9AA3AD">not now</text>
+    </g>
+  </g>
+
+  <!-- right terminal: sara, after he took it -->
+  <g id="right" transform="translate(617 206)">
+    <rect width="535" height="310" rx="10" fill="#0E1317" stroke="#2B2F36" stroke-width="1"/>
+    <rect width="535" height="40" rx="10" fill="#161B21"/>
+    <rect y="30" width="535" height="10" fill="#161B21"/>
+    <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17">
+      <text x="22" y="27" fill="#9AA3AD">sara's terminal</text>
+      <text x="513" y="27" text-anchor="end" fill="#5B6270">talking</text>
+    </g>
+
+    <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18">
+      <text x="22" y="76" font-weight="700" fill="#F1F1E8">&gt;_ homa</text>
+      <text x="126" y="76" fill="#9AA3AD">talking to <tspan fill="#22E6A7">mohsen</tspan></text>
+      <line x1="14" y1="90" x2="521" y2="90" stroke="#2B2F36" stroke-width="1"/>
+
+      <!-- the pane: names in a column, a faint bar, the words -->
+      <text x="102" y="124" text-anchor="end" font-weight="700" fill="#F1F1E8">me</text>
+      <text x="112" y="124" fill="#2B2F36">│</text>
+      <text x="130" y="124" fill="#F1F1E8">hi</text>
+      <text x="102" y="156" text-anchor="end" fill="#22E6A7">mohsen</text>
+      <text x="112" y="156" fill="#2B2F36">│</text>
+      <text x="130" y="156" fill="#F1F1E8">hi sara, how are you</text>
+      <text x="102" y="188" text-anchor="end" fill="#22E6A7">mohsen</text>
+      <text x="112" y="188" fill="#2B2F36">│</text>
+      <text x="130" y="188" fill="#F1F1E8">did the file arrive?</text>
+
+      <!-- the input box: the line is hers until she presses Enter -->
+      <rect x="22" y="206" width="491" height="44" rx="6" fill="none" stroke="#2B2F36" stroke-width="1.5"/>
+      <text x="40" y="235" fill="#F1F1E8">fine, and yes, all of it<tspan fill="#22E6A7">█</tspan></text>
+    </g>
+  </g>
+
+  <!-- both footers: the keys that matter, as keycaps -->
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="16">
+    <line x1="62" y1="486" x2="569" y2="486" stroke="#2B2F36" stroke-width="1"/>
+    <rect x="70" y="496" width="20" height="20" rx="3" fill="#2B2F36"/>
+    <text x="80" y="511" text-anchor="middle" font-weight="700" fill="#F1F1E8">y</text>
+    <text x="98" y="511" fill="#9AA3AD">take the call</text>
+    <rect x="236" y="496" width="20" height="20" rx="3" fill="#2B2F36"/>
+    <text x="246" y="511" text-anchor="middle" font-weight="700" fill="#F1F1E8">n</text>
+    <text x="264" y="511" fill="#9AA3AD">not now</text>
+
+    <line x1="631" y1="486" x2="1138" y2="486" stroke="#2B2F36" stroke-width="1"/>
+    <rect x="639" y="496" width="36" height="20" rx="3" fill="#2B2F36"/>
+    <text x="657" y="511" text-anchor="middle" font-weight="700" fill="#F1F1E8">↑ ↓</text>
+    <text x="683" y="511" fill="#9AA3AD">history</text>
+    <rect x="770" y="496" width="56" height="20" rx="3" fill="#2B2F36"/>
+    <text x="798" y="511" text-anchor="middle" font-weight="700" fill="#F1F1E8">/help</text>
+    <text x="834" y="511" fill="#9AA3AD">commands</text>
+    <rect x="936" y="496" width="56" height="20" rx="3" fill="#2B2F36"/>
+    <text x="964" y="511" text-anchor="middle" font-weight="700" fill="#F1F1E8">/quit</text>
+    <text x="1000" y="511" fill="#9AA3AD">leave</text>
   </g>
 
   <!-- the tilde is the one rule worth explaining on sight -->
-  <text x="48" y="556" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17" fill="#5b6270">A name in brackets is the one you gave them. A ~ in front means they chose it themselves.</text>
+  <text x="48" y="560" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="17" fill="#5B6270">Names sit in a column. A ~ in front of one means they chose it themselves and are not in your contacts.</text>
 </svg>
