@@ -485,3 +485,47 @@ func TestAWrappedAddressPastedIsTaken(t *testing.T) {
 		t.Errorf("saved %q, %v", c.Addr, err)
 	}
 }
+
+// Homebrew starts homa through a symlink; the advice must come from where
+// the link points, which is the only place "Caskroom" appears.
+func TestTheUpgradeAdviceLooksThroughTheSymlink(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	target := filepath.Join(dir, "Caskroom", "homa", "0.2.2")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	binary := filepath.Join(target, "homa")
+	if err := os.WriteFile(binary, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "bin", "homa")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(binary, link); err != nil {
+		t.Fatal(err)
+	}
+
+	resolved, err := filepath.EvalSymlinks(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := update.Result{Current: "0.2.2", Latest: "v0.2.3", Newer: true, Known: true}
+	page := stripANSI(updateTextFor(plainStyles(true), r, resolved))
+	if !strings.Contains(page, "brew upgrade --cask homa") {
+		t.Errorf("a brew install was not recognized through its symlink:\n%s", page)
+	}
+}
+
+func TestTheAskingNoticeIsGoneOnceAnswered(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	m.say("asking GitHub for the latest release…", false)
+	next, _ := m.Update(updateChecked{res: update.Result{Current: "v1", Latest: "v1", Known: true}})
+	if m = next.(model); m.notice != "" {
+		t.Errorf("notice still %q", m.notice)
+	}
+}

@@ -108,6 +108,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case updateChecked:
+		m.notice, m.warn = "", false // "asking GitHub…" has been answered
 		if msg.err != nil {
 			m.say("could not check: "+reason(msg.err), true)
 			return m, nil

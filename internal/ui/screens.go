@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -278,7 +279,24 @@ func checkUpdate(ctx context.Context, deps Deps) tea.Cmd {
 // is, and the command that upgrades, guessed from where the binary lives.
 // A build from source is told so rather than compared.
 func updateText(st *styles, r update.Result) string {
-	exe, _ := os.Executable()
+	return updateTextFor(st, r, installedAt())
+}
+
+// installedAt is where the running binary really lives: Homebrew starts
+// homa through a symlink in its bin directory, and only the target names
+// the Caskroom that says "brew".
+func installedAt() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		return resolved
+	}
+	return exe
+}
+
+func updateTextFor(st *styles, r update.Result, exe string) string {
 	var b strings.Builder
 	switch {
 	case !r.Known:
