@@ -48,7 +48,7 @@ func (l *Listener) Relay() Relay {
 	if r.Code == "" {
 		return r
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), statusTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), relayNameTimeout)
 	defer cancel()
 	if dm, err := tailcat.FetchDERPMap(ctx); err == nil {
 		r.Name = regionName(dm, r.Code)

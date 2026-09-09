@@ -223,7 +223,7 @@ func (p *page) view(st *styles, width int) string {
 const helpText = `homa connects two people directly. There is no account and nothing in the
 middle: an address is all it takes, in either direction.
 
-to reach somebody, they give you their address and you add it with n. a
+to reach somebody, they give you their address and you add it with n. m
 shows yours for them to do the same. Treat it like a password: whoever
 has it can call you. b is the address book: renaming, forgetting, calling.
 
@@ -245,13 +245,20 @@ chose it themselves and are not in your contacts.
 // the menu's own style — the address, whole, which is the only time it is
 // shown in full because it is a secret; the relay you sit behind; and the
 // start of your key, which is what a contact's book records about you.
-func meText(st *styles, addr string, relay peer.Relay, key string, width int) string {
+func meText(
+	st *styles,
+	addr string,
+	relay peer.Relay,
+	key string,
+	width int,
+	copyHint string,
+) string {
 	var b strings.Builder
 	b.WriteString(st.label.Render("ADDRESS") + "\n")
 	b.WriteString(st.dim.Render("give this to someone who should be able to reach you") + "\n")
 	b.WriteString(st.dim.Render("treat it like a password: whoever has it can call you") + "\n")
 	b.WriteString(
-		st.dim.Render("it wraps; copy every row, line breaks and all, or press c") + "\n\n",
+		st.dim.Render("it wraps; copy every row, line breaks and all, "+copyHint) + "\n\n",
 	)
 	b.WriteString(blockRows(addr, width) + "\n\n")
 

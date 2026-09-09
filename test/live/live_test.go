@@ -240,7 +240,7 @@ var labelPattern = regexp.MustCompile(`^[A-Z]+$`)
 func (i *instance) address() string {
 	i.t.Helper()
 
-	i.key("a")
+	i.key("m")
 	i.await("give this to someone")
 
 	// The page wraps the address across rows; the rows that are nothing
@@ -389,7 +389,7 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	bob.key("/")
 	bob.await("/files [dir]")
 	bob.snapshot("commands")
-	bob.key("\x1b[D\x1b[D\x1b[D")
+	bob.key("\x1b[D\x1b[D\x1b[D\x1b[D")
 	bob.await("▸ /who")
 	bob.key("\r")
 	bob.await("calling themselves \"alice\"")
@@ -400,6 +400,14 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	bob.snapshot("who")
 
 	// The same from alice's side, where bob is not in the book.
+	// /me says the same three groups the page does, without leaving the
+	// conversation, and copies the address when asked.
+	bob.line("/me")
+	bob.await("RELAY")
+	bob.line("/me copy")
+	bob.await("sent to the clipboard through the terminal")
+	bob.snapshot("me-in-a-conversation")
+
 	alice.line("/who")
 	alice.await("not in your book")
 	alice.awaitAny("direct", "through the relay", "through a relay", "not known on the side")
@@ -433,7 +441,7 @@ func TestARefusedCallIsNeverAConversation(t *testing.T) {
 
 	// The me page: the relay named and connected, the key, and c sending
 	// the address to the clipboard through the terminal.
-	alice.key("a")
+	alice.key("m")
 	alice.await("RELAY")
 	alice.await("connected")
 	alice.await("what your contacts record about you")

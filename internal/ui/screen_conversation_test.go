@@ -289,3 +289,60 @@ func TestSinceTextSpeaksLikeAPerson(t *testing.T) {
 		}
 	}
 }
+
+// /me prints this machine's own three groups into the pane, so they can be
+// read out without leaving the conversation; /me copy also copies.
+func TestMeInAConversationPrintsAndCopies(t *testing.T) {
+	t.Setenv("PATH", t.TempDir()) // no clipboard tool: nothing of the developer's is touched
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
+	c.me = func(int) (string, string) { return "ADDRESS\ntcpTESTADDR\n\nRELAY\nfra · Frankfurt", "tcpTESTADDR" }
+
+	typeInto(c, st, "/me")
+	cmd, _ := c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	plain := stripANSI(strings.Join(c.lines, "\n"))
+	for _, want := range []string{"ADDRESS", "tcpTESTADDR", "RELAY", "fra · Frankfurt"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("/me lacks %q:\n%s", want, plain)
+		}
+	}
+	if cmd != nil {
+		t.Error("/me alone copied something")
+	}
+
+	typeInto(c, st, "/me copy")
+	cmd, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("/me copy copied nothing")
+	}
+	if !strings.Contains(stripANSI(strings.Join(c.lines, "\n")), "tcpTESTADDR") {
+		t.Error("/me copy did not print the address too")
+	}
+
+	typeInto(c, st, "/me now")
+	_, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	if !strings.Contains(stripANSI(strings.Join(c.lines, "\n")), "or the word copy") {
+		t.Error("/me now was taken as an answer")
+	}
+}
+
+// A conversation draws no notice line, so a copy says so in the pane.
+func TestACopyInAConversationIsSaidInThePane(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	m.screen = screenConversation
+	m.conv = newConversation(m.st, 100, 20, testLine("alice", true), "alice", "")
+	next, _ := m.Update(copied{tool: "pbcopy"})
+	m = next.(model)
+	if m.notice != "" {
+		t.Errorf("a notice nobody can see: %q", m.notice)
+	}
+	if !strings.Contains(
+		stripANSI(strings.Join(m.conv.lines, "\n")),
+		"through the terminal and pbcopy",
+	) {
+		t.Errorf("pane:\n%s", stripANSI(strings.Join(m.conv.lines, "\n")))
+	}
+}

@@ -40,6 +40,13 @@ const keyMark = "nodekey:"
 // addrPrefix is the range tailcat hands its tunnel addresses out of.
 var addrPrefix = netip.MustParsePrefix("fd7a:115c:a1e0::/48")
 
+// relayNameTimeout bounds the lookup of a relay region's name. The DERP
+// map is in the transport's process cache after start, so this is a cache
+// read; the bound is short because a stale cache must not stall a screen,
+// and the transport falls back to the stored map when a revalidation runs
+// out of time.
+const relayNameTimeout = 500 * time.Millisecond
+
 // statusTimeout bounds a look at the connection's path or the relay's name:
 // a ping through the relay, or a DERP map read from cache. A person is
 // waiting on a screen for the answer.

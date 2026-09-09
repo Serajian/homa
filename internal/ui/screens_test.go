@@ -577,3 +577,22 @@ func TestACopiedAnswerBecomesTheNotice(t *testing.T) {
 		t.Errorf("notice %q warn %v", m.notice, m.warn)
 	}
 }
+
+// The page is called me and m opens it; a, which named it when it was only
+// the address, still does, unlisted.
+func TestMOpensTheMePageAndAStillDoes(t *testing.T) {
+	t.Parallel()
+
+	for _, k := range []string{"m", "a"} {
+		m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+		m = steer(m, k)
+		if m.screen != screenPage || m.page.title != "me" {
+			t.Errorf("%q: screen %v, page %v", k, m.screen, m.page)
+		}
+	}
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	if view := stripANSI(m.View().Content); !strings.Contains(view, "m  me: address, relay, key") ||
+		strings.Contains(view, "a  me") {
+		t.Errorf("menu:\n%s", view)
+	}
+}

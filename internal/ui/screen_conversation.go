@@ -54,6 +54,14 @@ type conversation struct {
 	// number out of it.
 	files *listing
 
+	// width is the last width the screen was drawn at, for /me to wrap the
+	// address to the room its lines have.
+	width int
+
+	// me answers /me: the three groups about this machine, and the address
+	// to copy. nil in tests that do not need it.
+	me func(width int) (body, addr string)
+
 	// ctx and send are what /send needs to run a transfer in the
 	// background and report on it; downloadDir is where an accepted file
 	// goes, asked at the moment of accepting so a changed setting counts.
@@ -136,6 +144,7 @@ func (c *conversation) alert(st *styles, text string) {
 func quote(s string) string { return "\"" + s + "\"" }
 
 func (c *conversation) resize(width, height int) {
+	c.width = width
 	paneHeight := max(height-headerHeight-footerHeight-inputBoxHeight-1, 1)
 	c.pane.SetWidth(width)
 	c.pane.SetHeight(paneHeight)
@@ -339,6 +348,8 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 			return nil, false
 		}
 		return probePath(c.ctx, c.l.conn), false
+	case "/me":
+		return c.showMe(st, arg), false
 	case "/clear":
 		c.lines = nil
 		c.pane.SetContent("")
@@ -369,6 +380,35 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		c.note(st, st.dim.Render(l))
 	}
 	return nil, false
+}
+
+// showMe prints this machine's own address, relay and key into the pane:
+// the same three groups the page shows, so they can be read out or handed
+// over without leaving the conversation. "copy" puts the address on the
+// clipboard, since the page's c is an ordinary letter in here.
+func (c *conversation) showMe(st *styles, arg string) tea.Cmd {
+	if arg != "" && arg != "copy" {
+		c.alert(st, "/me takes nothing, or the word copy")
+		return nil
+	}
+	if c.me == nil {
+		c.alert(st, "there is nothing to show: homa is not listening")
+		return nil
+	}
+
+	body, addr := c.me(max(c.width-nameColumn-6, 20))
+	c.say("")
+	for _, line := range strings.Split(strings.TrimRight(body, "\n"), "\n") {
+		c.note(st, line)
+	}
+	if arg != "copy" {
+		return nil
+	}
+	if addr == "" {
+		c.alert(st, "there is no address to copy")
+		return nil
+	}
+	return copyToClipboard(addr)
 }
 
 // who is the first line /who says: the name and where it came from, and

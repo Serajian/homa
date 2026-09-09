@@ -285,6 +285,16 @@ account for. A self-update is also a download homa would run, and releases are n
 signed; that belongs after signing, if at all. The page therefore says which release is
 out and the one command that upgrades, guessed from where the binary lives.
 
+**The page about you is `me`, on both screens.** `a` stood for "address", and the page
+stopped being only the address when it grew a relay and a key; the key is `m` and the page
+is `me`, so the menu and the conversation say the same word for the same thing — `m` there,
+`/me` here. `a` still opens it, unlisted, the way `/ls` still runs `/files`: a rename should
+not punish fingers that learned the old key. `/me` prints into the pane rather than opening
+a page, because leaving a conversation to read your own address is exactly what the command
+exists to avoid, and `/me copy` does what `c` does on the page, since `c` in a conversation
+is an ordinary letter. A conversation draws no notice line, so what a copy says goes into
+the pane there.
+
 **What the screens say about the connection, and what they keep to themselves.** The `me`
 page names the relay and shows the start of your key, because a person can read a
 fingerprint over the phone and a relay name tells them where their traffic meets the world;

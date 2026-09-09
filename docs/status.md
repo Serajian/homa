@@ -64,7 +64,9 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   Enter take the one marked, and a word that is no command is warned about
   before Enter. `/help` and the hint read one table, so they cannot disagree
 
-- `a` at the menu is a page about you: the address, the relay you sit behind
+- `m` at the menu is a page about you (`a`, which named it when it was only
+  the address, still works unlisted), and `/me` says the same thing inside a
+  conversation, `/me copy` copying the address: the address, the relay you sit behind
   (region, name, connected), and the start of your key, which is what a
   contact's book records; `c` there sends the address to the clipboard
   through the terminal (OSC 52, which crosses ssh and tmux) and through a

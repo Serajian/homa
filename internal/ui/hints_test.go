@@ -16,7 +16,7 @@ func commandNames(cs []command) string {
 func TestASlashOffersEveryCommandAndLettersNarrowIt(t *testing.T) {
 	t.Parallel()
 
-	if got := commandNames(matches("/")); got != "/help /files /send /accept /reject /who /clear /quit" {
+	if got := commandNames(matches("/")); got != "/help /files /send /accept /reject /who /me /clear /quit" {
 		t.Errorf("/: %s", got)
 	}
 	if got := commandNames(matches("/s")); got != "/send" {
@@ -71,12 +71,12 @@ func TestTheHintSaysWhatCanFollow(t *testing.T) {
 		{
 			"/",
 			0,
-			"▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /clear  ·  /quit",
+			"▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /clear  ·  /quit",
 		},
 		{
 			"/",
 			2,
-			"/help  ·  /files [dir]  ·  ▸ /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /clear  ·  /quit",
+			"/help  ·  /files [dir]  ·  ▸ /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /clear  ·  /quit",
 		},
 		{"/s", 0, "/send <path>   offer a file  ·  Tab completes"},
 		{"/send", 0, "/send <path>   offer a file"},
@@ -96,7 +96,7 @@ func TestAPickPastTheEdgeScrollsTheRow(t *testing.T) {
 	t.Parallel()
 
 	st := plainStyles(false)
-	got := hint(st, "/", 7, 40)
+	got := hint(st, "/", 8, 40)
 	if !strings.HasPrefix(got, "...") || !strings.Contains(got, "> /quit") {
 		t.Errorf("the pick is out of view: %q", got)
 	}
@@ -130,7 +130,28 @@ func TestHelpLinesReadFromTheTable(t *testing.T) {
 	if lines[1] != "/files [dir]  list a directory, numbered" {
 		t.Errorf("second line: %q", lines[1])
 	}
-	if len(lines) != 10 {
+	if len(lines) != 12 {
 		t.Errorf("%d lines", len(lines))
+	}
+}
+
+// A row wider than the room ends in the same mark the front uses, rather
+// than stopping mid-separator where the frame would cut it.
+func TestARowWiderThanTheRoomSaysSoAtTheEnd(t *testing.T) {
+	t.Parallel()
+
+	st := plainStyles(true)
+	got := hint(st, "/", 0, 40)
+	if len([]rune(got)) > 40 {
+		t.Errorf("%d wide in 40: %q", len([]rune(got)), got)
+	}
+	if !strings.HasSuffix(got, "…") {
+		t.Errorf("no mark at the end: %q", got)
+	}
+	if strings.HasPrefix(got, "…") {
+		t.Errorf("the front was dropped for a pick that is in view: %q", got)
+	}
+	if wide := hint(st, "/", 0, 400); strings.HasSuffix(wide, "…") {
+		t.Errorf("a row with room to spare was marked: %q", wide)
 	}
 }

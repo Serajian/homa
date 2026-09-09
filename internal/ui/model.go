@@ -108,6 +108,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case copied:
+		// A conversation draws no notice line, so the answer to a copy
+		// goes where everything else it says goes: the pane.
+		if m.screen == screenConversation && m.conv != nil {
+			m.conv.note(m.st, m.st.dim.Render(copiedNotice(msg.tool)))
+			return m, nil
+		}
 		m.say(copiedNotice(msg.tool), false)
 		return m, nil
 	case pathProbed:
@@ -278,6 +284,21 @@ func (m model) ring() tea.Cmd {
 	return tea.Batch(tea.Raw(bell), playSound(soundTool()))
 }
 
+// meBody is the page under m and the answer to /me: who this machine is on
+// the network. copyHint names the key that copies on the screen doing the
+// asking, since it differs. The address comes back beside the text, for
+// whoever offers the copy.
+func (m model) meBody(width int, copyHint string) (body, addr string) {
+	relay, key := peer.Relay{}, ""
+	if m.deps.Listener != nil {
+		addr, relay = m.deps.Listener.Addr(), m.deps.Listener.Relay()
+	}
+	if m.deps.ID != nil {
+		key = m.deps.ID.KeyPrefix()
+	}
+	return meText(m.st, addr, relay, key, width, copyHint), addr
+}
+
 // ringAgain is the bell for a call still waiting on the screen: once every
 // callRingEvery since it last rang, the way a phone keeps ringing until it
 // is picked up. now comes from the tick so a test can move time.
@@ -382,19 +403,8 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenContacts
 		return m, nil
 	case actAddress:
-		addr, relay, key := "", peer.Relay{}, ""
-		if m.deps.Listener != nil {
-			addr, relay = m.deps.Listener.Addr(), m.deps.Listener.Relay()
-		}
-		if m.deps.ID != nil {
-			key = m.deps.ID.KeyPrefix()
-		}
-		m.page = &page{
-			title:    "me",
-			body:     meText(m.st, addr, relay, key, m.width-4),
-			back:     screenMenu,
-			copyText: addr,
-		}
+		body, addr := m.meBody(m.width-4, "or press c")
+		m.page = &page{title: "me", body: body, back: screenMenu, copyText: addr}
 		m.screen = screenPage
 		return m, nil
 	case actSettings:
@@ -655,6 +665,9 @@ func (m model) startConversation(l *line) (tea.Model, tea.Cmd) {
 		m.send,
 		cfg.EnsureDownloadDir,
 	)
+	// What /me answers with. The conversation is handed one closure and so
+	// learns nothing about relays, keys or listeners.
+	m.conv.me = func(width int) (body, addr string) { return m.meBody(width, "or /me copy") }
 	m.say("", false)
 	return m, runSession(m.ctx, l, m.send)
 }
@@ -787,7 +800,7 @@ func (m model) menuFooter() string {
 			"call by number",
 		)
 	}
-	return m.footer("n", "add a contact", "a", "me", "h", "help")
+	return m.footer("n", "add a contact", "m", "me", "h", "help")
 }
 
 // menuBody is the people on the left and homa's own keys on the right when
@@ -798,7 +811,7 @@ func (m model) menuBody() string {
 	people := renderGroups(m.st, [][]menuItem{groups[0]}, m.menu.cursor)
 	if len(groups[0]) == 0 {
 		people = markInfo + "  " + m.st.dim.Render("nobody yet") + "\n" +
-			markInfo + "  " + m.st.dim.Render("n adds a contact, a shows your address") + "\n"
+			markInfo + "  " + m.st.dim.Render("n adds a contact, m shows yours") + "\n"
 	}
 	rest := renderGroups(m.st, groups[1:], -1)
 

@@ -48,6 +48,10 @@ var commands = []command{
 	{name: "/accept", uses: []use{{"", "take the file being offered, or just y"}}},
 	{name: "/reject", uses: []use{{"", "refuse it, or just n"}}},
 	{name: "/who", uses: []use{{"", "who you are talking to"}}},
+	{name: "/me", uses: []use{
+		{"", "your address, relay and key"},
+		{"copy", "put your address on the clipboard"},
+	}},
 	{name: "/clear", uses: []use{{"", "wipe the screen"}}},
 	{name: "/quit", uses: []use{{"", "leave the conversation, not homa"}}},
 }
@@ -179,6 +183,13 @@ func hint(st *styles, typed string, pick, width int) string {
 	row := strings.Join(items[start:], sep)
 	if start > 0 {
 		row = st.dim.Render(more) + row
+	}
+	// The tail is cut by the frame anyway; cutting it here instead lets it
+	// end in the same mark the front uses, so a row with more in it says
+	// so at both ends rather than stopping mid-separator.
+	if lipgloss.Width(row) > width {
+		room := max(width-lipgloss.Width(more), 1)
+		row = lipgloss.NewStyle().MaxWidth(room).Render(row) + st.dim.Render(more)
 	}
 	return row
 }

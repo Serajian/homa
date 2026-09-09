@@ -77,7 +77,7 @@ measure the relays, once. Then the menu.
 homa
 ```
 
-**2. Give Bob your address.** Press `a`. The long line it prints is your
+**2. Give Bob your address.** Press `m`, the page about you. The long line it prints is your
 address: send it to Bob over a channel you already trust. It wraps across
 rows on the screen; copy all of them, line breaks and all — homa removes
 them — or press `c` and homa asks your terminal to put it on the clipboard.
@@ -142,14 +142,14 @@ Bob, so she sees him under the name he chose, marked with a `~`.
 Bob's menu, with Alice in it:
 
 ```
-  >_ homa                                                  bob  ·  tcpGFwWCBzGk...  ·  ● listening
+  >_ homa                                                  bob  ·  tcpGFwWCBbId...  ·  ● listening
  ──────────────────────────────────────────────────────────────────────────────────────────────────
 
   PEOPLE                                      HOMA
 
   ▸  1  call alice                               n  add a contact
                                                  b  contacts: rename, forget, call
-                                                 a  me: address, relay, key
+                                                 m  me: address, relay, key
 
                                                  s  settings
                                                  c  clear the screen
@@ -169,14 +169,14 @@ Bob's menu, with Alice in it:
 Bob presses `1`. On Alice's screen, the one box the interface draws:
 
 ```
-  >_ homa                                                alice  ·  tcpGFwWCAtMd...  ·  ● listening
+  >_ homa                                                alice  ·  tcpGFwWCCEk2...  ·  ● listening
  ──────────────────────────────────────────────────────────────────────────────────────────────────
 
   PEOPLE                                      HOMA
 
     nobody yet                                   n  add a contact
-    n adds a contact, a shows your address       b  contacts: rename, forget, call
-                                                 a  me: address, relay, key
+    n adds a contact, m shows yours              b  contacts: rename, forget, call
+                                                 m  me: address, relay, key
 
                                                  s  settings
                                                  c  clear the screen
@@ -271,6 +271,8 @@ nobody answers is hung up on inside a minute with both sides told why.
 | `/accept` | take the file being offered, or just `y` |
 | `/reject` | refuse it, or just `n` |
 | `/who` | who you are talking to: their key, whether it matches your book, and whether the line is direct or through a relay |
+| `/me` | the same page `m` shows, without leaving the conversation |
+| `/me copy` | put your address on the clipboard |
 | `/clear` | wipe the screen |
 | `/quit` | leave the conversation, not homa |
 
@@ -287,7 +289,7 @@ Enter:
     alice │ how are you?
 
 
-    ▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /clear  ·  /quit
+    ▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /clear  …
   ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
   │ /                                                                                            │
   ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
