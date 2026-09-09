@@ -63,7 +63,10 @@ func start(t *testing.T, name string) *instance {
 	cmd := exec.CommandContext(t.Context(), homaBinary(t),
 		"-log", filepath.Join(home, "homa.log"), "-debug")
 	cmd.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
-		"LANG=en_US.UTF-8", "TERM=xterm-256color", "COLORTERM=truecolor")
+		"LANG=en_US.UTF-8", "TERM=xterm-256color", "COLORTERM=truecolor",
+		// No clipboard tool on the PATH: c on the me page must not touch
+		// the developer's clipboard, and the terminal path is what is tested.
+		"PATH="+t.TempDir())
 
 	tty, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: ttyRows, Cols: ttyCols})
 	if err != nil {
@@ -199,6 +202,24 @@ func (i *instance) await(what string) {
 		i.name, what, i.scr.seen(), dump, i.screen())
 }
 
+// awaitAny waits for any one of several strings: for an answer that is
+// right in more than one form, such as a path that may be direct or not.
+func (i *instance) awaitAny(what ...string) {
+	i.t.Helper()
+
+	deadline := time.Now().Add(90 * time.Second)
+	for time.Now().Before(deadline) {
+		screen := i.screen()
+		for _, w := range what {
+			if strings.Contains(screen, w) {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	i.t.Fatalf("%s: waited for any of %q. Screen was:\n%s", i.name, what, i.screen())
+}
+
 func (i *instance) refute(what string) {
 	i.t.Helper()
 
@@ -211,12 +232,16 @@ func (i *instance) refute(what string) {
 // in rows of one width, the last of which can be short.
 var addrPattern = regexp.MustCompile(`[A-Za-z0-9+/=_.:-]{4,}`)
 
+// labelPattern is a group label on the me page, which the address rows sit
+// under and which must not be read as one of them.
+var labelPattern = regexp.MustCompile(`^[A-Z]+$`)
+
 // address opens the address page, reads the address off it, and comes back.
 func (i *instance) address() string {
 	i.t.Helper()
 
 	i.key("a")
-	i.await("Give this to someone")
+	i.await("give this to someone")
 
 	// The page wraps the address across rows; the rows that are nothing
 	// but address characters are it. What is returned is those rows as a
@@ -231,6 +256,11 @@ func (i *instance) address() string {
 		var rows []string
 		for _, row := range strings.Split(i.screen(), "\n") {
 			trimmed := strings.TrimSpace(row)
+			// A group label (ADDRESS, RELAY, KEY) is made of address
+			// characters too; a row of the address is never all capitals.
+			if labelPattern.MatchString(trimmed) {
+				continue
+			}
 			if addrPattern.MatchString(trimmed) && addrPattern.FindString(trimmed) == trimmed {
 				rows = append(rows, row)
 			}
@@ -333,21 +363,21 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	alice.await("talking to ~bob")
 	bob.await("talking to alice")
 
-	bob.line("salam from bob")
-	alice.await("salam from bob")
+	bob.line("hello from bob")
+	alice.await("hello from bob")
 	// The taken call rang for bob, the message for alice.
 	if a, b := alice.scr.rung(), bob.scr.rung(); a != 2 || b != 1 {
 		t.Errorf("bells after the first message: alice %d, bob %d", a, b)
 	}
 
-	alice.line("salam from alice")
-	bob.await("salam from alice")
+	alice.line("hello from alice")
+	bob.await("hello from alice")
 
 	// A half-typed line on bob's side while alice speaks: the fault that
 	// started version 2, and the screen that shows it gone.
-	bob.typeSlowly("man dar")
-	alice.line("chetori?")
-	bob.await("chetori?")
+	bob.typeSlowly("fine, I was")
+	alice.line("how are you?")
+	bob.await("how are you?")
 	bob.snapshot("conversation")
 	alice.snapshot("conversation-answering")
 
@@ -355,7 +385,7 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	// arrow walks the row backwards, wrapping to the last; Enter on a
 	// pick that wants nothing runs it. /who is what bob picks, and the
 	// answer names the contact he saved.
-	bob.key(strings.Repeat("\x7f", len("man dar")))
+	bob.key(strings.Repeat("\x7f", len("fine, I was")))
 	bob.key("/")
 	bob.await("/files [dir]")
 	bob.snapshot("commands")
@@ -363,6 +393,17 @@ func TestACallIsAskedAboutAndPutThrough(t *testing.T) {
 	bob.await("▸ /who")
 	bob.key("\r")
 	bob.await("calling themselves \"alice\"")
+	// The key fingerprint bob's book matched, then how the line travels,
+	// once the probe answers; direct or relayed are both right answers.
+	bob.await("matches your book")
+	bob.awaitAny("direct", "through the relay", "through a relay", "not known on the side")
+	bob.snapshot("who")
+
+	// The same from alice's side, where bob is not in the book.
+	alice.line("/who")
+	alice.await("not in your book")
+	alice.awaitAny("direct", "through the relay", "through a relay", "not known on the side")
+	alice.snapshot("who-answering")
 }
 
 func TestARefusedCallIsNeverAConversation(t *testing.T) {
@@ -389,6 +430,18 @@ func TestARefusedCallIsNeverAConversation(t *testing.T) {
 	}
 
 	alice.await("was not taken")
+
+	// The me page: the relay named and connected, the key, and c sending
+	// the address to the clipboard through the terminal.
+	alice.key("a")
+	alice.await("RELAY")
+	alice.await("connected")
+	alice.await("what your contacts record about you")
+	alice.snapshot("me")
+	alice.key("c")
+	alice.await("sent to the clipboard through the terminal")
+	alice.key("x")
+	alice.await("PEOPLE")
 }
 
 func TestGivingUpOnACallLeavesHomaRunning(t *testing.T) {

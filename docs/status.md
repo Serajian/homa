@@ -64,6 +64,16 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   Enter take the one marked, and a word that is no command is warned about
   before Enter. `/help` and the hint read one table, so they cannot disagree
 
+- `a` at the menu is a page about you: the address, the relay you sit behind
+  (region, name, connected), and the start of your key, which is what a
+  contact's book records; `c` there sends the address to the clipboard
+  through the terminal (OSC 52, which crosses ssh and tmux) and through a
+  local tool when one is present. `/who` in a conversation names the far
+  side's key and whether it matched the book, and — on the side that
+  called — whether the line is direct or through which relay, the latency,
+  how long it has been open. The side that answered cannot see the path:
+  the transport's status table stays empty there, and the screen says so
+
 - `u` at the menu: asks GitHub whether a newer release is out and says the
   command that upgrades for the way homa was installed. Nothing is downloaded,
   and nothing is asked unless the key is pressed

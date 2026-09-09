@@ -80,7 +80,10 @@ homa
 **2. Give Bob your address.** Press `a`. The long line it prints is your
 address: send it to Bob over a channel you already trust. It wraps across
 rows on the screen; copy all of them, line breaks and all — homa removes
-them. It is a secret — whoever has it can call you — so not in a public place.
+them — or press `c` and homa asks your terminal to put it on the clipboard.
+The same page says which relay you sit behind and the start of your key,
+which is what Bob's address book will record about you. It is a secret —
+whoever has it can call you — so not in a public place.
 
 **3. Bob adds you.** On his side: `n`, a name for you, your address. You now
 appear in his menu as `1  call alice`.
@@ -135,7 +138,7 @@ Bob's menu, with Alice in it:
 
   ▸  1  call alice                               n  add a contact
                                                  b  contacts: rename, forget, call
-                                                 a  show my address
+                                                 a  me: address, relay, key
 
                                                  s  settings
                                                  c  clear the screen
@@ -162,7 +165,7 @@ Bob presses `1`. On Alice's screen, the one box the interface draws:
 
     nobody yet                                   n  add a contact
     n adds a contact, a shows your address       b  contacts: rename, forget, call
-                                                 a  show my address
+                                                 a  me: address, relay, key
 
                                                  s  settings
                                                  c  clear the screen
@@ -188,13 +191,13 @@ while Alice's message arrived, untouched:
 ```
   >_ homa   talking to alice  ·  they call themselves "alice"          files → /tmp/bob/homa-files
  ──────────────────────────────────────────────────────────────────────────────────────────────────
-       me │ salam from bob
-    alice │ salam from alice
-    alice │ chetori?
+       me │ hello from bob
+    alice │ hello from alice
+    alice │ how are you?
 
 
   ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
-  │ man dar                                                                                      │
+  │ fine, I was                                                                                  │
   ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
  ──────────────────────────────────────────────────────────────────────────────────────────────────
    PgUp PgDn  scroll    ↑ ↓  history    /help  commands    /quit  leave
@@ -206,9 +209,9 @@ Alice's side, where the name is the one he chose for himself:
   >_ homa   talking to ~bob                                          files → /tmp/alice/homa-files
  ──────────────────────────────────────────────────────────────────────────────────────────────────
           │ the name is theirs; they are not in your contacts
-     ~bob │ salam from bob
-       me │ salam from alice
-       me │ chetori?
+     ~bob │ hello from bob
+       me │ hello from alice
+       me │ how are you?
 
 
   ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -256,7 +259,7 @@ nobody answers is hung up on inside a minute with both sides told why.
 | `/send <n>` | offer one from the last listing |
 | `/accept` | take the file being offered, or just `y` |
 | `/reject` | refuse it, or just `n` |
-| `/who` | who you are talking to |
+| `/who` | who you are talking to: their key, whether it matches your book, and whether the line is direct or through a relay |
 | `/clear` | wipe the screen |
 | `/quit` | leave the conversation, not homa |
 
@@ -268,9 +271,9 @@ Enter:
 ```
   >_ homa   talking to alice  ·  they call themselves "alice"          files → /tmp/bob/homa-files
  ──────────────────────────────────────────────────────────────────────────────────────────────────
-       me │ salam from bob
-    alice │ salam from alice
-    alice │ chetori?
+       me │ hello from bob
+    alice │ hello from alice
+    alice │ how are you?
 
 
     ▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /clear  ·  /quit
@@ -292,7 +295,7 @@ a thing to ask of somebody mid-conversation. `/files` shows a directory and
   /Users/mohsen/Downloads
     1) ../                   dir
     2) archive/              dir
-    3) gozaresh nahayi.pdf   4.2 KB
+    3) final report.pdf      4.2 KB
     4) poster.png            1.1 MB
 [me] /send 3
 ```

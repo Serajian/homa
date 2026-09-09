@@ -33,6 +33,7 @@ type Listener struct {
 type heldConn struct {
 	net.Conn
 	key         string
+	listener    *Listener // for Probe, which reads the server's status table
 	release     chan struct{}
 	releaseOnce sync.Once
 }
@@ -84,9 +85,10 @@ func Listen(id *Identity) (*Listener, error) {
 // connection to Accept and then waits, because returning would close it.
 func (l *Listener) handle(c net.Conn) {
 	h := &heldConn{
-		Conn:    c,
-		key:     lookupKey(l.srv, c),
-		release: make(chan struct{}),
+		Conn:     c,
+		key:      lookupKey(l.srv, c),
+		listener: l,
+		release:  make(chan struct{}),
 	}
 
 	select {

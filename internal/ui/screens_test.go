@@ -529,3 +529,51 @@ func TestTheAskingNoticeIsGoneOnceAnswered(t *testing.T) {
 		t.Errorf("notice still %q", m.notice)
 	}
 }
+
+// The me page without a listener, as the tests have it: the address group
+// with its hints, no relay yet, an empty key line; c is offered and copies.
+func TestTheMePageOffersACopy(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	m = steer(m, "a")
+	if m.screen != screenPage {
+		t.Fatalf("screen %v", m.screen)
+	}
+	view := stripANSI(m.View().Content)
+	for _, want := range []string{"me", "ADDRESS", "RELAY", "not connected to a relay yet", "KEY"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("the me page lacks %q:\n%s", want, view)
+		}
+	}
+	if strings.Contains(view, "copy the address") {
+		t.Error("a copy was offered with no address to copy")
+	}
+
+	// With an address, c is offered, copies, and stays on the page; any
+	// other key goes back.
+	m.page.copyText = "tcpX"
+	if view = stripANSI(m.View().Content); !strings.Contains(view, "c  copy the address") {
+		t.Errorf("c not offered:\n%s", view)
+	}
+	next, cmd := m.Update(key("c"))
+	m = next.(model)
+	if cmd == nil || m.screen != screenPage {
+		t.Errorf("c: cmd %v, screen %v", cmd != nil, m.screen)
+	}
+	m = steer(m, "x")
+	if m.screen != screenMenu {
+		t.Errorf("x did not go back: screen %v", m.screen)
+	}
+}
+
+func TestACopiedAnswerBecomesTheNotice(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	next, _ := m.Update(copied{tool: "pbcopy"})
+	m = next.(model)
+	if !strings.Contains(m.notice, "through the terminal and pbcopy") || m.warn {
+		t.Errorf("notice %q warn %v", m.notice, m.warn)
+	}
+}

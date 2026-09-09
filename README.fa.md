@@ -85,7 +85,7 @@ homa
 
 <div dir="rtl">
 
-**۲. آدرس‌تان را به Bob بدهید.** `a` را بزنید. خط بلندی که چاپ می‌شود آدرس شماست: از راهی که از قبل به آن اعتماد دارید برای Bob بفرستید. روی صفحه در چند ردیف می‌شکند؛ همه‌ی ردیف‌ها را کپی کنید، با شکست خط‌ها — homa خودش حذفشان می‌کند. این یک راز است — هر کس آن را داشته باشد می‌تواند به شما زنگ بزند — پس نه در جای عمومی.
+**۲. آدرس‌تان را به Bob بدهید.** `a` را بزنید. خط بلندی که چاپ می‌شود آدرس شماست: از راهی که از قبل به آن اعتماد دارید برای Bob بفرستید. روی صفحه در چند ردیف می‌شکند؛ همه‌ی ردیف‌ها را کپی کنید، با شکست خط‌ها — homa خودش حذفشان می‌کند — یا `c` را بزنید تا homa از ترمینال بخواهد آن را در clipboard بگذارد. همان صفحه می‌گوید پشت کدام رله هستید و کلیدتان با چه شروع می‌شود، که همان چیزی است که دفترچه‌ی Bob درباره‌ی شما ثبت می‌کند. این یک راز است — هر کس آن را داشته باشد می‌تواند به شما زنگ بزند — پس نه در جای عمومی.
 
 **۳. Bob شما را اضافه می‌کند.** در سمت او: `n`، یک نام برای شما، آدرس شما. حالا در منوی او به شکل `1  call alice` ظاهر می‌شوید.
 
@@ -117,7 +117,7 @@ homa
 
   ▸  1  call alice                               n  add a contact
                                                  b  contacts: rename, forget, call
-                                                 a  show my address
+                                                 a  me: address, relay, key
 
                                                  s  settings
                                                  c  clear the screen
@@ -148,7 +148,7 @@ Bob `1` را می‌زند. روی صفحه‌ی Alice، تنها جعبه‌ا�
 
     nobody yet                                   n  add a contact
     n adds a contact, a shows your address       b  contacts: rename, forget, call
-                                                 a  show my address
+                                                 a  me: address, relay, key
 
                                                  s  settings
                                                  c  clear the screen
@@ -177,13 +177,13 @@ Alice `y` را می‌زند. سمت Bob از گفتگو — با خطی نیم�
 ```
   >_ homa   talking to alice  ·  they call themselves "alice"          files → /tmp/bob/homa-files
  ──────────────────────────────────────────────────────────────────────────────────────────────────
-       me │ salam from bob
-    alice │ salam from alice
-    alice │ chetori?
+       me │ hello from bob
+    alice │ hello from alice
+    alice │ how are you?
 
 
   ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
-  │ man dar                                                                                      │
+  │ fine, I was                                                                                  │
   ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
  ──────────────────────────────────────────────────────────────────────────────────────────────────
    PgUp PgDn  scroll    ↑ ↓  history    /help  commands    /quit  leave
@@ -199,9 +199,9 @@ Alice `y` را می‌زند. سمت Bob از گفتگو — با خطی نیم�
   >_ homa   talking to ~bob                                          files → /tmp/alice/homa-files
  ──────────────────────────────────────────────────────────────────────────────────────────────────
           │ the name is theirs; they are not in your contacts
-     ~bob │ salam from bob
-       me │ salam from alice
-       me │ chetori?
+     ~bob │ hello from bob
+       me │ hello from alice
+       me │ how are you?
 
 
   ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
@@ -253,7 +253,7 @@ Alice `y` را می‌زند. سمت Bob از گفتگو — با خطی نیم�
 | `/send <n>` | یکی از فهرست قبلی را پیشنهاد می‌دهد |
 | `/accept` | فایل پیشنهادشده را می‌گیرد، یا فقط `y` |
 | `/reject` | ردش می‌کند، یا فقط `n` |
-| `/who` | با چه کسی حرف می‌زنید |
+| `/who` | با چه کسی حرف می‌زنید: کلیدش، این‌که با دفترچه‌تان می‌خواند یا نه، و این‌که خط مستقیم است یا از رله |
 | `/clear` | صفحه را پاک می‌کند |
 | `/quit` | از گفتگو بیرون می‌رود، نه از homa |
 
@@ -264,9 +264,9 @@ Alice `y` را می‌زند. سمت Bob از گفتگو — با خطی نیم�
 ```
   >_ homa   talking to alice  ·  they call themselves "alice"          files → /tmp/bob/homa-files
  ──────────────────────────────────────────────────────────────────────────────────────────────────
-       me │ salam from bob
-    alice │ salam from alice
-    alice │ chetori?
+       me │ hello from bob
+    alice │ hello from alice
+    alice │ how are you?
 
 
     ▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /clear  ·  /quit
@@ -290,7 +290,7 @@ Alice `y` را می‌زند. سمت Bob از گفتگو — با خطی نیم�
   /Users/mohsen/Downloads
     1) ../                   dir
     2) archive/              dir
-    3) gozaresh nahayi.pdf   4.2 KB
+    3) final report.pdf      4.2 KB
     4) poster.png            1.1 MB
 [me] /send 3
 ```

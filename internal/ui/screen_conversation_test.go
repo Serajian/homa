@@ -3,8 +3,11 @@ package ui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/Serajian/homa/internal/peer"
 )
 
 func testLine(name string, known bool) *line {
@@ -239,5 +242,50 @@ func TestAPasteLandsInTheLineAndTheHintFollows(t *testing.T) {
 	_, _ = c.update(st, tea.PasteMsg{Content: "/se"})
 	if _, body, _ := c.view(st, 100); !strings.Contains(stripANSI(body), "/send <path>") {
 		t.Errorf("a pasted command word got no hint:\n%s", stripANSI(body))
+	}
+}
+
+// /who without a connection (as tests have it) says the name and where it
+// came from; a probe's answer is the second line.
+func TestWhoAndThePathLine(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
+	typeInto(c, st, "/who")
+	_, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	plain := stripANSI(strings.Join(c.lines, "\n"))
+	if !strings.Contains(plain, `alice, calling themselves "alice"`) {
+		t.Errorf("who:\n%s", plain)
+	}
+
+	c.pathLine(
+		st,
+		pathProbed{path: peer.Path{Direct: true, Latency: 38 * time.Millisecond, Rx: 1100, Tx: 42}},
+	)
+	c.pathLine(st, pathProbed{path: peer.Path{Relay: "fra"}})
+	c.pathLine(st, pathProbed{err: peer.ErrPathUnknown})
+	c.pathLine(st, pathProbed{path: peer.Path{Direct: true, Latency: 400 * time.Microsecond}})
+	plain = stripANSI(strings.Join(c.lines, "\n"))
+	for _, want := range []string{
+		"path: direct  ·  38 ms  ·  for 0 s  ·  ↑ 42 B  ↓ 1.1 KB",
+		"path: through the relay fra  ·  for 0 s", "path: direct  ·  <1 ms  ·  for 0 s", "path: not known on the side that answered; the caller's /who can tell  ·  for 0 s",
+	} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("lacks %q:\n%s", want, plain)
+		}
+	}
+}
+
+func TestSinceTextSpeaksLikeAPerson(t *testing.T) {
+	t.Parallel()
+
+	cases := map[time.Duration]string{
+		12 * time.Second: "12 s", 90 * time.Second: "1 min", 61 * time.Minute: "1 h 1 min",
+	}
+	for d, want := range cases {
+		if got := sinceText(d); got != want {
+			t.Errorf("%v: %q, want %q", d, got, want)
+		}
 	}
 }

@@ -26,8 +26,8 @@
     <text x="70" y="288" fill="#7c8391">&gt; choice: <tspan fill="#e6e3dd">1</tspan></text>
     <text x="70" y="322" fill="#9aa1ae">  calling mohsen...</text>
     <text x="70" y="356" fill="#9aa1ae">  waiting for mohsen to answer... 56s</text>
-    <text x="70" y="412" fill="#d8a657">[me]<tspan fill="#e6e3dd"> salam</tspan></text>
-    <text x="70" y="446" fill="#7c8391">[mohsen]<tspan fill="#e6e3dd"> salam sara, chetori</tspan></text>
+    <text x="70" y="412" fill="#d8a657">[me]<tspan fill="#e6e3dd"> hi</tspan></text>
+    <text x="70" y="446" fill="#7c8391">[mohsen]<tspan fill="#e6e3dd"> hi sara, how are you</tspan></text>
     <text x="70" y="480" fill="#d8a657">[me] <tspan fill="#e6e3dd">█</tspan></text>
   </g>
 
@@ -42,8 +42,8 @@
     <text x="639" y="288" fill="#9aa1ae">  ~sara is calling (expires in 1m0s).</text>
     <text x="639" y="322" fill="#7c8391">&gt; take the call from ~sara? [56s] [y/N]: <tspan fill="#e6e3dd">y</tspan></text>
     <text x="639" y="356" fill="#9aa1ae">  connected to ~sara</text>
-    <text x="639" y="412" fill="#7c8391">[~sara]<tspan fill="#e6e3dd"> salam</tspan></text>
-    <text x="639" y="446" fill="#d8a657">[me]<tspan fill="#e6e3dd"> salam sara, chetori</tspan></text>
+    <text x="639" y="412" fill="#7c8391">[~sara]<tspan fill="#e6e3dd"> hi</tspan></text>
+    <text x="639" y="446" fill="#d8a657">[me]<tspan fill="#e6e3dd"> hi sara, how are you</tspan></text>
     <text x="639" y="480" fill="#d8a657">[me] <tspan fill="#e6e3dd">█</tspan></text>
   </g>
 

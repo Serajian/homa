@@ -39,3 +39,8 @@ const keyMark = "nodekey:"
 
 // addrPrefix is the range tailcat hands its tunnel addresses out of.
 var addrPrefix = netip.MustParsePrefix("fd7a:115c:a1e0::/48")
+
+// statusTimeout bounds a look at the connection's path or the relay's name:
+// a ping through the relay, or a DERP map read from cache. A person is
+// waiting on a screen for the answer.
+const statusTimeout = 3 * time.Second

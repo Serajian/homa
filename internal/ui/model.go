@@ -107,6 +107,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.say(string(msg), true)
 		return m, nil
 
+	case copied:
+		m.say(copiedNotice(msg.tool), false)
+		return m, nil
+	case pathProbed:
+		if m.conv != nil {
+			m.conv.pathLine(m.st, msg)
+		}
+		return m, nil
+
 	case updateChecked:
 		m.notice, m.warn = "", false // "asking GitHub…" has been answered
 		if msg.err != nil {
@@ -212,6 +221,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case screenForm:
 			return m.updateForm(msg)
 		case screenPage:
+			if m.page.copyText != "" && msg.String() == "c" {
+				return m, copyToClipboard(m.page.copyText)
+			}
 			m.screen = m.back
 			return m, nil
 		default:
@@ -368,10 +380,18 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenContacts
 		return m, nil
 	case actAddress:
+		addr, relay, key := "", peer.Relay{}, ""
+		if m.deps.Listener != nil {
+			addr, relay = m.deps.Listener.Addr(), m.deps.Listener.Relay()
+		}
+		if m.deps.ID != nil {
+			key = m.deps.ID.KeyPrefix()
+		}
 		m.page = &page{
-			title: "your address",
-			body:  addressText(m.st, m.deps.Listener.Addr(), m.width-4),
-			back:  screenMenu,
+			title:    "me",
+			body:     meText(m.st, addr, relay, key, m.width-4),
+			back:     screenMenu,
+			copyText: addr,
 		}
 		m.screen = screenPage
 		return m, nil
@@ -718,12 +738,13 @@ func (m model) View() tea.View {
 			"back",
 		)
 	case screenPage:
+		pairs := []string{"any key", "back"}
+		if m.page.copyText != "" {
+			pairs = []string{"c", "copy the address", "any other key", "back"}
+		}
 		status, body, keys = m.header(), m.withBarAndNotice(
 			m.page.view(m.st, m.width),
-		), m.footer(
-			"any key",
-			"back",
-		)
+		), m.footer(pairs...)
 	default:
 		status, body, keys = m.header(), m.withBarAndNotice(m.menuBody()), m.menuFooter()
 	}
@@ -764,7 +785,7 @@ func (m model) menuFooter() string {
 			"call by number",
 		)
 	}
-	return m.footer("n", "add a contact", "a", "your address", "h", "help")
+	return m.footer("n", "add a contact", "a", "me", "h", "help")
 }
 
 // menuBody is the people on the left and homa's own keys on the right when

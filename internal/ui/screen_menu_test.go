@@ -87,7 +87,7 @@ func TestMenuViewIsGroupedAndMarksTheCursor(t *testing.T) {
 		"\n" +
 		"     n  add a contact\n" +
 		"     b  contacts: rename, forget, call\n" +
-		"     a  show my address\n" +
+		"     a  me: address, relay, key\n" +
 		"\n" +
 		"     s  settings\n" +
 		"     c  clear the screen\n" +

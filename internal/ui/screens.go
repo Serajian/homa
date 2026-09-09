@@ -12,6 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/Serajian/homa/internal/contacts"
+	"github.com/Serajian/homa/internal/peer"
 	"github.com/Serajian/homa/internal/update"
 )
 
@@ -202,6 +203,10 @@ type page struct {
 	title string
 	body  string
 	back  screen
+
+	// copyText, when set, is what c copies to the clipboard; the footer
+	// offers the key. Every other key goes back.
+	copyText string
 }
 
 // view wraps the body to the width: an address is two hundred characters
@@ -209,48 +214,66 @@ type page struct {
 // a secret nobody can copy.
 func (p *page) view(st *styles, width int) string {
 	body := lipgloss.NewStyle().Width(max(width-4, 20)).Render(p.body)
-	return "\n  " + st.you.Render(p.title) + "\n\n" + strings.ReplaceAll(body, "\n", "\n  ")
+	return "\n  " + st.you.Render(p.title) + "\n\n  " + strings.ReplaceAll(body, "\n", "\n  ")
 }
 
 // helpText is the page a person reaches with h at the menu: what the menu
 // cannot say for itself. Every line is a claim about what homa does, and a
 // claim that has gone stale is worse than no help at all.
-const helpText = `  homa connects two people directly. There is no account and nothing in the
-  middle: an address is all it takes, in either direction.
+const helpText = `homa connects two people directly. There is no account and nothing in the
+middle: an address is all it takes, in either direction.
 
-  to reach somebody, they give you their address and you add it with n. a
-  shows yours for them to do the same. Treat it like a password: whoever
-  has it can call you. b is the address book: renaming, forgetting, calling.
+to reach somebody, they give you their address and you add it with n. a
+shows yours for them to do the same. Treat it like a password: whoever
+has it can call you. b is the address book: renaming, forgetting, calling.
 
-  u asks GitHub whether a newer release is out, and says how to get it.
-  It is the only time homa reaches anything but the relay, and only
-  because you asked.
+u asks GitHub whether a newer release is out, and says how to get it.
+It is the only time homa reaches anything but the relay, and only
+because you asked.
 
-  q and Ctrl+C quit homa. Inside a conversation /quit leaves only the
-  conversation, and /help lists what else you can do in there.
+q and Ctrl+C quit homa. Inside a conversation /quit leaves only the
+conversation, and /help lists what else you can do in there.
 
-  when somebody calls, homa asks before putting them through, and hangs up
-  on them if nobody answers within a minute.
+when somebody calls, homa asks before putting them through, and hangs up
+on them if nobody answers within a minute.
 
-  a name in [brackets] is the one you gave them. A ~ in front means they
-  chose it themselves and are not in your contacts.
+a name in [brackets] is the one you gave them. A ~ in front means they
+chose it themselves and are not in your contacts.
 `
 
-// addressText is the page under a: the whole address, which is the only
-// time it is shown in full. Everywhere else it appears shortened, because
-// it is a secret.
-//
-// The address is cut into rows of equal width by hand rather than left to
-// the page's wrapping, which breaks at hyphens the way prose does: an
-// address has hyphens in it, and shown broken at them it reads as several
-// things and copies as none of them. Rows of one width copy as a block.
-func addressText(st *styles, addr string, width int) string {
-	return st.dim.Render("Give this to someone who should be able to reach you.") + "\n" +
-		st.dim.Render("Treat it like a password: whoever has it can call you.") + "\n" +
-		st.dim.Render(
-			"It wraps; copy every row, line breaks and all — homa removes them.",
-		) + "\n\n" +
-		blockRows(addr, width) + "\n"
+// meText is the page under a: who you are on the network. Three groups in
+// the menu's own style — the address, whole, which is the only time it is
+// shown in full because it is a secret; the relay you sit behind; and the
+// start of your key, which is what a contact's book records about you.
+func meText(st *styles, addr string, relay peer.Relay, key string, width int) string {
+	var b strings.Builder
+	b.WriteString(st.label.Render("ADDRESS") + "\n")
+	b.WriteString(st.dim.Render("give this to someone who should be able to reach you") + "\n")
+	b.WriteString(st.dim.Render("treat it like a password: whoever has it can call you") + "\n")
+	b.WriteString(
+		st.dim.Render("it wraps; copy every row, line breaks and all, or press c") + "\n\n",
+	)
+	b.WriteString(blockRows(addr, width) + "\n\n")
+
+	b.WriteString(st.label.Render("RELAY") + "\n")
+	if relay.Code == "" {
+		b.WriteString(st.dim.Render("not connected to a relay yet") + "\n\n")
+	} else {
+		line := st.you.Render(relay.Code)
+		if relay.Name != "" {
+			line += st.dim.Render(" · " + relay.Name)
+		}
+		if relay.Connected {
+			line += "   " + st.them.Render("●") + st.dim.Render(" connected")
+		}
+		b.WriteString(line + "\n\n")
+	}
+
+	b.WriteString(st.label.Render("KEY") + "\n")
+	b.WriteString(
+		st.you.Render(key) + st.dim.Render("   what your contacts record about you") + "\n",
+	)
+	return b.String()
 }
 
 // blockRows cuts s into rows of width runes, the last one shorter.

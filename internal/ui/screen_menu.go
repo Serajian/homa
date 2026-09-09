@@ -47,7 +47,7 @@ func newMenu(book *contacts.Book) menuModel {
 			{
 				{key: "n", text: "add a contact"},
 				{key: "b", text: "contacts: rename, forget, call"},
-				{key: "a", text: "show my address"},
+				{key: "a", text: "me: address, relay, key"},
 			},
 			{
 				{key: "s", text: "settings"},

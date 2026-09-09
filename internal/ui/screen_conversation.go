@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/Serajian/homa/internal/peer"
 )
 
 // conversation is one open line: a pane of what was said, and the line
@@ -36,6 +40,11 @@ type conversation struct {
 	// ended is the far side gone or the line broken: the pane says so, the
 	// typed line stays, and Enter or /quit goes back to the menu.
 	ended bool
+
+	// started is when the line opened, for /who to say how long it has
+	// been: a duration rather than a clock time, because homa shows no
+	// times yet and /store in version 3 owns that question.
+	started time.Time
 
 	// offer is a file the far side is offering, waiting for y or n; the
 	// session's read goroutine is blocked on its reply meanwhile.
@@ -81,6 +90,7 @@ func newConversationWith(
 	c := &conversation{
 		l:           l,
 		nick:        nick,
+		started:     time.Now(),
 		filesDir:    files,
 		in:          in,
 		pane:        viewport.New(),
@@ -324,12 +334,11 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		}
 		return nil, false
 	case "/who":
-		if c.l.known {
-			c.note(st, st.peer(c.l.name)+st.dim.Render(", calling themselves "+quote(c.nick)))
-		} else {
-			c.note(st, st.peer(c.l.name)+st.dim.Render(", which is what they call themselves"))
+		c.who(st)
+		if c.l.conn == nil {
+			return nil, false
 		}
-		return nil, false
+		return probePath(c.ctx, c.l.conn), false
 	case "/clear":
 		c.lines = nil
 		c.pane.SetContent("")
@@ -360,6 +369,91 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		c.note(st, st.dim.Render(l))
 	}
 	return nil, false
+}
+
+// who is the first line /who says: the name and where it came from, and
+// the far side's key fingerprint with whether it matched the book. The
+// path follows when the probe answers, so the line is never held.
+func (c *conversation) who(st *styles) {
+	var line string
+	if c.l.known {
+		line = st.peer(c.l.name) + st.dim.Render(", calling themselves "+quote(c.nick))
+	} else {
+		line = st.peer(c.l.name) + st.dim.Render(", which is what they call themselves")
+	}
+	c.note(st, line)
+	if c.l.conn == nil {
+		return
+	}
+	// The key on a line of its own: with the name and the nick it is wider
+	// than a terminal, and a fingerprint cut short is worse than none.
+	if fp := peer.Fingerprint(c.l.conn); fp != "" {
+		match := "not in your book"
+		if c.l.known {
+			match = "matches your book"
+		}
+		c.note(st, st.dim.Render("key: ")+st.you.Render(fp)+st.dim.Render("  "+match))
+	}
+}
+
+// pathLine is /who's second line, once the probe has answered.
+func (c *conversation) pathLine(st *styles, msg pathProbed) {
+	since := "for " + sinceText(time.Since(c.started))
+	if errors.Is(msg.err, peer.ErrPathUnknown) {
+		// The side that answered has no view of the path: the transport's
+		// status table stays empty there. The side that called can tell.
+		c.note(
+			st,
+			st.dim.Render("path: not known on the side that answered; the caller's /who can tell"+
+				st.sep()+since),
+		)
+		return
+	}
+	if msg.err != nil {
+		c.note(st, st.dim.Render("path: "+reason(msg.err)))
+		return
+	}
+	p := msg.path
+	var parts []string
+	switch {
+	case p.Direct:
+		parts = append(parts, st.you.Render("direct"))
+	case p.Relay != "":
+		parts = append(parts, "through the relay "+st.you.Render(p.Relay))
+	default:
+		parts = append(parts, "through a relay")
+	}
+	switch {
+	case p.Latency >= time.Millisecond:
+		parts = append(parts, fmt.Sprintf("%d ms", p.Latency.Milliseconds()))
+	case p.Latency > 0:
+		parts = append(parts, "<1 ms")
+	}
+	parts = append(parts, since)
+	if p.Rx > 0 || p.Tx > 0 {
+		parts = append(parts, "↑ "+humanBytes(p.Tx)+"  ↓ "+humanBytes(p.Rx))
+	}
+	c.note(st, st.dim.Render("path: ")+strings.Join(parts, st.dim.Render(st.sep())))
+}
+
+// sinceText is a duration as a person would say it: seconds under a
+// minute, minutes under an hour, then hours and minutes.
+func sinceText(d time.Duration) string {
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%d s", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("%d min", int(d.Minutes()))
+	}
+	return fmt.Sprintf("%d h %d min", int(d.Hours()), int(d.Minutes())%60)
+}
+
+// probePath asks peer how the line travels, off the update loop.
+func probePath(ctx context.Context, conn net.Conn) tea.Cmd {
+	return func() tea.Msg {
+		p, err := peer.Probe(ctx, conn)
+		return pathProbed{path: p, err: err}
+	}
 }
 
 // offered is the far side offering a file: one line, who, what, how big,

@@ -274,6 +274,22 @@ account for. A self-update is also a download homa would run, and releases are n
 signed; that belongs after signing, if at all. The page therefore says which release is
 out and the one command that upgrades, guessed from where the binary lives.
 
+**What the screens say about the connection, and what they keep to themselves.** The `me`
+page names the relay and shows the start of your key, because a person can read a
+fingerprint over the phone and a relay name tells them where their traffic meets the world;
+`/who` shows the far side's fingerprint and whether it matched the book, which is the
+sentence `~` only hints at. The path — direct, or through which relay — is shown on the side
+that called, because only that side can ping; the side that answered has no view of it in
+the transport's status table (measured empty there, before and after traffic) and says so
+rather than guess. The far side's IP is never printed, though the transport knows it: a
+screen gets copied into screenshots, and "direct" says everything a person needs. A
+duration rather than a clock time for "since", because homa shows no times yet and
+`/store` in version 3 owns that question. `c` copies the address two ways at once — OSC 52
+through the terminal, which reaches the clipboard of the machine the person sits at even
+over ssh and tmux, and a local tool when one exists — because neither way reports
+success and a terminal may ignore OSC 52 (Terminal.app does); the notice says what was
+sent, not that it arrived.
+
 **Output that is not a terminal is refused.** A full-screen program has nowhere to draw
 in a pipe, and nobody chats through one. `homa: needs a terminal`, exit 1, before an
 identity is created or a listener opened. Version 1 stays downloadable as v0.1.0; there is

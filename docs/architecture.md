@@ -42,7 +42,7 @@ without the packages below noticing, and the seam an Android UI would reuse.
 | `internal/ui` | the bubbletea program: one model, every event a message, every screen drawn whole; the first-run setup as a program of its own |
 | `internal/session` | handshake, read loop, text, file transfer, sanitizing |
 | `internal/proto` | frame layout, message structs, encode and decode |
-| `internal/peer` | identity, relay choice, listen, dial, remote key |
+| `internal/peer` | identity, relay choice, listen, dial, remote key; `Relay`, `Probe` and key fingerprints for the screens, with no transport type on them |
 | `internal/update` | asks GitHub for the latest release, on request only; says the upgrade command |
 | `internal/config` | display name, download directory, validation |
 | `internal/contacts` | the address book, with its own locking |
