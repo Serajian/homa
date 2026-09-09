@@ -46,7 +46,14 @@ jobs:
           ls -l incoming
 
       - name: Tools
-        run: sudo apt-get update -q && sudo apt-get install -y -q dpkg-dev apt-utils gnupg
+        # The runner image carries third-party repositories of its own, and
+        # one of them serving a broken index is not a reason to stop
+        # publishing homa. The update is allowed to complain; the install
+        # below is the step that has to succeed, and it says so loudly when
+        # the lists it needs really are missing.
+        run: |
+          sudo apt-get update -q || echo "some repository is unhappy; carrying on"
+          sudo apt-get install -y -q dpkg-dev apt-utils gnupg
 
       - name: Signing key
         run: |
