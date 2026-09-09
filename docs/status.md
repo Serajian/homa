@@ -64,6 +64,10 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   Enter take the one marked, and a word that is no command is warned about
   before Enter. `/help` and the hint read one table, so they cannot disagree
 
+- `u` at the menu: asks GitHub whether a newer release is out and says the
+  command that upgrades for the way homa was installed. Nothing is downloaded,
+  and nothing is asked unless the key is pressed
+
 - a bell when something arrives from the far side — a call, which keeps ringing
   every ten seconds until answered, your call's outcome, a message, a file
   offered, finished or failed, the peer leaving, and a file of yours that

@@ -1,13 +1,17 @@
 package ui
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/Serajian/homa/internal/contacts"
+	"github.com/Serajian/homa/internal/update"
 )
 
 // menuItem is one line of a menu: the key to press and what it does.
@@ -217,6 +221,10 @@ const helpText = `  homa connects two people directly. There is no account and n
   shows yours for them to do the same. Treat it like a password: whoever
   has it can call you. b is the address book: renaming, forgetting, calling.
 
+  u asks GitHub whether a newer release is out, and says how to get it.
+  It is the only time homa reaches anything but the relay, and only
+  because you asked.
+
   q and Ctrl+C quit homa. Inside a conversation /quit leaves only the
   conversation, and /help lists what else you can do in there.
 
@@ -252,5 +260,33 @@ func blockRows(s string, width int) string {
 		r = r[width:]
 	}
 	b.WriteString(string(r))
+	return b.String()
+}
+
+// checkUpdate asks GitHub, off the update loop, and reports back.
+func checkUpdate(ctx context.Context, deps Deps) tea.Cmd {
+	return func() tea.Msg {
+		res, err := deps.Update.Check(ctx, deps.Version)
+		return updateChecked{res: res, err: err}
+	}
+}
+
+// updateText is the page under u: which release is out, which one this
+// is, and the command that upgrades, guessed from where the binary lives.
+// A build from source is told so rather than compared.
+func updateText(st *styles, r update.Result) string {
+	exe, _ := os.Executable()
+	var b strings.Builder
+	switch {
+	case !r.Known:
+		fmt.Fprintf(&b, "  this is a build from source (%s); the latest release is %s\n",
+			r.Current, r.Latest)
+	case r.Newer:
+		fmt.Fprintf(&b, "  %s is out; you have %s\n\n", st.you.Render(r.Latest), r.Current)
+		fmt.Fprintf(&b, "  to upgrade:  %s\n", st.you.Render(update.Advice(exe)))
+	default:
+		fmt.Fprintf(&b, "  you have %s, and it is the latest release\n", r.Current)
+	}
+	b.WriteString("\n  " + st.dim.Render(r.URL) + "\n")
 	return b.String()
 }

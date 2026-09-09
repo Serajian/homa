@@ -92,6 +92,7 @@ func TestMenuViewIsGroupedAndMarksTheCursor(t *testing.T) {
 		"     s  settings\n" +
 		"     c  clear the screen\n" +
 		"     h  help\n" +
+		"     u  check for updates\n" +
 		"\n" +
 		"     r  start over: forget everything\n" +
 		"     q  quit homa\n"

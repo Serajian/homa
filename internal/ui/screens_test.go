@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/Serajian/homa/internal/config"
+	"github.com/Serajian/homa/internal/update"
 )
 
 func key(k string) tea.KeyPressMsg {
@@ -422,5 +425,42 @@ func TestAPasteReachesTheFirstRun(t *testing.T) {
 	sm = next.(setupModel)
 	if sm.form.answer(0) != "dana" {
 		t.Errorf("first field after a paste: %q", sm.form.answer(0))
+	}
+}
+
+// u asks GitHub, off the update loop, and shows a page; an unreachable
+// GitHub is a notice, not a page. Pointed at a server of the test's own.
+func TestCheckingForUpdatesShowsAPageOrSaysWhyNot(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"tag_name":"v9.9.9","html_url":"https://example.invalid/r"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	deps := testDeps(t)
+	deps.Version = "v0.2.1"
+	deps.Update = update.Checker{URL: srv.URL}
+	m := sized(newModel(t.Context(), deps, newStyles(true)))
+	next, cmd := m.Update(key("u"))
+	m = next.(model)
+	if cmd == nil || !strings.Contains(m.notice, "asking GitHub") {
+		t.Fatalf("u did not start a check; notice %q", m.notice)
+	}
+	next, _ = m.Update(cmd())
+	m = next.(model)
+	body := stripANSI(m.View().Content)
+	if m.screen != screenPage || !strings.Contains(body, "v9.9.9 is out; you have v0.2.1") ||
+		!strings.Contains(body, "to upgrade:") {
+		t.Errorf("screen %v:\n%s", m.screen, body)
+	}
+
+	srv.Close()
+	m = sized(newModel(t.Context(), deps, newStyles(true)))
+	next, cmd = m.Update(key("u"))
+	next, _ = next.(model).Update(cmd())
+	m = next.(model)
+	if m.screen != screenMenu || !m.warn || !strings.Contains(m.notice, "could not check") {
+		t.Errorf("an unreachable server: screen %v, notice %q", m.screen, m.notice)
 	}
 }

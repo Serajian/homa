@@ -20,6 +20,7 @@ import (
 	"github.com/Serajian/homa/internal/contacts"
 	"github.com/Serajian/homa/internal/logx"
 	"github.com/Serajian/homa/internal/peer"
+	"github.com/Serajian/homa/internal/update"
 )
 
 var lg = logx.For("ui")
@@ -48,6 +49,12 @@ type Deps struct {
 	ID       *peer.Identity
 	Listener *peer.Listener
 	NoColor  bool // the -no-color flag; NO_COLOR and TERM=dumb are read by the program itself
+
+	// Version is what the build stamped, for the update check to compare;
+	// Update asks GitHub for the latest release when the person asks. A
+	// zero Checker asks GitHub itself; tests point it elsewhere.
+	Version string
+	Update  update.Checker
 
 	// Reset deletes the identity, the address book and the settings,
 	// attempting every one even if an earlier one fails, and returns what

@@ -43,6 +43,7 @@ without the packages below noticing, and the seam an Android UI would reuse.
 | `internal/session` | handshake, read loop, text, file transfer, sanitizing |
 | `internal/proto` | frame layout, message structs, encode and decode |
 | `internal/peer` | identity, relay choice, listen, dial, remote key |
+| `internal/update` | asks GitHub for the latest release, on request only; says the upgrade command |
 | `internal/config` | display name, download directory, validation |
 | `internal/contacts` | the address book, with its own locking |
 | `internal/paths` | config directory, permissions, atomic writes, `~` |

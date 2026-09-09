@@ -53,6 +53,7 @@ Bob's menu, with Alice in it:
                                                  s  settings
                                                  c  clear the screen
                                                  h  help
+                                                 u  check for updates
 
                                                  r  start over: forget everything
                                                  q  quit homa
@@ -79,6 +80,7 @@ Bob presses `1`. On Alice's screen, the one box the interface draws:
                                                  s  settings
                                                  c  clear the screen
                                                  h  help
+                                                 u  check for updates
 
                                                  r  start over: forget everything
                                                  q  quit homa
@@ -322,6 +324,11 @@ box under it whatever arrives, and up and down walk what you sent. `/send
 directory so you can send by number instead of typing a path. Type `/` alone and
 the commands appear above the input, narrowing as you type; Tab completes.
 `/quit` leaves the conversation and returns to the menu.
+
+**Later: is there a newer homa?** `u` at the menu asks GitHub for the latest
+release, compares it with yours, and says the command that upgrades for the
+way you installed it. It is the only time homa talks to anything but the relay,
+and only because you pressed the key; nothing is downloaded.
 
 **6. Leave.** `q` at the menu quits homa; so does Ctrl+C anywhere. Your
 address, your contacts and your settings stay on your disk for next time.

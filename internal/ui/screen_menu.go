@@ -19,6 +19,7 @@ const (
 	actSettings
 	actClear
 	actHelp
+	actUpdate
 	actReset
 	actQuit
 )
@@ -52,6 +53,7 @@ func newMenu(book *contacts.Book) menuModel {
 				{key: "s", text: "settings"},
 				{key: "c", text: "clear the screen"},
 				{key: "h", text: wordHelp},
+				{key: "u", text: "check for updates"},
 			},
 			{
 				{key: "r", text: "start over: forget everything", quiet: true},
@@ -97,6 +99,8 @@ func (mm *menuModel) key(k string) (menuAction, bool) {
 		return actClear, true
 	case "h":
 		return actHelp, true
+	case "u":
+		return actUpdate, true
 	case "r":
 		return actReset, true
 	case "q":

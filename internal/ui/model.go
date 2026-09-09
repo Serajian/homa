@@ -107,6 +107,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.say(string(msg), true)
 		return m, nil
 
+	case updateChecked:
+		if msg.err != nil {
+			m.say("could not check: "+reason(msg.err), true)
+			return m, nil
+		}
+		m.page = &page{title: "updates", body: updateText(m.st, msg.res), back: screenMenu}
+		m.screen = screenPage
+		return m, nil
+
 	case tickMsg:
 		if m.bar.showing() && m.screen != screenConversation {
 			return m, tea.Batch(tick(), m.ringAgain(time.Time(msg)))
@@ -375,6 +384,11 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.page = &page{title: "help", body: helpText, back: screenMenu}
 		m.screen = screenPage
 		return m, nil
+	case actUpdate:
+		// The one time homa talks to anything but the relay, and only
+		// because a key was pressed; the notice says where it is going.
+		m.say("asking GitHub for the latest release…", false)
+		return m, checkUpdate(m.ctx, m.deps)
 	case actReset:
 		f := newForm("start over",
 			field{label: "type the word reset to confirm", def: "cancel", word: "reset"})

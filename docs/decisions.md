@@ -264,6 +264,16 @@ the first time it matters; the first run does not ask, because the default is ri
 `Load` reads a settings file over the defaults, so a file from before the field existed
 keeps the bell on rather than getting the zero value.
 
+**The update check asks, never checks by itself, and never installs.** homa's promise is
+that it talks to nothing but the relay; a request to GitHub on every start would break that
+promise for the sake of a convenience, and would hand GitHub the address of every homa
+each morning. So the check is a key, `u`, and the notice says where the request is going.
+It does not install either: how homa was installed decides how it is upgraded — brew, apt,
+`go install`, an archive — and a binary that replaces itself is one those managers cannot
+account for. A self-update is also a download homa would run, and releases are not yet
+signed; that belongs after signing, if at all. The page therefore says which release is
+out and the one command that upgrades, guessed from where the binary lives.
+
 **Output that is not a terminal is refused.** A full-screen program has nowhere to draw
 in a pipe, and nobody chats through one. `homa: needs a terminal`, exit 1, before an
 identity is created or a listener opened. Version 1 stays downloadable as v0.1.0; there is

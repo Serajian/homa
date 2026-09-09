@@ -53,6 +53,7 @@ func run() error {
 		return err
 	}
 	defer cleanup()
+	deps.Version = version
 
 	// Run owns the terminal until the person quits. Ctrl+C reaches it as a
 	// key, not as a signal, and comes back as context.Canceled like any

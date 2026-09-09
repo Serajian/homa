@@ -2,6 +2,8 @@ package ui
 
 import (
 	"time"
+
+	"github.com/Serajian/homa/internal/update"
 )
 
 // The messages that reach the model from outside a keypress: from below
@@ -54,6 +56,12 @@ type peerLeft struct{ err error }
 // sendFailed is a message of ours that did not go; the line is as good as
 // broken.
 type sendFailed struct{ err error }
+
+// updateChecked is GitHub's answer to u at the menu, or why there is none.
+type updateChecked struct {
+	res update.Result
+	err error
+}
 
 // tickMsg is once a second while a countdown is on the screen.
 type tickMsg time.Time
