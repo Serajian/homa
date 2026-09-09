@@ -134,7 +134,7 @@ func less(a, b semver) bool {
 func Advice(exe string) string {
 	switch {
 	case strings.Contains(exe, "/Caskroom/"):
-		return "brew upgrade --cask homa"
+		return "brew update && brew upgrade --cask homa"
 	case runtime.GOOS == "linux" && strings.HasPrefix(exe, "/usr/bin/"):
 		return "sudo apt update && sudo apt install homa"
 	case strings.Contains(exe, "/go/bin/"):

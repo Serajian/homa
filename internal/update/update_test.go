@@ -66,7 +66,7 @@ func TestAnUnreachableOrOddAnswerIsAnError(t *testing.T) {
 func TestAdviceFollowsWhereTheBinaryLives(t *testing.T) {
 	t.Parallel()
 
-	if got := Advice("/opt/homebrew/Caskroom/homa/0.2.0/homa"); got != "brew upgrade --cask homa" {
+	if got := Advice("/opt/homebrew/Caskroom/homa/0.2.0/homa"); got != "brew update && brew upgrade --cask homa" {
 		t.Errorf("brew: %q", got)
 	}
 	if got := Advice("/Users/x/go/bin/homa"); got != "go install github.com/Serajian/homa/cmd/homa@latest" {
