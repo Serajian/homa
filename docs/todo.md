@@ -41,22 +41,6 @@ unplaced, at the bottom. Nothing is left here.
 Found by reading and running the app on 2026-09-09, after v0.2.7. These are
 wrong in what is already released, so they come before anything new.
 
-- **A message wider than the terminal is cut, not wrapped, and the rest of it
-  is gone.** `frame` cuts every body line to the width — it must, because a
-  body taller than the room would scroll the terminal — and a conversation
-  keeps one rendered line per message, so nothing wraps it first. A message is
-  capped at 4096 bytes, so a pasted paragraph is ordinary and unreadable: it is
-  not on screen, not scrollable sideways, and not recoverable. Wrap a message
-  under the name column as it goes into the pane, so continuation lines start
-  where the words start and the column still reads as a column. Decide where
-  the wrapping happens: `c.lines` holds rendered lines today, so wrapping at
-  render means keeping who said what beside the words, and wrapping at append
-  means a resize no longer re-wraps. Files: `internal/ui/screen_conversation.go`
-  (`msg`, `note`, `alert`, `say`, `resize`), a helper beside `blockRows` in
-  `internal/ui/screens.go`. Done when a 4096-character message reads in full at
-  60 columns and at 200, the name column still lines up, and a resize re-wraps
-  what is already in the pane
-
 - **The README says a caller can be saved, and they cannot.** `proto.Hello`
   carries a nick and a version and nothing else, and a contact without an
   address does not validate, so the side that answered holds ten bytes of the

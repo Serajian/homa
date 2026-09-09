@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/Serajian/homa/internal/peer"
 )
@@ -29,7 +31,7 @@ func TestAMessageArrivingWhileTypingDoesNotTouchTheInput(t *testing.T) {
 	st := newStyles(true)
 	c := newConversation(st, 60, 12, testLine("alice", true), "alice", "~/homa-files")
 	typeInto(c, st, "hi")
-	c.say("[alice] salam")
+	c.note(st, "[alice] salam")
 
 	if got := c.in.Value(); got != "hi" {
 		t.Errorf("input = %q; the arriving message changed it", got)
@@ -52,7 +54,7 @@ func TestALineNotYetSentStaysWhenThePeerLeaves(t *testing.T) {
 	c := newConversation(st, 60, 12, testLine("alice", true), "alice", "")
 	typeInto(c, st, "x")
 	c.ended = true
-	c.say("alice left the conversation.")
+	c.note(st, "alice left the conversation.")
 
 	if c.in.Value() != "x" {
 		t.Error("the typed line was dropped")
@@ -104,7 +106,7 @@ func TestAnUnknownCommandIsSaidAndTheListShown(t *testing.T) {
 	if leave {
 		t.Fatal("/nope left the conversation")
 	}
-	plain := stripANSI(strings.Join(c.lines, "\n"))
+	plain := stripANSI(c.render())
 	if !strings.Contains(plain, `no such command: "/nope"`) ||
 		!strings.Contains(plain, "/quit         leave the conversation") {
 		t.Errorf("pane:\n%s", plain)
@@ -211,7 +213,7 @@ func TestEnterTakesThePickRunningItWhenItWantsNothing(t *testing.T) {
 	// A lone slash is /help, as in version 1.
 	typeInto(c, st, "/")
 	_, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
-	if plain := stripANSI(strings.Join(c.lines, "\n")); !strings.Contains(
+	if plain := stripANSI(c.render()); !strings.Contains(
 		plain,
 		"/quit         leave the conversation",
 	) {
@@ -254,7 +256,7 @@ func TestWhoAndThePathLine(t *testing.T) {
 	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
 	typeInto(c, st, "/who")
 	_, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
-	plain := stripANSI(strings.Join(c.lines, "\n"))
+	plain := stripANSI(c.render())
 	if !strings.Contains(plain, `alice, calling themselves "alice"`) {
 		t.Errorf("who:\n%s", plain)
 	}
@@ -266,7 +268,7 @@ func TestWhoAndThePathLine(t *testing.T) {
 	c.pathLine(st, pathProbed{path: peer.Path{Relay: "fra"}})
 	c.pathLine(st, pathProbed{err: peer.ErrPathUnknown})
 	c.pathLine(st, pathProbed{path: peer.Path{Direct: true, Latency: 400 * time.Microsecond}})
-	plain = stripANSI(strings.Join(c.lines, "\n"))
+	plain = stripANSI(c.render())
 	for _, want := range []string{
 		"path: direct  ·  38 ms  ·  for 0 s  ·  ↑ 42 B  ↓ 1.1 KB",
 		"path: through the relay fra  ·  for 0 s", "path: direct  ·  <1 ms  ·  for 0 s", "path: not known on the side that answered; the caller's /who can tell  ·  for 0 s",
@@ -301,7 +303,7 @@ func TestMeInAConversationPrintsAndCopies(t *testing.T) {
 
 	typeInto(c, st, "/me")
 	cmd, _ := c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
-	plain := stripANSI(strings.Join(c.lines, "\n"))
+	plain := stripANSI(c.render())
 	for _, want := range []string{"ADDRESS", "tcpTESTADDR", "RELAY", "fra · Frankfurt"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("/me lacks %q:\n%s", want, plain)
@@ -316,13 +318,13 @@ func TestMeInAConversationPrintsAndCopies(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("/me copy copied nothing")
 	}
-	if !strings.Contains(stripANSI(strings.Join(c.lines, "\n")), "tcpTESTADDR") {
+	if !strings.Contains(stripANSI(c.render()), "tcpTESTADDR") {
 		t.Error("/me copy did not print the address too")
 	}
 
 	typeInto(c, st, "/me now")
 	_, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
-	if !strings.Contains(stripANSI(strings.Join(c.lines, "\n")), "or the word copy") {
+	if !strings.Contains(stripANSI(c.render()), "or the word copy") {
 		t.Error("/me now was taken as an answer")
 	}
 }
@@ -340,9 +342,103 @@ func TestACopyInAConversationIsSaidInThePane(t *testing.T) {
 		t.Errorf("a notice nobody can see: %q", m.notice)
 	}
 	if !strings.Contains(
-		stripANSI(strings.Join(m.conv.lines, "\n")),
+		stripANSI(m.conv.render()),
 		"through the terminal and pbcopy",
 	) {
-		t.Errorf("pane:\n%s", stripANSI(strings.Join(m.conv.lines, "\n")))
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+}
+
+// words makes a message of n numbered words, so the last of them proves the
+// whole thing survived.
+func words(n int) string {
+	parts := make([]string, n)
+	for i := range parts {
+		parts[i] = fmt.Sprintf("w%d", i+1)
+	}
+	return strings.Join(parts, " ")
+}
+
+// The fault this fixed: a message wider than the terminal was cut and the
+// rest of it could not be reached at all.
+func TestALongMessageIsWrappedAndWhollyReadable(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	for _, width := range []int{60, 200} {
+		c := newConversation(st, width, 20, testLine("alice", true), "alice", "")
+		c.msg(st, "alice", words(600), false)
+
+		rows := strings.Split(stripANSI(c.render()), "\n")
+		if !strings.Contains(rows[len(rows)-1], "w600") {
+			t.Errorf(
+				"%d columns: the message does not end where it should:\n%s",
+				width,
+				rows[len(rows)-1],
+			)
+		}
+		for i, row := range rows {
+			if got := lipgloss.Width(row); got > width {
+				t.Errorf("%d columns: row %d is %d wide: %q", width, i, got, row)
+			}
+		}
+		// The name is on the first row and the rest sit under the words.
+		if !strings.HasPrefix(rows[0], "    alice │ w1 ") {
+			t.Errorf("%d columns: first row %q", width, rows[0])
+		}
+		if !strings.HasPrefix(rows[1], strings.Repeat(" ", nameColumn)+" │ ") {
+			t.Errorf("%d columns: second row %q", width, rows[1])
+		}
+	}
+}
+
+// A resize wraps what is already in the pane again, rather than leaving it
+// at the width it was drawn at.
+func TestAResizeWrapsWhatIsAlreadyThere(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 60, 20, testLine("alice", true), "alice", "")
+	c.msg(st, "alice", words(600), false)
+	narrow := len(strings.Split(c.render(), "\n"))
+
+	c.resize(200, 20)
+	wide := len(strings.Split(c.render(), "\n"))
+	if wide >= narrow {
+		t.Errorf("60 columns took %d rows, 200 took %d", narrow, wide)
+	}
+	if !strings.Contains(stripANSI(c.render()), "w600") {
+		t.Error("the end of the message did not survive the resize")
+	}
+
+	c.resize(60, 20)
+	if back := len(strings.Split(c.render(), "\n")); back != narrow {
+		t.Errorf("back at 60 columns it took %d rows, not %d", back, narrow)
+	}
+}
+
+// Color must survive the wrapping: every row of a wrapped note carries it,
+// and stripping it leaves exactly the plain pane.
+func TestAWrappedLineKeepsItsColorOnEveryRow(t *testing.T) {
+	t.Parallel()
+
+	colored := newConversation(newStyles(true), 60, 20, testLine("alice", true), "alice", "")
+	plain := newConversation(plainStyles(true), 60, 20, testLine("alice", true), "alice", "")
+	for _, c := range []*conversation{colored, plain} {
+		st := newStyles(true)
+		if c == plain {
+			st = plainStyles(true)
+		}
+		c.note(st, st.dim.Render(words(80)))
+		c.alert(st, words(40))
+	}
+	if got, want := stripANSI(colored.render()), plain.render(); got != want {
+		t.Errorf("stripped:\n%s\nplain:\n%s", got, want)
+	}
+	rows := strings.Split(colored.render(), "\n")
+	for i, row := range rows {
+		if !strings.Contains(row, "\x1b[") {
+			t.Errorf("row %d lost its color: %q", i, row)
+		}
 	}
 }

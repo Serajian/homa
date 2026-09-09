@@ -228,6 +228,19 @@ event a message, every screen drawn whole, every `Update` on one goroutine. The 
 line-owning machinery of version 1 — the pump, the prompts and their erasing, the
 countdown, the hand-rolled palette — went with the line.
 
+**The pane keeps what was said, not what was drawn.** A conversation used to append a
+finished line — the padded name, the bar and the words already joined — and the frame cut
+every line to the terminal's width, so a message wider than the window lost its tail with
+no way to get it back: not by scrolling, which only moves up and down, and not by widening
+the window, because the line had been built at the old width. Since a message may be four
+thousand bytes, that is an ordinary paragraph made unreadable. The pane now holds the name,
+the bar and the words apart and unjoined, and lays them out at the width it is being drawn
+at, wrapping the words to the room left of the name column and putting every row after the
+first under the words rather than under the name. A resize re-renders, so the same message
+reads at any size. `lipgloss.Wrap` does the wrapping because it re-applies the style at each
+new row; a wrapped green line is green on every row of it. The frame still cuts, and must:
+a body taller than the room would scroll the terminal and take the footer with it.
+
 **Commands are offered in the row that was already there, one line, cut to the width.**
 The blank row between the pane and the input box becomes the hint row when a line starts
 with `/`, and stays blank otherwise, so nothing on the screen moves when a command is begun.

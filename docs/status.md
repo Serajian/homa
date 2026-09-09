@@ -59,6 +59,10 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   PgUp/PgDn scroll what was said. Version 1's two warts, and the arrow keys
   that did nothing, went with the line-based interface they came from
 
+- a message wider than the terminal wraps under the name column instead of
+  being cut, so a pasted paragraph can be read; making the window wider or
+  narrower wraps again what is already on the screen
+
 - commands offered as they are typed: a `/` shows every command in the row
   above the input, each letter narrows the row, left and right walk it, Tab or
   Enter take the one marked, and a word that is no command is warned about

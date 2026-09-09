@@ -30,7 +30,7 @@ type conversation struct {
 	pane  viewport.Model
 	in    textinput.Model
 	hist  history
-	lines []string
+	lines []paneLine
 
 	// pick is which of the commands the hint row offers is marked, moved
 	// with the left and right arrows and taken by Tab or Enter; it goes
@@ -54,8 +54,8 @@ type conversation struct {
 	// number out of it.
 	files *listing
 
-	// width is the last width the screen was drawn at, for /me to wrap the
-	// address to the room its lines have.
+	// width is the last width the screen was drawn at: what the pane wraps
+	// to, and what /me wraps an address to.
 	width int
 
 	// me answers /me: the three groups about this machine, and the address
@@ -118,6 +118,25 @@ func newConversationWith(
 	return c
 }
 
+// paneLine is one thing in the pane: who said it, the bar between the name
+// column and the words, and the words. The three are kept apart and styled
+// but never joined, because joining them is what fixed a line to the width
+// it was drawn at: a message wider than the terminal was cut, and the rest
+// of it could not be reached by scrolling or by making the window bigger.
+// Rendering wraps the words instead, and a resize renders again.
+//
+// A zero paneLine is a blank line, which is how a file offer and /me set
+// themselves apart from what was said around them.
+type paneLine struct {
+	name string // styled; only the first row of a wrapped message carries it
+	bar  string // styled; empty for a blank line
+	body string // styled
+}
+
+// wrapPoints are the characters a long word may be broken at, besides a
+// space. A path and an address are the long words homa actually shows.
+const wrapPoints = "-/_"
+
 // msg is a line somebody said: the name right-aligned to the name column,
 // a faint bar, the words. Every message's text starts at the same place,
 // which is what makes a conversation readable at a glance.
@@ -126,20 +145,22 @@ func (c *conversation) msg(st *styles, who, text string, mine bool) {
 	if mine {
 		name = st.you.Render(who)
 	}
-	pad := max(nameColumn-lipgloss.Width(who), 0)
-	c.say(strings.Repeat(" ", pad) + name + " " + st.dim.Render("│") + " " + text)
+	c.add(paneLine{name: name, bar: st.dim.Render("│"), body: text})
 }
 
 // note is homa's own line in the pane, in the column the words use, with
 // no name: what a file is doing, what a command said.
 func (c *conversation) note(st *styles, styled string) {
-	c.say(strings.Repeat(" ", nameColumn+1) + st.dim.Render("│") + " " + styled)
+	c.add(paneLine{bar: st.dim.Render("│"), body: styled})
 }
 
 // alert is note in the terminal's yellow, bar included.
 func (c *conversation) alert(st *styles, text string) {
-	c.say(strings.Repeat(" ", nameColumn+1) + st.warn.Render("│ "+text))
+	c.add(paneLine{bar: st.warn.Render("│"), body: st.warn.Render(text)})
 }
+
+// blank is an empty row, for setting a question apart from the talk.
+func (c *conversation) blank() { c.add(paneLine{}) }
 
 func quote(s string) string { return "\"" + s + "\"" }
 
@@ -149,19 +170,45 @@ func (c *conversation) resize(width, height int) {
 	c.pane.SetWidth(width)
 	c.pane.SetHeight(paneHeight)
 	c.in.SetWidth(max(width-8, 10))
-	c.pane.SetContent(strings.Join(c.lines, "\n"))
+	c.pane.SetContent(c.render())
 	c.pane.GotoBottom()
 }
 
-// say appends a line to the pane. If the person had scrolled up to read,
-// the pane stays where they left it; otherwise it follows the newest line.
-func (c *conversation) say(s string) {
+// add puts a line in the pane. If the person had scrolled up to read, the
+// pane stays where they left it; otherwise it follows the newest line.
+func (c *conversation) add(l paneLine) {
 	wasAtBottom := c.pane.AtBottom()
-	c.lines = append(c.lines, s)
-	c.pane.SetContent(strings.Join(c.lines, "\n"))
+	c.lines = append(c.lines, l)
+	c.pane.SetContent(c.render())
 	if wasAtBottom {
 		c.pane.GotoBottom()
 	}
+}
+
+// render lays the pane out at the width it is being drawn at: the words
+// wrapped to the room left of the name column, and every row after the
+// first under the words rather than under the name.
+func (c *conversation) render() string {
+	// the name column, a space, the bar, a space
+	room := max(c.width-nameColumn-3, 12)
+	indent := strings.Repeat(" ", nameColumn)
+
+	out := make([]string, 0, len(c.lines))
+	for _, l := range c.lines {
+		if l.bar == "" && l.body == "" {
+			out = append(out, "")
+			continue
+		}
+		rows := strings.Split(lipgloss.Wrap(l.body, room, wrapPoints), "\n")
+		for i, row := range rows {
+			head := indent
+			if i == 0 && l.name != "" {
+				head = strings.Repeat(" ", max(nameColumn-lipgloss.Width(l.name), 0)) + l.name
+			}
+			out = append(out, head+" "+l.bar+" "+row)
+		}
+	}
+	return strings.Join(out, "\n")
 }
 
 // view is the conversation's three regions: the header saying who, the
@@ -397,7 +444,7 @@ func (c *conversation) showMe(st *styles, arg string) tea.Cmd {
 	}
 
 	body, addr := c.me(max(c.width-nameColumn-6, 20))
-	c.say("")
+	c.blank()
 	for _, line := range strings.Split(strings.TrimRight(body, "\n"), "\n") {
 		c.note(st, line)
 	}
@@ -500,7 +547,7 @@ func probePath(ctx context.Context, conn net.Conn) tea.Cmd {
 // what to type, and the offer parked until the answer.
 func (c *conversation) offered(st *styles, o fileOffered) {
 	c.offer = &o
-	c.say("")
+	c.blank()
 	c.note(st, st.peer(c.l.name)+st.dim.Render(" offers ")+st.them.Render(o.name)+
 		st.dim.Render(" ("+humanBytes(o.size)+")   ")+st.keys("y", "accept", "n", "reject"))
 }
@@ -545,7 +592,7 @@ func (c *conversation) showFiles(st *styles, arg string) {
 	}
 	c.files = l
 
-	c.say("")
+	c.blank()
 	c.note(st, st.dim.Render(l.dir))
 	if len(l.entries) == 0 {
 		c.note(st, st.dim.Render("(empty)"))
