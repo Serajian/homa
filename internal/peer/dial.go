@@ -75,7 +75,7 @@ func Dial(ctx context.Context, id *Identity, addr string) (net.Conn, error) {
 // form is unexported on purpose: callers outside this package handle
 // addresses as opaque strings.
 func ParseAddr(s string) (tailcat.Addr, error) {
-	s = strings.TrimSpace(s)
+	s = Clean(s)
 	if s == "" {
 		return "", fmt.Errorf("peer: empty address")
 	}
@@ -85,6 +85,15 @@ func ParseAddr(s string) (tailcat.Addr, error) {
 		return "", fmt.Errorf("peer: %q is not a valid homa address: %w", truncate(s), err)
 	}
 	return a, nil
+}
+
+// Clean removes every whitespace character from a copied address. The page
+// that shows an address cuts it into rows to fit the terminal, and a copy
+// of those rows carries line breaks and indentation between them; an
+// address is base64url and a prefix, so whitespace can never be part of
+// one, and removing it all is the whole repair.
+func Clean(s string) string {
+	return strings.Join(strings.Fields(s), "")
 }
 
 // ValidAddr reports whether s is a well-formed peer address. It exists so the

@@ -219,38 +219,39 @@ func (i *instance) address() string {
 	i.await("Give this to someone")
 
 	// The page wraps the address across rows; the rows that are nothing
-	// but address characters, joined, are it. The page is read twice and
-	// has to say the same thing both times: under load a frame arrives in
-	// pieces, and the first rows of an address are not the address.
+	// but address characters are it. What is returned is those rows as a
+	// person copies them — indentation, line breaks and all — because
+	// that is what gets pasted on the other side, and it once did not
+	// parse. The page is read twice and has to say the same thing both
+	// times: under load a frame arrives in pieces, and the first rows of
+	// an address are not the address.
 	deadline := time.Now().Add(30 * time.Second)
 	last := ""
 	for time.Now().Before(deadline) {
-		var parts []string
+		var rows []string
 		for _, row := range strings.Split(i.screen(), "\n") {
-			row = strings.TrimSpace(row)
-			if addrPattern.MatchString(row) && addrPattern.FindString(row) == row {
-				parts = append(parts, row)
+			trimmed := strings.TrimSpace(row)
+			if addrPattern.MatchString(trimmed) && addrPattern.FindString(trimmed) == trimmed {
+				rows = append(rows, row)
 			}
 		}
 		// A homa address is well over two hundred characters; fewer is a
 		// page still being drawn.
-		addr := strings.Join(parts, "")
-		if len(addr) >= 200 && addr == last {
-			if !peer.ValidAddr(addr) {
+		copied := strings.Join(rows, "\n")
+		if len(peer.Clean(copied)) >= 200 && copied == last {
+			if !peer.ValidAddr(copied) {
 				i.t.Fatalf(
-					"%s: read an address off the page that does not parse (%d chars): %q\nrows: %q\nscreen:\n%s",
+					"%s: read an address off the page that does not parse: %q\nscreen:\n%s",
 					i.name,
-					len(addr),
-					addr,
-					parts,
+					copied,
 					i.screen(),
 				)
 			}
 			i.key("x") // any key leaves the page
 			i.await("PEOPLE")
-			return addr
+			return copied
 		}
-		last = addr
+		last = copied
 		time.Sleep(500 * time.Millisecond)
 	}
 	i.t.Fatalf("%s: never showed an address. Screen was:\n%s", i.name, i.screen())

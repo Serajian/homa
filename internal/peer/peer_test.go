@@ -105,6 +105,22 @@ func TestValidAddr(t *testing.T) {
 	}
 }
 
+// An address copied off the page comes with the page's line breaks and
+// indentation inside it. Clean takes every whitespace character out and
+// nothing else.
+func TestCleanTakesTheWhitespaceOfACopyOut(t *testing.T) {
+	t.Parallel()
+
+	const addr = "tcpGFwWCD2eoBWgizbbv24DyRq1Uny0AI4docW_zu0ibIxCTKPS"
+	copied := "  " + addr[:20] + "\n  " + addr[20:40] + "\r\n\t" + addr[40:] + "\n"
+	if got := Clean(copied); got != addr {
+		t.Errorf("Clean gave %q", got)
+	}
+	if got := Clean(addr); got != addr {
+		t.Errorf("a clean address changed: %q", got)
+	}
+}
+
 // An address is a secret and two hundred characters long, so an error about
 // one must not spray it across a terminal or a log file.
 func TestParseAddrDoesNotPutTheWholeAddressInItsError(t *testing.T) {

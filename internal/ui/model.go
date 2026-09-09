@@ -465,6 +465,9 @@ func (m model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) addContact(name, addr string) (tea.Model, tea.Cmd) {
+	// What is saved is what is dialed: the address without the line breaks
+	// a copy of the page brings along.
+	addr = peer.Clean(addr)
 	if err := m.deps.Book.Add(contacts.Contact{Name: name, Addr: addr}); err != nil {
 		m.say(err.Error(), true)
 		return m, nil

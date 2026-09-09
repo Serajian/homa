@@ -245,7 +245,10 @@ const helpText = `  homa connects two people directly. There is no account and n
 // things and copies as none of them. Rows of one width copy as a block.
 func addressText(st *styles, addr string, width int) string {
 	return st.dim.Render("Give this to someone who should be able to reach you.") + "\n" +
-		st.dim.Render("Treat it like a password: whoever has it can call you.") + "\n\n" +
+		st.dim.Render("Treat it like a password: whoever has it can call you.") + "\n" +
+		st.dim.Render(
+			"It wraps; copy every row, line breaks and all — homa removes them.",
+		) + "\n\n" +
 		blockRows(addr, width) + "\n"
 }
 

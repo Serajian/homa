@@ -3,6 +3,8 @@
        alt="homa, a peer-to-peer terminal chat. Two terminals side by side showing one real conversation: sara calls mohsen and waits, mohsen is asked whether to take the call and accepts, and the two exchange messages.">
 </p>
 
+<p align="center"><b>English</b> · <a href="README.fa.md">فارسی</a></p>
+
 **A peer-to-peer terminal chat.** Two machines exchange one address, then talk
 directly: WireGuard between them, through NAT, on top of
 [tailcat](https://github.com/tailscale/tailcat) — Tailscale's data plane with
@@ -76,8 +78,9 @@ homa
 ```
 
 **2. Give Bob your address.** Press `a`. The long line it prints is your
-address: send it to Bob over a channel you already trust. It is a secret —
-whoever has it can call you — so not in a public place.
+address: send it to Bob over a channel you already trust. It wraps across
+rows on the screen; copy all of them, line breaks and all — homa removes
+them. It is a secret — whoever has it can call you — so not in a public place.
 
 **3. Bob adds you.** On his side: `n`, a name for you, your address. You now
 appear in his menu as `1  call alice`.

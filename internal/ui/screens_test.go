@@ -464,3 +464,24 @@ func TestCheckingForUpdatesShowsAPageOrSaysWhyNot(t *testing.T) {
 		t.Errorf("an unreachable server: screen %v, notice %q", m.screen, m.notice)
 	}
 }
+
+// The address as a person copies it off the a page: rows of equal width,
+// each indented, joined by line breaks. It must be taken as it is.
+func TestAWrappedAddressPastedIsTaken(t *testing.T) {
+	sandboxHome(t)
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	m = steer(m, "n", "vaio", "enter")
+	copied := "  " + strings.ReplaceAll(blockRows(realAddr, 60), "\n", "\n  ")
+	if !strings.Contains(copied, "\n") {
+		t.Fatal("the test address did not wrap")
+	}
+	next, _ := m.Update(tea.PasteMsg{Content: copied})
+	m = steer(next.(model), "enter")
+	if m.screen != screenMenu {
+		t.Fatalf("screen %v; the form says %q", m.screen, m.form.fields[1].err)
+	}
+	c, err := m.deps.Book.ByName("vaio")
+	if err != nil || c.Addr != realAddr {
+		t.Errorf("saved %q, %v", c.Addr, err)
+	}
+}
