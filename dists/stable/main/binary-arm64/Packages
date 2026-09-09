@@ -1,13 +1,13 @@
 Package: homa
-Version: 0.2.5
+Version: 0.2.6
 Architecture: arm64
 Maintainer: serajian.mohsen <serajian.mohsen@gmail.com>
 Installed-Size: 20096
-Filename: pool/main/h/homa/homa_0.2.5_linux_arm64.deb
-Size: 7882546
-MD5sum: 6f0d0782ea124a24ef4f87a29181cc75
-SHA1: 679e6c7a1c05a243f8a31827ba8bf2cf0b6d4147
-SHA256: 7eb06d587699769038094e429d1a7e21464352a12be43c6c817bd4d4bf48e595
+Filename: pool/main/h/homa/homa_0.2.6_linux_arm64.deb
+Size: 7890790
+MD5sum: d7e989a2f5f20cd962b989f80b027dd9
+SHA1: 39d2401c00bb96d961f00368531a5e37a429d331
+SHA256: 1b2025aa07a38c172fa4cd1bebc275b690a523246a739e2f6424f1db2d02b5ef
 Priority: optional
 Homepage: https://github.com/Serajian/homa
 Description: Peer-to-peer terminal chat with file transfer. No server, no account.
