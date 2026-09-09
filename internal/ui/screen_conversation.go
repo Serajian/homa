@@ -715,7 +715,22 @@ func fileFromArg(last *listing, arg string) (string, error) {
 		if last != nil {
 			lastDir = last.dir
 		}
-		return underListing(lastDir, arg)
+		full, err := underListing(lastDir, arg)
+		if err != nil {
+			return "", err
+		}
+		// A directory opens and stats like a file and fails only when it
+		// is read, which is after the offer has gone and the far side is
+		// waiting on it. Refuse it here, naming the command that was
+		// wanted, the way the opposite mistake is refused in dirFromArg.
+		if info, err := os.Stat(full); err == nil && info.IsDir() {
+			return "", fmt.Errorf(
+				"ui: %s is a directory; /files %s lists it, an archive sends it",
+				arg,
+				arg,
+			)
+		}
+		return full, nil
 	}
 
 	path, e, ok := last.path(n)
@@ -723,7 +738,11 @@ func fileFromArg(last *listing, arg string) (string, error) {
 		return "", fmt.Errorf("ui: there is no %d in the last listing; /files to make one", n)
 	}
 	if e.isDir {
-		return "", fmt.Errorf("ui: %s is a directory; send an archive instead", e.name)
+		return "", fmt.Errorf(
+			"ui: %s is a directory; /files %d lists it, an archive sends it",
+			e.name,
+			n,
+		)
 	}
 	return path, nil
 }

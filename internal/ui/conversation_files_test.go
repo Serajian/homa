@@ -87,3 +87,27 @@ func TestSlashFilesListsAndSlashSendPicksANumber(t *testing.T) {
 		t.Errorf("/files 2 → %q, %v", d, err)
 	}
 }
+
+// A directory used to be offered and then fail when it was read, with the
+// far side already waiting. It is refused before anything is offered.
+func TestSendRefusesADirectoryBeforeOfferingIt(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "poster"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	st := newStyles(true)
+	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
+
+	if cmd := c.sendFile(st, filepath.Join(dir, "poster")); cmd != nil {
+		t.Error("a directory was offered")
+	}
+	pane := stripANSI(c.render())
+	if !strings.Contains(pane, "is a directory") || !strings.Contains(pane, "lists it") {
+		t.Errorf("pane:\n%s", pane)
+	}
+	if strings.Contains(pane, "offering") {
+		t.Errorf("something was offered:\n%s", pane)
+	}
+}

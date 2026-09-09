@@ -228,6 +228,15 @@ event a message, every screen drawn whole, every `Update` on one goroutine. The 
 line-owning machinery of version 1 — the pump, the prompts and their erasing, the
 countdown, the hand-rolled palette — went with the line.
 
+**What cannot be read is answered anyway, when there is enough of it left to answer.** A
+message about a file that will not decode used to be logged and dropped, and the far side,
+which is standing there waiting, learned nothing until the offer ran out five minutes
+later. Every message about a file carries an id, and a body that is JSON at all gives the
+id up even when a field beside it is unreadable, so an offer we cannot read is refused with
+a reason and a refusal we cannot read ends the wait at once. An acceptance is the exception
+and stays dropped: it carries the id and nothing else, so a body that will not decode has
+no id in it either. Nothing unreadable is ever taken for a yes.
+
 **The pane keeps what was said, not what was drawn.** A conversation used to append a
 finished line — the padded name, the bar and the words already joined — and the frame cut
 every line to the terminal's width, so a message wider than the window lost its tail with

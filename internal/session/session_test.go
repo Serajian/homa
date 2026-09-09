@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -510,4 +511,124 @@ func waitForFile(t *testing.T, dir string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("nothing was ever written to the download directory")
+}
+
+// halfSession is a real session on one end of a loopback pair and the raw
+// connection on the other, so a test can send frames a real session would
+// never send and read what comes back.
+func halfSession(t *testing.T, h Handler) (*Session, *proto.Conn) {
+	t.Helper()
+
+	ac, bc := connPair(t)
+	raw := proto.NewConn(bc)
+
+	// Both sides greet before either reads, so the far half is one write.
+	ch := make(chan error, 1)
+	go func() {
+		ch <- raw.WriteJSON(proto.TypeHello, proto.Hello{Nick: "bob", Version: proto.Version})
+	}()
+	as, err := Start(ac, "alice", h)
+	if err != nil {
+		t.Fatalf("starting alice: %v", err)
+	}
+	if err := <-ch; err != nil {
+		t.Fatalf("greeting from the raw side: %v", err)
+	}
+	if f, err := raw.Read(); err != nil || f.Type != proto.TypeHello {
+		t.Fatalf("alice's greeting: %v %v", f.Type, err)
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() { defer close(done); _ = as.Run(ctx) }()
+	t.Cleanup(func() { cancel(); <-done })
+
+	return as, raw
+}
+
+// An offer whose body will not decode still carries its id, and the sender
+// is told no at once rather than waiting out the offer timeout.
+func TestAnUnreadableOfferIsRefusedRatherThanDropped(t *testing.T) {
+	t.Parallel()
+
+	_, raw := halfSession(t, newRecorder(t))
+
+	// Valid JSON, but a size no FileOffer can hold. The id survives.
+	if err := raw.Write(proto.TypeFileOffer, []byte(`{"id":7,"name":"x","size":"enormous"}`)); err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := raw.Read()
+	if err != nil {
+		t.Fatalf("reading the answer: %v", err)
+	}
+	if f.Type != proto.TypeFileReject {
+		t.Fatalf("answered with %s", f.Type)
+	}
+	var msg proto.FileReject
+	if err := proto.DecodeJSON(f, &msg); err != nil {
+		t.Fatal(err)
+	}
+	if msg.ID != 7 || !strings.Contains(msg.Reason, "could not be read") {
+		t.Errorf("refusal was %+v", msg)
+	}
+}
+
+// A body that is not JSON at all gives up no id, so there is nothing to
+// answer; it must still leave the session running.
+func TestAnOfferThatIsNotJSONIsDroppedWithoutBreakingTheSession(t *testing.T) {
+	t.Parallel()
+
+	ra := newRecorder(t)
+	as, raw := halfSession(t, ra)
+
+	if err := raw.Write(proto.TypeFileOffer, []byte("not json at all")); err != nil {
+		t.Fatal(err)
+	}
+	if err := as.SendText("still here"); err != nil {
+		t.Fatalf("sending after a broken offer: %v", err)
+	}
+	f, err := raw.Read()
+	if err != nil {
+		t.Fatalf("reading after a broken offer: %v", err)
+	}
+	if f.Type != proto.TypeText || string(f.Payload) != "still here" {
+		t.Errorf("got %s %q", f.Type, f.Payload)
+	}
+}
+
+// A refusal whose reason will not decode still carries its id, so the wait
+// ends at once instead of running out five minutes later.
+func TestAnUnreadableRefusalEndsTheWait(t *testing.T) {
+	t.Parallel()
+
+	as, raw := halfSession(t, newRecorder(t))
+	src := writeFile(t, "poster.png", []byte("data"))
+
+	errc := make(chan error, 1)
+	go func() { errc <- as.SendFile(t.Context(), src, nil) }()
+
+	f, err := raw.Read()
+	if err != nil || f.Type != proto.TypeFileOffer {
+		t.Fatalf("expected an offer, got %v %v", f.Type, err)
+	}
+	var offer proto.FileOffer
+	if err := proto.DecodeJSON(f, &offer); err != nil {
+		t.Fatal(err)
+	}
+
+	// A refusal with the right id and a reason that is not a string.
+	body := fmt.Sprintf(`{"id":%d,"reason":5}`, offer.ID)
+	if err := raw.Write(proto.TypeFileReject, []byte(body)); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case err := <-errc:
+		if err == nil || !strings.Contains(err.Error(), "could not be read") {
+			t.Errorf("SendFile returned %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the sender was left waiting")
+	}
 }

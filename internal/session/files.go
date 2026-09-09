@@ -235,14 +235,22 @@ func (s *Session) onAnswer(f proto.Frame) {
 	if f.Type == proto.TypeFileAccept {
 		var msg proto.FileAccept
 		if err := proto.DecodeJSON(f, &msg); err != nil {
-			lg.Warn("unreadable file answer", "err", err)
+			// Nothing to rescue: an accept carries the id and nothing
+			// else, so a body that will not decode has no id in it
+			// either, and the sender waits out the offer. A refusal is
+			// different; see below.
+			lg.Warn("unreadable file acceptance", "err", err)
 			return
 		}
 		id, reply = msg.ID, offerReply{accepted: true}
 	} else {
 		var msg proto.FileReject
 		if err := proto.DecodeJSON(f, &msg); err != nil {
-			lg.Warn("unreadable file answer", "err", err)
+			// The id is all a refusal needs from here, and it survives a
+			// reason that will not decode. End the wait now rather than
+			// leaving the sender until the offer times out.
+			lg.Warn("unreadable file refusal", "err", err)
+			s.endWait(f, "the refusal could not be read")
 			return
 		}
 		id, reason = msg.ID, msg.Reason
@@ -254,11 +262,41 @@ func (s *Session) onAnswer(f proto.Frame) {
 	}
 }
 
+// offerID digs the id out of a frame whose body will not decode, so a
+// message that cannot be read can still be answered. Every message about a
+// file carries one, and a body that is JSON at all gives it up even when a
+// field beside it is unreadable; a body that is not JSON gives nothing.
+func offerID(f proto.Frame) (uint32, bool) {
+	var just struct {
+		ID uint32 `json:"id"`
+	}
+	if err := proto.DecodeJSON(f, &just); err != nil {
+		return 0, false
+	}
+	return just.ID, true
+}
+
+// endWait ends a wait that a message this side could not read would
+// otherwise leave running until the offer times out. What cannot be read is
+// never taken for a yes.
+func (s *Session) endWait(f proto.Frame, reason string) {
+	id, ok := offerID(f)
+	if !ok {
+		return
+	}
+	s.files.answer(id, offerReply{accepted: false, reason: reason})
+}
+
 // onOffer asks the person about an incoming file and sets up its download.
 func (s *Session) onOffer(f proto.Frame) {
 	var msg proto.FileOffer
 	if err := proto.DecodeJSON(f, &msg); err != nil {
+		// Refuse it rather than drop it: the sender is waiting on an
+		// answer and would otherwise wait out the whole offer timeout.
 		lg.Warn("unreadable file offer", "err", err)
+		if id, ok := offerID(f); ok {
+			s.decline(id, "the offer could not be read")
+		}
 		return
 	}
 

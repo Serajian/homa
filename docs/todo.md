@@ -50,31 +50,6 @@ wrong in what is already released, so they come before anything new.
   Files: `README.md`, `README.fa.md`. Done when neither README claims a caller
   can be saved without their address
 
-- **`/send` on a directory is offered and then fails.** `sendFile` announces
-  "offering …, waiting for them to accept" and the transfer dies when the
-  directory is read. The opposite mistake is already refused well: `/files` on
-  a file says which command the person wanted. Refuse a directory before
-  anything is offered, in the same shape. Files:
-  `internal/ui/screen_conversation.go` (`sendFile`, `fileFromArg`). Done when
-  `/send` on a directory says so at once, offers nothing, and a test holds it
-
-- **Five lines of Persian study notes sit at the end of
-  `internal/proto/conn.go`.** They are notes about `io.Reader` and
-  `bufio.Reader` left over from learning, not comments about this code, and the
-  repository is public and English everywhere else. Delete them. The Persian
-  that stays is test data with a reason beside it: a two-byte letter repeated
-  to `MaxNickLen` in `internal/config/config_test.go`, and Persian text through
-  `internal/session/sanitize_test.go`. Done when
-  `git grep -nP '[\xd8-\xdb][\x80-\xbf]' -- '*.go'` names only those two test
-  files
-
-- **A file offer that cannot be decoded is dropped, and the sender waits five
-  minutes.** `handleFileFrame` logs the failure and returns, so the far side
-  gets no answer and gives up on `offerTimeout`. Answer it with a reject and a
-  reason, the way every other refusal is answered. Files:
-  `internal/session/files.go`. Done when a malformed offer is rejected at once
-  and a test drives it
-
 # Next
 
 Six things the same review turned up. They are small beside version 3's items
