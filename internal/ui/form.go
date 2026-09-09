@@ -75,9 +75,16 @@ func (f *form) answer(i int) string {
 	return s
 }
 
-// update takes a key. done is every field answered and accepted; cancel
-// is the person backing out, which leaves everything as it was.
+// update takes a key, or a paste. done is every field answered and
+// accepted; cancel is the person backing out, which leaves everything as
+// it was.
 func (f *form) update(_ *styles, msg tea.Msg) (done, cancel bool) {
+	if paste, ok := msg.(tea.PasteMsg); ok {
+		// An address is two hundred characters; pasting is how it gets
+		// here. The input knows what to do with the message.
+		f.fields[f.cur].in, _ = f.fields[f.cur].in.Update(paste)
+		return false, false
+	}
 	key, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		return false, false

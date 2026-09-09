@@ -180,6 +180,14 @@ func (c *conversation) update(st *styles, msg tea.Msg) (cmd tea.Cmd, leave bool)
 		c.pane, cmd = c.pane.Update(msg)
 		return cmd, false
 
+	case tea.PasteMsg:
+		before, _ := commandWord(c.in.Value())
+		c.in, cmd = c.in.Update(msg)
+		if after, _ := commandWord(c.in.Value()); after != before {
+			c.pick = 0
+		}
+		return cmd, false
+
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case keyEnter:

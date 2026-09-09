@@ -263,8 +263,12 @@ func (i *instance) addContact(name, addr string) {
 	i.key("n")
 	i.await("A name for them")
 	i.line(name)
-	i.line(addr)
-	i.t.Logf("%s typed the address %q", i.name, addr)
+	// The address arrives the way a terminal delivers a paste: wrapped in
+	// the bracketed-paste markers, as one piece. Typing it as keystrokes
+	// would test a path nobody uses for two hundred characters.
+	i.key("\x1b[200~" + addr + "\x1b[201~")
+	i.key("\r")
+	i.t.Logf("%s pasted the address %q", i.name, addr)
 	i.await(name + " added")
 }
 

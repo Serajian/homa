@@ -225,3 +225,19 @@ func TestEnterTakesThePickRunningItWhenItWantsNothing(t *testing.T) {
 		t.Error("Enter on the picked /quit did not leave")
 	}
 }
+
+func TestAPasteLandsInTheLineAndTheHintFollows(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 20, testLine("alice", true), "alice", "")
+	_, _ = c.update(st, tea.PasteMsg{Content: "salam az paste"})
+	if c.in.Value() != "salam az paste" {
+		t.Errorf("line after a paste: %q", c.in.Value())
+	}
+	c.in.Reset()
+	_, _ = c.update(st, tea.PasteMsg{Content: "/se"})
+	if _, body, _ := c.view(st, 100); !strings.Contains(stripANSI(body), "/send <path>") {
+		t.Errorf("a pasted command word got no hint:\n%s", stripANSI(body))
+	}
+}

@@ -99,6 +99,9 @@ func (m setupModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
+	case tea.PasteMsg:
+		_, _ = m.form.update(m.st, msg)
+		return m, nil
 	case tea.KeyPressMsg:
 		if msg.String() == keyQuit {
 			m.canceled = true

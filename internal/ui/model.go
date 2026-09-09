@@ -171,6 +171,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case tea.PasteMsg:
+		// A terminal with bracketed paste sends a paste as one message,
+		// not as keystrokes; it goes where a key would, to whatever has
+		// an input. Nothing else on the menu takes text.
+		switch m.screen {
+		case screenConversation:
+			return m.updateConversation(msg)
+		case screenForm:
+			return m.updateForm(msg)
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		m.notice, m.warn = "", false
 		if msg.String() == keyQuit {
@@ -398,7 +410,7 @@ func (m model) openForm(kind formKind, f *form, back screen) model {
 
 // updateForm is a key on a form: the form takes it, and when it is done or
 // backed out of, the answers go where the kind says.
-func (m model) updateForm(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m model) updateForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	done, cancel := m.form.update(m.st, msg)
 	switch {
 	case cancel:
@@ -607,7 +619,7 @@ func (m model) startConversation(l *line) (tea.Model, tea.Cmd) {
 	return m, runSession(m.ctx, l, m.send)
 }
 
-func (m model) updateConversation(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m model) updateConversation(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmd, leave := m.conv.update(m.st, msg)
 	if !leave {
 		return m, cmd

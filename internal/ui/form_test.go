@@ -107,3 +107,19 @@ func TestAWordFormNeedsTheWord(t *testing.T) {
 		t.Errorf("the word: done=%v cancel=%v; want done", done, cancel)
 	}
 }
+
+// A paste is one message, not keystrokes; it must land in the field.
+func TestAPasteLandsInTheField(t *testing.T) {
+	t.Parallel()
+
+	f := newForm("add", field{label: "name"}, field{label: "address"})
+	_, _ = f.update(nil, tea.PasteMsg{Content: "vaio"})
+	if f.answer(0) != "vaio" {
+		t.Errorf("first field after a paste: %q", f.answer(0))
+	}
+	_, _ = f.update(nil, tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, _ = f.update(nil, tea.PasteMsg{Content: "tcpGFwWC"})
+	if f.answer(1) != "tcpGFwWC" {
+		t.Errorf("second field after a paste: %q", f.answer(1))
+	}
+}

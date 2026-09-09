@@ -393,3 +393,34 @@ func TestAnAddressIsShownInRowsOfOneWidth(t *testing.T) {
 		t.Error("the rows do not join back into the address")
 	}
 }
+
+// The bug a person found first: the address pasted into "add a contact"
+// went nowhere. A paste must reach the form through the model.
+func TestAPastedAddressIsTakenByTheContactForm(t *testing.T) {
+	sandboxHome(t)
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	m = steer(m, "n", "vaio", "enter")
+	next, _ := m.Update(tea.PasteMsg{Content: realAddr})
+	m = next.(model)
+	m = steer(m, "enter")
+	if m.screen != screenMenu {
+		t.Fatalf(
+			"screen %v after pasting the address; form says %q",
+			m.screen,
+			m.form.fields[1].err,
+		)
+	}
+	if _, err := m.deps.Book.ByName("vaio"); err != nil {
+		t.Error("vaio was not added")
+	}
+}
+
+func TestAPasteReachesTheFirstRun(t *testing.T) {
+	sandboxHome(t)
+	sm := setupModel{st: newStyles(true), form: settingsForm("Welcome", config.Default(), true)}
+	next, _ := sm.Update(tea.PasteMsg{Content: "dana"})
+	sm = next.(setupModel)
+	if sm.form.answer(0) != "dana" {
+		t.Errorf("first field after a paste: %q", sm.form.answer(0))
+	}
+}
