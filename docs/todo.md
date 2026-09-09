@@ -1,8 +1,8 @@
 # homa: outstanding work
 
-Work is grouped by version. **Version 1** is everything the first release needs,
-and every numbered item below belongs to it. Versions 2 and 3 are at the bottom,
-named but not detailed, so the boundary is visible rather than assumed.
+Work is grouped by version, newest front first. Versions 1 and 2 are closed and
+kept here only as markers; what is open starts at **Faults** and is worked from
+there down.
 
 Each item says what is wrong, why, what to build, which files to touch, and how
 to know it is done.
@@ -18,11 +18,6 @@ outstanding work. Anything already shipped belongs in [status.md](status.md),
 and the reasoning behind it in [decisions.md](decisions.md).
 
 Work them in the order given.
-
-The input pump that used to head this list is done: reading the keyboard now
-happens in a goroutine of its own, so Ctrl+C, an arriving call and the peer
-leaving are all just cases in a select. Several items below assumed it, and
-their notes have been brought up to date.
 
 ---
 
@@ -40,6 +35,133 @@ Complete, and released as v0.2.0: the full-screen interface, commands offered
 as they are typed, and the bell. The interface's design and plan stay in
 [design/](design/) for the record. Android was planned here and is now
 unplaced, at the bottom. Nothing is left here.
+
+# Faults
+
+Found by reading and running the app on 2026-09-09, after v0.2.7. These are
+wrong in what is already released, so they come before anything new.
+
+- **A message wider than the terminal is cut, not wrapped, and the rest of it
+  is gone.** `frame` cuts every body line to the width — it must, because a
+  body taller than the room would scroll the terminal — and a conversation
+  keeps one rendered line per message, so nothing wraps it first. A message is
+  capped at 4096 bytes, so a pasted paragraph is ordinary and unreadable: it is
+  not on screen, not scrollable sideways, and not recoverable. Wrap a message
+  under the name column as it goes into the pane, so continuation lines start
+  where the words start and the column still reads as a column. Decide where
+  the wrapping happens: `c.lines` holds rendered lines today, so wrapping at
+  render means keeping who said what beside the words, and wrapping at append
+  means a resize no longer re-wraps. Files: `internal/ui/screen_conversation.go`
+  (`msg`, `note`, `alert`, `say`, `resize`), a helper beside `blockRows` in
+  `internal/ui/screens.go`. Done when a 4096-character message reads in full at
+  60 columns and at 200, the name column still lines up, and a resize re-wraps
+  what is already in the pane
+
+- **The README says a caller can be saved, and they cannot.** `proto.Hello`
+  carries a nick and a version and nothing else, and a contact without an
+  address does not validate, so the side that answered holds ten bytes of the
+  caller's key and no way to dial them. Both READMEs say "once you save him
+  with `n`, he appears under the name you gave him". Correct the sentence in
+  both languages now; the way to make it true is the first item under Next.
+  Files: `README.md`, `README.fa.md`. Done when neither README claims a caller
+  can be saved without their address
+
+- **`/send` on a directory is offered and then fails.** `sendFile` announces
+  "offering …, waiting for them to accept" and the transfer dies when the
+  directory is read. The opposite mistake is already refused well: `/files` on
+  a file says which command the person wanted. Refuse a directory before
+  anything is offered, in the same shape. Files:
+  `internal/ui/screen_conversation.go` (`sendFile`, `fileFromArg`). Done when
+  `/send` on a directory says so at once, offers nothing, and a test holds it
+
+- **Five lines of Persian study notes sit at the end of
+  `internal/proto/conn.go`.** They are notes about `io.Reader` and
+  `bufio.Reader` left over from learning, not comments about this code, and the
+  repository is public and English everywhere else. Delete them. The Persian
+  that stays is test data with a reason beside it: a two-byte letter repeated
+  to `MaxNickLen` in `internal/config/config_test.go`, and Persian text through
+  `internal/session/sanitize_test.go`. Done when
+  `git grep -nP '[\xd8-\xdb][\x80-\xbf]' -- '*.go'` names only those two test
+  files
+
+- **A file offer that cannot be decoded is dropped, and the sender waits five
+  minutes.** `handleFileFrame` logs the failure and returns, so the far side
+  gets no answer and gives up on `offerTimeout`. Answer it with a reject and a
+  reason, the way every other refusal is answered. Files:
+  `internal/session/files.go`. Done when a malformed offer is rejected at once
+  and a test drives it
+
+# Next
+
+Six things the same review turned up. They are small beside version 3's items
+and they belong to what is already built, so they ship in the 0.2 line, in this
+order.
+
+- **Swap addresses, so both sides can call back.** Today only the caller can
+  reach the callee; the callee has nothing to dial and cannot save them. Build
+  an exchange inside a conversation that both sides agree to, one command and
+  one question, after which each may save the other. It is a new frame type
+  and a reply, which old peers ignore the way the framing has always ignored
+  what it does not know. Consent on both sides is the whole point: an address
+  is a bearer capability, and nobody's should travel because the other person
+  typed a command. Files: `internal/proto` (a type, a message),
+  `internal/session` (send, receive, a handler callback), `internal/ui` (the
+  command, the question, the saving), both READMEs, `docs/decisions.md`. Done
+  when alice calls bob, they swap, bob quits homa, and bob calls alice from his
+  own address book; a live scenario proves it; refusing saves nothing on either
+  side
+
+- **Call an address without saving it.** The menu can only call a contact, so a
+  one-off call or a single file means inventing a contact and deleting it
+  afterwards. Add a menu action that takes an address, dials it, and offers to
+  save the person when the call ends. Files: `internal/ui` (a menu action, a
+  form, the model), both READMEs. Done when an address pasted at the menu calls,
+  and nothing reaches `contacts.json` unless the person asks for it
+
+- **A transfer says how fast it is going and how long is left, and can be
+  stopped.** Progress is a percentage every ten percent: for a gigabyte on a
+  bad line that says almost nothing, and there is no way to stop a file sent by
+  mistake. The rate and the estimate are free — `OnFileProgress` already
+  carries received and total, and `adapter` throws both away and forwards only
+  a step. Cancelling needs a frame type of its own; an old peer ignores it and
+  waits out `offerTimeout`, which is the honest failure. Files:
+  `internal/ui/adapter.go`, `internal/ui/screen_conversation.go`,
+  `internal/proto`, `internal/session/files.go`. Done when a large transfer
+  shows a rate and an estimate on both sides, `/cancel` stops it on both, and
+  the partial file is removed
+
+- **Tab completes a path after `/send` and `/files`.** The hint row completes
+  commands; the question left open when it was built was whether the same
+  mechanism should offer paths, and `/files` plus a number exists precisely
+  because typing a path exactly right is not a thing to ask of somebody
+  mid-conversation. Complete against the directory being typed: one match
+  completes it, a directory completes with its separator, several complete to
+  the common prefix. Files: `internal/ui/hints.go`,
+  `internal/ui/screen_conversation.go`. Done when `/send ~/Down` and Tab
+  completes, and the hint row says what the candidates are the way it does for
+  commands
+
+- **Refuse a caller by key, and a do-not-disturb.** An address is a bearer
+  capability with no revocation short of a reset, which changes your address
+  for everyone who has it; today somebody you refuse can call again
+  immediately. Build a list of keys homa hangs up on, and a setting that
+  refuses every call while it is on. Decide, and write down, whether a blocked
+  caller is told they are blocked or told the same thing anybody hears when
+  nobody is taking calls — the second says less about you. Files:
+  `internal/config`, a blocked list beside `internal/contacts`,
+  `internal/ui/calls.go`, `internal/ui/model.go`, `docs/decisions.md`. Done when
+  a blocked key is hung up on without the screen ever lighting up, and the
+  setting turns every call away
+
+- **Resume an interrupted transfer.** A transfer that breaks starts from zero;
+  chunks carry an id and no offset, and `FILE_ACCEPT` has no "start at". For a
+  gigabyte on a line that drops, that is the difference between a feature and a
+  frustration. Build an offset in the accept, a digest of what is already on
+  disk so a resume cannot silently glue two different files together, and a
+  partial file that survives on purpose rather than by accident. Files:
+  `internal/proto/messages.go`, `internal/session/files.go`, `internal/ui`.
+  Done when a transfer killed at half resumes on the next offer of the same
+  file and the digest still matches at the end
 
 # Version 3
 
