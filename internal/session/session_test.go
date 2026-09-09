@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -683,5 +684,104 @@ func TestAnAddressToAHandlerThatCannotTakeOneIsIgnored(t *testing.T) {
 	}
 	if got := waitFor(t, ra.got, "the message after it"); got != "still here" {
 		t.Errorf("got %q", got)
+	}
+}
+
+// The receiving side stopping a transfer: the sender's loop ends, the
+// partial file goes, and neither side is left waiting.
+func TestTheReceiverCanStopATransfer(t *testing.T) {
+	t.Parallel()
+
+	ra := newRecorder(t)
+	as, bs := talk(t, ra, newRecorder(t))
+	if !as.CanCancel() || !bs.CanCancel() {
+		t.Fatal("two current peers cannot stop a transfer")
+	}
+
+	// Big enough that it is still going when the stop arrives.
+	src := writeFile(t, "big.bin", bytes.Repeat([]byte("x"), 8<<20))
+	errc := make(chan error, 1)
+	go func() { errc <- bs.SendFile(t.Context(), src, nil) }()
+
+	// Wait until it is actually moving, then stop it from this side.
+	deadline := time.After(5 * time.Second)
+	for {
+		if stopped := as.CancelTransfers(); len(stopped) > 0 {
+			if stopped[0] != "big.bin" {
+				t.Fatalf("stopped %q", stopped[0])
+			}
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("the transfer never started")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
+	select {
+	case err := <-errc:
+		if !errors.Is(err, ErrCanceled) {
+			t.Errorf("SendFile returned %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the sender kept going")
+	}
+	if left := entries(t, ra.dir); len(left) != 0 {
+		t.Errorf("a stopped transfer left %v behind", left)
+	}
+}
+
+// The sending side stopping it: the receiver is told and keeps nothing.
+func TestTheSenderCanStopATransfer(t *testing.T) {
+	t.Parallel()
+
+	ra := newRecorder(t)
+	_, bs := talk(t, ra, newRecorder(t))
+
+	src := writeFile(t, "big.bin", bytes.Repeat([]byte("x"), 8<<20))
+	errc := make(chan error, 1)
+	go func() { errc <- bs.SendFile(t.Context(), src, nil) }()
+
+	deadline := time.After(5 * time.Second)
+	for {
+		if stopped := bs.CancelTransfers(); len(stopped) > 0 {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatal("the transfer never started")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
+	select {
+	case err := <-errc:
+		if !errors.Is(err, ErrCanceled) {
+			t.Errorf("SendFile returned %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the sender kept going")
+	}
+	select {
+	case err := <-ra.failed:
+		if !errors.Is(err, ErrCanceled) {
+			t.Errorf("the receiver was told %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the receiver was never told")
+	}
+	if left := entries(t, ra.dir); len(left) != 0 {
+		t.Errorf("a stopped transfer left %v behind", left)
+	}
+}
+
+// Stopping when nothing is moving is not an error, and says nothing.
+func TestStoppingNothingStopsNothing(t *testing.T) {
+	t.Parallel()
+
+	_, bs := talk(t, newRecorder(t), newRecorder(t))
+	if stopped := bs.CancelTransfers(); len(stopped) != 0 {
+		t.Errorf("stopped %v", stopped)
 	}
 }

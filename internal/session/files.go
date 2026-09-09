@@ -48,6 +48,17 @@ type fileState struct {
 	nextID  uint32
 	pending map[uint32]chan offerReply // ours, waiting for an answer
 	active  map[uint32]*incoming       // theirs, being written
+	sending map[uint32]*outgoing       // ours, being pushed
+}
+
+// outgoing is a file being sent right now. cancel stops the loop pushing
+// it, from the read loop or from whoever asked; stopped is what makes the
+// difference between a canceled transfer and a broken one when the error
+// comes back.
+type outgoing struct {
+	name    string
+	cancel  context.CancelFunc
+	stopped bool
 }
 
 // offerReply is the peer's answer to one of our offers.
@@ -114,6 +125,13 @@ func (s *Session) SendFile(
 	id, reply := s.files.newOffer()
 	defer s.files.dropOffer(id)
 
+	// A cancel from either end stops this loop, so the send gets a context
+	// of its own inside the caller's.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	s.files.startSending(id, name, cancel)
+	defer s.files.dropSending(id)
+
 	offer := proto.FileOffer{ID: id, Name: name, Size: size}
 	if err := s.c.WriteJSON(proto.TypeFileOffer, offer); err != nil {
 		return fmt.Errorf("session: offering %s: %w", name, err)
@@ -124,7 +142,81 @@ func (s *Session) SendFile(
 		return err
 	}
 
-	return s.sendBody(ctx, f, id, name, size, progress)
+	sendErr := s.sendBody(ctx, f, id, name, size, progress)
+	if s.files.wasStopped(id) {
+		// The context is only how the loop was reached; what happened is
+		// that somebody stopped it, and that is what the caller is told.
+		return fmt.Errorf("%w: %s", ErrCanceled, name)
+	}
+	return sendErr
+}
+
+// ErrCanceled is a transfer stopped on purpose, from either end. It is not
+// a failure, and an interface should say so differently.
+var ErrCanceled = errors.New("session: the transfer was stopped")
+
+// CanCancel reports whether the peer understands a transfer being stopped.
+// An older one keeps sending, or keeps waiting for chunks that never come.
+func (s *Session) CanCancel() bool {
+	return s.peer.Version >= proto.VersionCancel
+}
+
+// CancelTransfers stops every transfer in flight, in both directions, and
+// tells the peer so their end stops too. It returns what it stopped, so the
+// person can be told by name.
+func (s *Session) CancelTransfers() []string {
+	out, in := s.files.inFlight()
+
+	stopped := make([]string, 0, len(out)+len(in))
+	for id, name := range out {
+		s.tellCancel(id)
+		if _, ok := s.files.stopSending(id); ok {
+			stopped = append(stopped, name)
+		}
+	}
+	for id, name := range in {
+		s.tellCancel(id)
+		if t, ok := s.files.take(id); ok {
+			t.close(false)
+			stopped = append(stopped, name)
+		}
+	}
+
+	lg.Info("transfers stopped", "count", len(stopped))
+	return stopped
+}
+
+// tellCancel asks the far side to stop as well. A peer too old to know the
+// frame drops it, which is why CanCancel exists to be asked first.
+func (s *Session) tellCancel(id uint32) {
+	if err := s.c.WriteJSON(proto.TypeFileCancel, proto.FileCancel{ID: id}); err != nil {
+		lg.Debug("could not tell the peer a transfer stopped", "err", err)
+	}
+}
+
+// onCancel is the peer stopping a transfer, in whichever direction it runs.
+func (s *Session) onCancel(f proto.Frame) {
+	var msg proto.FileCancel
+	if err := proto.DecodeJSON(f, &msg); err != nil {
+		lg.Warn("unreadable cancel", "err", err)
+		return
+	}
+
+	if name, ok := s.files.stopSending(msg.ID); ok {
+		lg.Info("the peer stopped a transfer we were sending", "name", name)
+		return
+	}
+
+	in, ok := s.files.take(msg.ID)
+	if !ok {
+		lg.Debug("a cancel for a transfer we do not have", "id", msg.ID)
+		return
+	}
+	in.close(false)
+	lg.Info("the peer stopped a transfer we were taking", "name", in.name)
+	if fh, ok := s.handler.(FileHandler); ok {
+		fh.OnFileError(in.name, ErrCanceled)
+	}
 }
 
 // waitForAnswer blocks until the peer accepts, declines, the person gives
@@ -551,6 +643,78 @@ func (fs *fileState) answer(id uint32, r offerReply) bool {
 	default: // already answered
 	}
 	return true
+}
+
+// startSending records a file being pushed, so a cancel from either end can
+// reach the loop pushing it.
+func (fs *fileState) startSending(id uint32, name string, cancel context.CancelFunc) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	if fs.sending == nil {
+		fs.sending = make(map[uint32]*outgoing)
+	}
+	fs.sending[id] = &outgoing{name: name, cancel: cancel}
+}
+
+func (fs *fileState) dropSending(id uint32) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	delete(fs.sending, id)
+}
+
+// stopSending marks an outgoing transfer stopped and cuts its context. The
+// record stays until SendFile returns, so it can say why it stopped.
+func (fs *fileState) stopSending(id uint32) (name string, ok bool) {
+	fs.mu.Lock()
+	out, ok := fs.sending[id]
+	if ok {
+		out.stopped = true
+	}
+	fs.mu.Unlock()
+
+	if !ok {
+		return "", false
+	}
+	out.cancel()
+	return out.name, true
+}
+
+func (fs *fileState) wasStopped(id uint32) bool {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	out, ok := fs.sending[id]
+	return ok && out.stopped
+}
+
+// take removes an incoming transfer and hands it over, so the caller can
+// close it without the lock and without racing the read loop.
+func (fs *fileState) take(id uint32) (*incoming, bool) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	in, ok := fs.active[id]
+	if ok {
+		delete(fs.active, id)
+	}
+	return in, ok
+}
+
+// inFlight names everything running right now, by id and direction.
+func (fs *fileState) inFlight() (out, in map[uint32]string) {
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+
+	out = make(map[uint32]string, len(fs.sending))
+	for id, o := range fs.sending {
+		out[id] = o.name
+	}
+	in = make(map[uint32]string, len(fs.active))
+	for id, t := range fs.active {
+		in[id] = t.name
+	}
+	return out, in
 }
 
 func (fs *fileState) begin(id uint32, in *incoming) {

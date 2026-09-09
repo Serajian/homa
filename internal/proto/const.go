@@ -12,12 +12,18 @@ import "time"
 //
 // 3: TypeAddress, so somebody who was called can be given the address they
 //
-//	need to call back.
+//	need to call back; and TypeFileCancel, so a transfer can be stopped
+//	from either end instead of only by leaving.
 const Version = 3
 
 // VersionAccept is the first version whose peers send TypeAccept. A caller
 // talking to anything older has nothing to wait for, and must not wait.
 const VersionAccept = 2
+
+// VersionCancel is the first version whose peers understand TypeFileCancel.
+// An older one keeps sending, or keeps waiting for chunks that will never
+// come, so the person is told what stopping will and will not reach.
+const VersionCancel = 3
 
 // VersionAddress is the first version whose peers understand TypeAddress.
 // An older peer drops what it does not recognize, silently and by design, so

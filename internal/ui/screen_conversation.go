@@ -62,6 +62,14 @@ type conversation struct {
 	// to copy or hand over. nil in tests that do not need it.
 	me func(width int) (body, addr string)
 
+	// stopped is what this side asked to stop, so the failure that comes
+	// back for it is not reported twice in different words.
+	stopped map[string]bool
+
+	// getting and pushing time the transfers running each way, so a rate
+	// and an estimate can be worked out from the bytes reported.
+	getting, pushing transfer
+
 	// card is the address the peer handed over, held until the person
 	// saves it or the conversation ends. Nothing is written without /save.
 	card string
@@ -120,6 +128,40 @@ func newConversationWith(
 		c.note(st, st.dim.Render("the name is theirs; they are not in your contacts"))
 	}
 	return c
+}
+
+// transfer is a file on the move: which one, and when it started, which is
+// all a rate needs beside the bytes each report carries.
+type transfer struct {
+	name    string
+	started time.Time
+}
+
+// moving draws one line of a transfer's progress: the bar and the percent
+// always, and how fast it is going and how much longer once there has been
+// enough of it to say. A transfer is timed from the first report about it.
+func (c *conversation) moving(
+	st *styles,
+	verb, name string,
+	t *transfer,
+	file string,
+	received, total int64,
+) {
+	if t.name != file {
+		*t = transfer{name: file, started: time.Now()}
+	}
+	pct := percent(received, total)
+
+	line := st.dim.Render(verb) + name + "  " + progressBar(st, pct) +
+		st.dim.Render(fmt.Sprintf("  %d%%", pct))
+	since := time.Since(t.started)
+	if rate := perSecond(received, since); rate != "" {
+		line += st.dim.Render("  " + rate)
+	}
+	if left := leftText(total-received, received, since); left != "" {
+		line += st.dim.Render("  " + left)
+	}
+	c.note(st, line)
 }
 
 // paneLine is one thing in the pane: who said it, the bar between the name
@@ -426,6 +468,9 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		return nil, false
 	case "/send":
 		return c.sendFile(st, arg), false
+	case "/cancel":
+		c.cancelTransfers(st)
+		return nil, false
 	}
 	c.alert(st, "no such command: "+quote(cmd))
 	c.note(st, st.dim.Render("these are the commands; a line that is not one is sent as a message"))
@@ -619,6 +664,42 @@ func probePath(ctx context.Context, conn net.Conn) tea.Cmd {
 	}
 }
 
+// cancelTransfers stops whatever files are moving, in either direction, and
+// tells the far side so their end stops too.
+func (c *conversation) cancelTransfers(st *styles) {
+	if c.l.s == nil {
+		return
+	}
+
+	stopped := c.l.s.CancelTransfers()
+	if len(stopped) == 0 {
+		c.alert(st, "nothing is being sent or taken right now")
+		return
+	}
+
+	if c.stopped == nil {
+		c.stopped = make(map[string]bool)
+	}
+	for _, name := range stopped {
+		c.stopped[name] = true
+		c.note(st, st.dim.Render("stopped ")+st.you.Render(name))
+	}
+	if !c.l.s.CanCancel() {
+		c.note(st, st.dim.Render("they are running an older homa, so their end may not stop"))
+	}
+}
+
+// wasStopped reports whether this side asked for that file to stop, and
+// forgets it: the failure it causes is arriving now and has been said once
+// already.
+func (c *conversation) wasStopped(name string) bool {
+	if !c.stopped[name] {
+		return false
+	}
+	delete(c.stopped, name)
+	return true
+}
+
 // offered is the far side offering a file: one line, who, what, how big,
 // what to type, and the offer parked until the answer.
 func (c *conversation) offered(st *styles, o fileOffered) {
@@ -729,7 +810,7 @@ func (c *conversation) sendFile(st *styles, arg string) tea.Cmd {
 				return
 			}
 			last = step
-			send(sending{name: full, pct: step * progressStep})
+			send(sending{name: full, received: sentBytes, total: total})
 		}
 		if err := l.s.SendFile(ctx, full, progress); err != nil {
 			return sendFileFailed{name: full, err: err}

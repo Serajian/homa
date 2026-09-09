@@ -55,7 +55,7 @@ func (a *adapter) OnFileProgress(name string, received, total int64) {
 		return
 	}
 	a.lastStep[name] = step
-	a.send(fileProgress{name: name, pct: step * progressStep})
+	a.send(fileProgress{name: name, received: received, total: total})
 }
 
 // OnFileDone reports a file that arrived and passed its checksum.

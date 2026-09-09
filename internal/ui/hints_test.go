@@ -16,7 +16,7 @@ func commandNames(cs []command) string {
 func TestASlashOffersEveryCommandAndLettersNarrowIt(t *testing.T) {
 	t.Parallel()
 
-	if got := commandNames(matches("/")); got != "/help /files /send /accept /reject /who /me /add /clear /quit" {
+	if got := commandNames(matches("/")); got != "/help /files /send /cancel /accept /reject /who /me /add /clear /quit" {
 		t.Errorf("/: %s", got)
 	}
 	if got := commandNames(matches("/s")); got != "/send" {
@@ -71,12 +71,12 @@ func TestTheHintSaysWhatCanFollow(t *testing.T) {
 		{
 			"/",
 			0,
-			"▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
+			"▸ /help  ·  /files [dir]  ·  /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
 		},
 		{
 			"/",
 			2,
-			"/help  ·  /files [dir]  ·  ▸ /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
+			"/help  ·  /files [dir]  ·  ▸ /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
 		},
 		{"/s", 0, "/send <path>   offer a file  ·  Tab completes"},
 		{"/send", 0, "/send <path>   offer a file"},
@@ -96,7 +96,8 @@ func TestAPickPastTheEdgeScrollsTheRow(t *testing.T) {
 	t.Parallel()
 
 	st := plainStyles(false)
-	got := hint(st, "/", 9, 40)
+	// The last command in the row, wherever the table grows to.
+	got := hint(st, "/", len(commands)-1, 40)
 	if !strings.HasPrefix(got, "...") || !strings.Contains(got, "> /quit") {
 		t.Errorf("the pick is out of view: %q", got)
 	}
@@ -130,7 +131,7 @@ func TestHelpLinesReadFromTheTable(t *testing.T) {
 	if lines[1] != "/files [dir]  list a directory, numbered" {
 		t.Errorf("second line: %q", lines[1])
 	}
-	if len(lines) != 14 {
+	if len(lines) != 15 {
 		t.Errorf("%d lines", len(lines))
 	}
 }

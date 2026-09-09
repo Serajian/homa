@@ -114,8 +114,8 @@ type offerTimedOut struct{ name string }
 
 // fileProgress is an incoming file, every progressStep percent.
 type fileProgress struct {
-	name string
-	pct  int
+	name            string
+	received, total int64
 }
 
 // fileDone is a file that arrived and passed its checksum.
@@ -130,8 +130,8 @@ type fileFailed struct {
 // sending is our outgoing file, every progressStep percent; sent is it
 // done; sendFileFailed is it not.
 type sending struct {
-	name string
-	pct  int
+	name            string
+	received, total int64
 }
 
 type sent struct{ name string }

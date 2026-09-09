@@ -297,7 +297,7 @@ func TestACallRingsTheBellWhenTheSettingSaysSo(t *testing.T) {
 		if ringing(cmd) != on {
 			t.Errorf("bell %v: a call rang %v", on, ringing(cmd))
 		}
-		if _, cmd = m.Update(fileProgress{name: "x", pct: 10}); ringing(cmd) {
+		if _, cmd = m.Update(fileProgress{name: "x", received: 10, total: 100}); ringing(cmd) {
 			t.Error("progress rang")
 		}
 		if _, cmd = m.Update(sent{}); ringing(cmd) != on {

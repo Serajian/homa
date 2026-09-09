@@ -185,13 +185,14 @@ func TestTabAndTheArrowsTakeFromTheHintRow(t *testing.T) {
 		t.Errorf("left did not wrap to /quit:\n%s", stripANSI(body))
 	}
 
-	// A letter typed resets the pick to the first candidate.
-	typeInto(c, st, "c")
+	// Letters typed reset the pick to the first candidate and narrow the
+	// row; /c is two commands now, /cl is one.
+	typeInto(c, st, "cl")
 	if _, body, _ := c.view(st, 100); !strings.Contains(
 		stripANSI(body),
 		"/clear   wipe the screen",
 	) {
-		t.Errorf("/c:\n%s", stripANSI(body))
+		t.Errorf("/cl:\n%s", stripANSI(body))
 	}
 }
 

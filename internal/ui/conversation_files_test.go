@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -109,5 +110,82 @@ func TestSendRefusesADirectoryBeforeOfferingIt(t *testing.T) {
 	}
 	if strings.Contains(pane, "offering") {
 		t.Errorf("something was offered:\n%s", pane)
+	}
+}
+
+// A progress line says how fast and how much longer, once there has been
+// enough of the transfer to say either.
+func TestAProgressLineGrowsARateAndAnEstimate(t *testing.T) {
+	t.Parallel()
+
+	m := sized(newModel(t.Context(), testDeps(t), newStyles(true)))
+	m.screen = screenConversation
+	m.conv = newConversation(m.st, 100, 24, testLine("alice", true), "alice", "")
+
+	// The first report starts the clock, so it carries neither.
+	next, _ := m.Update(fileProgress{name: "big.bin", received: 1 << 20, total: 10 << 20})
+	m = next.(model)
+	first := stripANSI(m.conv.render())
+	if !strings.Contains(first, "receiving big.bin") || !strings.Contains(first, "10%") {
+		t.Errorf("pane:\n%s", first)
+	}
+	if strings.Contains(first, "/s") || strings.Contains(first, "left") {
+		t.Errorf("a rate before there was one:\n%s", first)
+	}
+
+	// Wind the clock back and report again: now it can say both.
+	m.conv.getting.started = time.Now().Add(-4 * time.Second)
+	next, _ = m.Update(fileProgress{name: "big.bin", received: 4 << 20, total: 10 << 20})
+	m = next.(model)
+	second := stripANSI(m.conv.render())
+	if !strings.Contains(second, "MB/s") || !strings.Contains(second, "left") {
+		t.Errorf("pane:\n%s", second)
+	}
+
+	// A different file starts its own clock.
+	next, _ = m.Update(fileProgress{name: "other.bin", received: 1 << 20, total: 10 << 20})
+	m = next.(model)
+	if m.conv.getting.name != "other.bin" {
+		t.Errorf("the clock did not follow the file: %+v", m.conv.getting)
+	}
+
+	// The same for what goes the other way.
+	next, _ = m.Update(sending{name: "mine.bin", received: 1 << 20, total: 4 << 20})
+	m = next.(model)
+	if !strings.Contains(stripANSI(m.conv.render()), "sending mine.bin") {
+		t.Errorf("pane:\n%s", stripANSI(m.conv.render()))
+	}
+}
+
+// /cancel with nothing moving says so, and does not pretend.
+func TestCancelWithNothingMoving(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 24, testLine("alice", true), "alice", "")
+	typeInto(c, st, "/cancel")
+	_, _ = c.update(st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	// With no session there is nothing to ask, and nothing is claimed.
+	if strings.Contains(stripANSI(c.render()), "stopped") {
+		t.Errorf("pane:\n%s", stripANSI(c.render()))
+	}
+}
+
+// A failure for a file this side stopped is not reported twice.
+func TestAStoppedTransferIsReportedOnce(t *testing.T) {
+	t.Parallel()
+
+	st := newStyles(true)
+	c := newConversation(st, 100, 24, testLine("alice", true), "alice", "")
+	c.stopped = map[string]bool{"big.bin": true}
+
+	if !c.wasStopped("big.bin") {
+		t.Fatal("the file was not remembered")
+	}
+	if c.wasStopped("big.bin") {
+		t.Error("it was remembered twice")
+	}
+	if c.wasStopped("other.bin") {
+		t.Error("a file nobody stopped")
 	}
 }

@@ -270,6 +270,7 @@ nobody answers is hung up on inside a minute with both sides told why.
 | `/files <n>` | list one from the last listing, `..` included |
 | `/send <path>` | offer a file |
 | `/send <n>` | offer one from the last listing |
+| `/cancel` | stop a file being sent or taken, at either end |
 | `/accept` | take the file being offered, or just `y` |
 | `/reject` | refuse it, or just `n` |
 | `/who` | who you are talking to: their key, whether it matches your book, and whether the line is direct or through a relay |
@@ -323,8 +324,10 @@ looking at rather than against wherever homa was started.
 
 A file is never written without you accepting it, and an accepted file never
 overwrites one already there: `poster.png` becomes `poster (2).png`. Progress is
-reported every ten percent, so a large transfer says where it has got to and a
-small one prints once.
+reported every ten percent, with how fast it is going and roughly how much
+longer once there has been enough of it to say, so a large transfer says where
+it has got to and a small one prints once. `/cancel` stops one in either
+direction, from either end: the partial file goes and the other side is told.
 
 ## Who is calling
 

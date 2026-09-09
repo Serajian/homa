@@ -293,6 +293,9 @@ func (s *Session) Run(ctx context.Context) error {
 		case proto.TypeAddress:
 			s.onAddress(f)
 
+		case proto.TypeFileCancel:
+			s.onCancel(f)
+
 		default:
 			// File frames land here. A failure inside one transfer is
 			// reported to the person and the conversation carries on:

@@ -49,18 +49,6 @@ they ship in the 0.2 line, in this order.
   form, the model), both READMEs. Done when an address pasted at the menu calls,
   and nothing reaches `contacts.json` unless the person asks for it
 
-- **A transfer says how fast it is going and how long is left, and can be
-  stopped.** Progress is a percentage every ten percent: for a gigabyte on a
-  bad line that says almost nothing, and there is no way to stop a file sent by
-  mistake. The rate and the estimate are free — `OnFileProgress` already
-  carries received and total, and `adapter` throws both away and forwards only
-  a step. Cancelling needs a frame type of its own; an old peer ignores it and
-  waits out `offerTimeout`, which is the honest failure. Files:
-  `internal/ui/adapter.go`, `internal/ui/screen_conversation.go`,
-  `internal/proto`, `internal/session/files.go`. Done when a large transfer
-  shows a rate and an estimate on both sides, `/cancel` stops it on both, and
-  the partial file is removed
-
 - **Tab completes a path after `/send` and `/files`.** The hint row completes
   commands; the question left open when it was built was whether the same
   mechanism should offer paths, and `/files` plus a number exists precisely

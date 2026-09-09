@@ -23,12 +23,20 @@ a length, a type, and a payload:
 | `0x08` | BYE | empty | I am leaving |
 | `0x09` | ACCEPT | empty | the person took your call |
 | `0x0a` | ADDRESS | JSON | here is my address, so you can call me back |
+| `0x0b` | FILE_CANCEL | JSON | id: stop this transfer |
 
 ACCEPT is version 2 of the protocol, and the only frame a caller waits for. A
 peer announcing version 1 never sends it, so a caller seeing version 1 does not
 wait; a version 1 peer receiving it skips it as an unknown type, which is what
 the framing has always done with anything it does not recognize. A version
 mismatch is never fatal.
+
+FILE_CANCEL is version 3 as well, and either side may send it: the one pushing
+a file, giving up on it, or the one taking it, which is the side more likely to
+want out of a transfer it did not choose the size of. Whoever receives it stops,
+throws away the partial file if it was writing one, and says so. A peer too old
+to know the frame keeps going, so the person is told that stopping may not reach
+them.
 
 ADDRESS is version 3, and the only frame that carries a secret on purpose. The
 side that answers a call knows the caller by key and has no way to reach them,

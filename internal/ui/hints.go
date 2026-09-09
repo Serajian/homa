@@ -49,6 +49,7 @@ var commands = []command{
 		{"<path>", "offer a file"},
 		{"<n>", "offer one from the last listing"},
 	}},
+	{name: "/cancel", uses: []use{{"", "stop a file being sent or taken"}}},
 	{name: "/accept", uses: []use{{"", "take the file being offered, or just y"}}},
 	{name: "/reject", uses: []use{{"", "refuse it, or just n"}}},
 	{name: "/who", uses: []use{{"", "who you are talking to"}}},

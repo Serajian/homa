@@ -3,6 +3,7 @@
 package live
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"os/exec"
@@ -590,6 +591,21 @@ func TestAFileCrossesAndKeepsItsContents(t *testing.T) {
 	alice.await("saved")
 	bob.await("sent.")
 	alice.snapshot("received")
+
+	// A second file, big enough to still be moving, is stopped from the
+	// side taking it; both ends say so and nothing is left behind.
+	big := filepath.Join(t.TempDir(), "big.bin")
+	if err := os.WriteFile(big, bytes.Repeat([]byte("x"), 24<<20), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bob.line("/send " + big)
+	alice.await("offers")
+	alice.line("y")
+	alice.await("receiving big.bin")
+	alice.line("/cancel")
+	alice.await("stopped big.bin")
+	bob.awaitAny("the transfer was stopped", "stopped big.bin")
+	alice.refute("big.bin saved to")
 
 	got := findFile(t, alice.home, "poster.txt")
 	if string(got) != content {

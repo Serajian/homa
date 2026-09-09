@@ -228,6 +228,19 @@ event a message, every screen drawn whole, every `Update` on one goroutine. The 
 line-owning machinery of version 1 — the pump, the prompts and their erasing, the
 countdown, the hand-rolled palette — went with the line.
 
+**A transfer can be stopped from either end.** The side pushing a file is not the side that
+most wants out of it: a person taking a file discovers halfway through that it is bigger
+than the line they are on, and until now their only way out was to leave the conversation,
+which drops the call as well. `FILE_CANCEL` carries an id and nothing else, and each side
+words what happened from its own view. Stopping is not failing, so it has an error of its
+own, `session.ErrCanceled`, and what this side asked to stop is remembered just long enough
+not to be reported twice in different words. A partial download is deleted on the way out,
+the same as when a transfer breaks: half a file looks whole in a listing and fails only when
+somebody opens it. And a rate and an estimate go on the progress line, because "40%" on a
+gigabyte over a bad link says almost nothing about whether to wait; neither is shown until
+there has been a second of transfer to measure, because a number made up from a quarter of a
+second is not a measurement.
+
 **An address is given, not swapped.** The side that answers a call learns the caller's key
 and nothing else, so it could never call back or even save them: a contact needs an address,
 and nothing on the wire carried one. The fix could have been a two-sided swap, one command

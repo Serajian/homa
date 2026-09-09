@@ -59,6 +59,11 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   PgUp/PgDn scroll what was said. Version 1's two warts, and the arrow keys
   that did nothing, went with the line-based interface they came from
 
+- a transfer that says how fast it is going and roughly how much longer, once
+  there has been enough of it to measure, and `/cancel`, which stops whatever
+  is moving in either direction and tells the far side so their end stops too;
+  the partial file goes with it
+
 - an address handed over inside a conversation: `/me send` gives the far side
   yours, and `/add` keeps what they gave you under a name you choose, so the
   person who answered a call is no longer stuck with a key and nothing to

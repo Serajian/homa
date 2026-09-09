@@ -19,6 +19,7 @@ const (
 	TypeBye        Type = 0x08
 	TypeAccept     Type = 0x09
 	TypeAddress    Type = 0x0a
+	TypeFileCancel Type = 0x0b
 )
 
 func (t Type) String() string {
@@ -39,6 +40,8 @@ func (t Type) String() string {
 		return "FILE_DONE"
 	case TypeAddress:
 		return "ADDRESS"
+	case TypeFileCancel:
+		return "FILE_CANCEL"
 	case TypeBye:
 		return "BYE"
 	case TypeAccept:

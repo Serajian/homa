@@ -273,16 +273,22 @@ func (m *model) fileEvent(msg tea.Msg) {
 		c.alert(st, "the offer of "+msg.name+" timed out")
 		c.note(st, st.dim.Render(fmt.Sprintf("they can offer it again; y or n answers it within %s", offerAnswerTimeout)))
 	case fileProgress:
-		c.note(st, st.dim.Render("receiving ")+st.them.Render(msg.name)+"  "+progressBar(st, msg.pct)+st.dim.Render(fmt.Sprintf("  %d%%", msg.pct)))
+		c.moving(st, "receiving ", st.them.Render(msg.name), &c.getting, msg.name, msg.received, msg.total)
 	case fileDone:
 		c.note(st, st.them.Render(msg.name)+st.dim.Render(" saved to "+msg.path))
 	case fileFailed:
+		if c.wasStopped(msg.name) {
+			return
+		}
 		c.alert(st, quote(msg.name)+": "+reason(msg.err))
 	case sending:
-		c.note(st, st.dim.Render("sending ")+progressBar(st, msg.pct)+st.dim.Render(fmt.Sprintf("  %d%%", msg.pct)))
+		c.moving(st, "sending ", st.you.Render(msg.name), &c.pushing, msg.name, msg.received, msg.total)
 	case sent:
 		c.note(st, st.dim.Render("sent."))
 	case sendFileFailed:
+		if c.wasStopped(msg.name) {
+			return
+		}
 		c.alert(st, reason(msg.err))
 	}
 }

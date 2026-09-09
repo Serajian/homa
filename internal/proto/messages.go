@@ -40,6 +40,12 @@ type FileDone struct {
 	SHA256 string `json:"sha256"`
 }
 
+// FileCancel stops a transfer in flight, in either direction: the sender
+// giving up on one it is pushing, or the receiver on one it is taking.
+type FileCancel struct {
+	ID uint32 `json:"id"`
+}
+
 // Address is one peer handing the other the address they would need to call
 // back. It is a secret and it is given deliberately: nothing sends it but a
 // person asking for it to be sent.
