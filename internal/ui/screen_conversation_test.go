@@ -140,7 +140,7 @@ func TestTheHintRowOffersCommandsAsTheyAreTyped(t *testing.T) {
 	c.in.Reset()
 
 	typeInto(c, st, "/")
-	if !strings.Contains(view(), "▸ /help  ·  /files [dir]  ·  /send <path>") {
+	if !strings.Contains(view(), "▸ /help  ·  /files [dir]  ·  /open  ·  /send <path>") {
 		t.Errorf("a slash did not offer the commands:\n%s", view())
 	}
 	typeInto(c, st, "s")
@@ -166,16 +166,23 @@ func TestTabAndTheArrowsTakeFromTheHintRow(t *testing.T) {
 	}
 	c.in.Reset()
 
-	// Right twice from /help is /send; left from /help wraps to /quit.
+	// Right twice from the first command reaches the third, whatever the
+	// table grows to; left from the first wraps to the last.
+	third := commands[2]
 	typeInto(c, st, "/")
 	pressKey(c, st, tea.KeyRight)
 	pressKey(c, st, tea.KeyRight)
-	if _, body, _ := c.view(st, 100); !strings.Contains(stripANSI(body), "▸ /send <path>") {
-		t.Errorf("two rights did not reach /send:\n%s", stripANSI(body))
+	marked := "▸ " + strings.TrimSpace(third.name+" "+third.arg())
+	if _, body, _ := c.view(st, 100); !strings.Contains(stripANSI(body), marked) {
+		t.Errorf("two rights did not reach %q:\n%s", marked, stripANSI(body))
 	}
 	pressKey(c, st, tea.KeyTab)
-	if c.in.Value() != "/send " {
-		t.Errorf("Tab on the pick gave %q", c.in.Value())
+	want := third.name
+	if third.takesArg() {
+		want += " "
+	}
+	if c.in.Value() != want {
+		t.Errorf("Tab on the pick gave %q, want %q", c.in.Value(), want)
 	}
 	c.in.Reset()
 

@@ -77,6 +77,12 @@ type keepAddress struct {
 	named bool
 }
 
+// folderOpened is what came of asking the machine to open a folder.
+type folderOpened struct {
+	path string
+	err  error
+}
+
 // pathProbed is how the conversation travels, asked by /who and answered
 // off the update loop.
 type pathProbed struct {

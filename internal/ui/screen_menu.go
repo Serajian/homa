@@ -16,6 +16,7 @@ const (
 	actAdd
 	actContacts
 	actAddress
+	actFiles
 	actSettings
 	actClear
 	actHelp
@@ -48,6 +49,7 @@ func newMenu(book *contacts.Book) menuModel {
 				{key: "n", text: "add a contact"},
 				{key: "b", text: "contacts: rename, forget, call"},
 				{key: "m", text: "me: address, relay, key"},
+				{key: "f", text: "files: open where they arrive"},
 			},
 			{
 				{key: "s", text: "settings"},
@@ -91,6 +93,8 @@ func (mm *menuModel) key(k string) (menuAction, bool) {
 		return actAdd, true
 	case "b":
 		return actContacts, true
+	case "f":
+		return actFiles, true
 	case "m", "a":
 		// a is what this was until the page grew past the address; it
 		// still works, unlisted, the way /ls still works for /files.

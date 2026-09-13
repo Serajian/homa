@@ -16,7 +16,7 @@ func commandNames(cs []command) string {
 func TestASlashOffersEveryCommandAndLettersNarrowIt(t *testing.T) {
 	t.Parallel()
 
-	if got := commandNames(matches("/")); got != "/help /files /send /cancel /accept /reject /who /me /add /clear /quit" {
+	if got := commandNames(matches("/")); got != "/help /files /open /send /cancel /accept /reject /who /me /add /clear /quit" {
 		t.Errorf("/: %s", got)
 	}
 	if got := commandNames(matches("/s")); got != "/send" {
@@ -71,12 +71,12 @@ func TestTheHintSaysWhatCanFollow(t *testing.T) {
 		{
 			"/",
 			0,
-			"▸ /help  ·  /files [dir]  ·  /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
+			"▸ /help  ·  /files [dir]  ·  /open  ·  /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
 		},
 		{
 			"/",
 			2,
-			"/help  ·  /files [dir]  ·  ▸ /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
+			"/help  ·  /files [dir]  ·  ▸ /open  ·  /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /add [name]  ·  /clear  ·  /quit",
 		},
 		{"/s", 0, "/send <path>   offer a file  ·  Tab completes"},
 		{"/send", 0, "/send <path>   offer a file"},
@@ -131,7 +131,7 @@ func TestHelpLinesReadFromTheTable(t *testing.T) {
 	if lines[1] != "/files [dir]  list a directory, numbered" {
 		t.Errorf("second line: %q", lines[1])
 	}
-	if len(lines) != 15 {
+	if len(lines) != 16 {
 		t.Errorf("%d lines", len(lines))
 	}
 }

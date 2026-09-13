@@ -558,6 +558,8 @@ func (c *conversation) command(st *styles, text string) (tea.Cmd, bool) {
 		return nil, false
 	case "/send":
 		return c.sendFile(st, arg), false
+	case "/open":
+		return c.openFiles(st), false
 	case "/cancel":
 		c.cancelTransfers(st)
 		return nil, false
@@ -752,6 +754,21 @@ func probePath(ctx context.Context, conn net.Conn) tea.Cmd {
 		p, err := peer.Probe(ctx, conn)
 		return pathProbed{path: p, err: err}
 	}
+}
+
+// openFiles opens the folder files arrive in, the one named on the header
+// of this conversation, so what somebody just sent can be looked at without
+// leaving homa.
+func (c *conversation) openFiles(st *styles) tea.Cmd {
+	if c.downloadDir == nil {
+		return nil
+	}
+	dir, err := c.downloadDir()
+	if err != nil {
+		c.alert(st, reason(err))
+		return nil
+	}
+	return openFolder(dir)
 }
 
 // cancelTransfers stops whatever files are moving, in either direction, and

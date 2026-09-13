@@ -112,7 +112,7 @@ homa
 </div>
 
 ```
-  >_ homa                                                  bob  ·  tcpGFwWCBbId...  ·  ● listening
+  >_ homa                                                  bob  ·  tcpGFwWCBEMy...  ·  ● listening
  ──────────────────────────────────────────────────────────────────────────────────────────────────
 
   PEOPLE                                      HOMA
@@ -120,6 +120,7 @@ homa
   ▸  1  call alice                               n  add a contact
                                                  b  contacts: rename, forget, call
                                                  m  me: address, relay, key
+                                                 f  files: open where they arrive
 
                                                  s  settings
                                                  c  clear the screen
@@ -143,7 +144,7 @@ Bob `1` را می‌زند. روی صفحه‌ی Alice، تنها جعبه‌ا�
 </div>
 
 ```
-  >_ homa                                                alice  ·  tcpGFwWCCEk2...  ·  ● listening
+  >_ homa                                                alice  ·  tcpGFwWCDuZk...  ·  ● listening
  ──────────────────────────────────────────────────────────────────────────────────────────────────
 
   PEOPLE                                      HOMA
@@ -151,6 +152,7 @@ Bob `1` را می‌زند. روی صفحه‌ی Alice، تنها جعبه‌ا�
     nobody yet                                   n  add a contact
     n adds a contact, m shows yours              b  contacts: rename, forget, call
                                                  m  me: address, relay, key
+                                                 f  files: open where they arrive
 
                                                  s  settings
                                                  c  clear the screen
@@ -254,6 +256,7 @@ Alice `y` را می‌زند. سمت Bob از گفتگو — با خطی نیم�
 | `/send <path>` | یک فایل پیشنهاد می‌دهد |
 | `/send <n>` | یکی از فهرست قبلی را پیشنهاد می‌دهد |
 | `/cancel` | فایلی را که فرستاده یا گرفته می‌شود متوقف می‌کند، از هر دو سر |
+| `/open` | پوشه‌ای را که فایل‌ها در آن می‌نشینند باز می‌کند |
 | `/accept` | فایل پیشنهادشده را می‌گیرد، یا فقط `y` |
 | `/reject` | ردش می‌کند، یا فقط `n` |
 | `/who` | با چه کسی حرف می‌زنید: کلیدش، این‌که با دفترچه‌تان می‌خواند یا نه، و این‌که خط مستقیم است یا از رله |
@@ -276,7 +279,7 @@ Alice `y` را می‌زند. سمت Bob از گفتگو — با خطی نیم�
     alice │ how are you?
 
 
-    ▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /clear  …
+    ▸ /help  ·  /files [dir]  ·  /open  ·  /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /wh…
   ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
   │ /                                                                                            │
   ╰──────────────────────────────────────────────────────────────────────────────────────────────╯

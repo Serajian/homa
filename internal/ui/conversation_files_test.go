@@ -328,3 +328,35 @@ func TestTabCompletesAPathAfterFilesAndNowhereElse(t *testing.T) {
 		t.Errorf("a command with no path was completed: %q", c.in.Value())
 	}
 }
+
+// /open opens the same folder the header names, and what came of it is
+// said in the pane, since a conversation draws no notice line.
+func TestOpenInAConversation(t *testing.T) {
+	sandboxHome(t)
+	was := folderTool
+	folderTool = func() []string { return nil }
+	t.Cleanup(func() { folderTool = was })
+
+	deps := testDeps(t)
+	m := sized(newModel(t.Context(), deps, newStyles(true)))
+	m.screen = screenConversation
+	m.conv = newConversationWith(t.Context(), m.st, 100, 24, testLine("alice", true),
+		"alice", deps.Cfg.DownloadDir, func(tea.Msg) {}, deps.Cfg.EnsureDownloadDir)
+
+	typeInto(m.conv, m.st, "/open")
+	cmd, _ := m.conv.update(m.st, tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatal("/open did nothing")
+	}
+	next, _ := m.Update(cmd())
+	m = next.(model)
+	if m.notice != "" {
+		t.Errorf("a notice nobody can see: %q", m.notice)
+	}
+	// The pane wraps, so a long path is split across rows; what is
+	// asserted is that the folder was named at all.
+	pane := stripANSI(m.conv.render())
+	if !strings.Contains(pane, "open a folder") || !strings.Contains(pane, "homa-files") {
+		t.Errorf("pane:\n%s", pane)
+	}
+}

@@ -107,6 +107,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.say(string(msg), true)
 		return m, nil
 
+	case folderOpened:
+		line, warn := "opened "+msg.path, false
+		if msg.err != nil {
+			line, warn = reason(msg.err)+"; the folder is "+msg.path, true
+		}
+		if m.screen == screenConversation && m.conv != nil {
+			if warn {
+				m.conv.alert(m.st, line)
+			} else {
+				m.conv.note(m.st, m.st.dim.Render(line))
+			}
+			return m, nil
+		}
+		m.say(line, warn)
+		return m, nil
+
 	case copied:
 		// A conversation draws no notice line, so the answer to a copy
 		// goes where everything else it says goes: the pane.
@@ -498,6 +514,13 @@ func (m model) updateMenu(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.page = &page{title: "me", body: body, back: screenMenu, copyText: addr}
 		m.screen = screenPage
 		return m, nil
+	case actFiles:
+		dir, err := m.deps.Cfg.EnsureDownloadDir()
+		if err != nil {
+			m.say("could not make the folder: "+reason(err), true)
+			return m, nil
+		}
+		return m, openFolder(dir)
 	case actSettings:
 		return m.openForm(
 			formSettings,

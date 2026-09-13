@@ -144,7 +144,7 @@ Bob, so she sees him under the name he chose, marked with a `~`.
 Bob's menu, with Alice in it:
 
 ```
-  >_ homa                                                  bob  ·  tcpGFwWCBbId...  ·  ● listening
+  >_ homa                                                  bob  ·  tcpGFwWCBEMy...  ·  ● listening
  ──────────────────────────────────────────────────────────────────────────────────────────────────
 
   PEOPLE                                      HOMA
@@ -152,6 +152,7 @@ Bob's menu, with Alice in it:
   ▸  1  call alice                               n  add a contact
                                                  b  contacts: rename, forget, call
                                                  m  me: address, relay, key
+                                                 f  files: open where they arrive
 
                                                  s  settings
                                                  c  clear the screen
@@ -171,7 +172,7 @@ Bob's menu, with Alice in it:
 Bob presses `1`. On Alice's screen, the one box the interface draws:
 
 ```
-  >_ homa                                                alice  ·  tcpGFwWCCEk2...  ·  ● listening
+  >_ homa                                                alice  ·  tcpGFwWCDuZk...  ·  ● listening
  ──────────────────────────────────────────────────────────────────────────────────────────────────
 
   PEOPLE                                      HOMA
@@ -179,6 +180,7 @@ Bob presses `1`. On Alice's screen, the one box the interface draws:
     nobody yet                                   n  add a contact
     n adds a contact, m shows yours              b  contacts: rename, forget, call
                                                  m  me: address, relay, key
+                                                 f  files: open where they arrive
 
                                                  s  settings
                                                  c  clear the screen
@@ -271,6 +273,7 @@ nobody answers is hung up on inside a minute with both sides told why.
 | `/send <path>` | offer a file |
 | `/send <n>` | offer one from the last listing |
 | `/cancel` | stop a file being sent or taken, at either end |
+| `/open` | open the folder files arrive in |
 | `/accept` | take the file being offered, or just `y` |
 | `/reject` | refuse it, or just `n` |
 | `/who` | who you are talking to: their key, whether it matches your book, and whether the line is direct or through a relay |
@@ -294,7 +297,7 @@ Enter:
     alice │ how are you?
 
 
-    ▸ /help  ·  /files [dir]  ·  /send <path>  ·  /accept  ·  /reject  ·  /who  ·  /me  ·  /clear  …
+    ▸ /help  ·  /files [dir]  ·  /open  ·  /send <path>  ·  /cancel  ·  /accept  ·  /reject  ·  /wh…
   ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
   │ /                                                                                            │
   ╰──────────────────────────────────────────────────────────────────────────────────────────────╯

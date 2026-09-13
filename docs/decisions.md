@@ -228,6 +228,17 @@ event a message, every screen drawn whole, every `Update` on one goroutine. The 
 line-owning machinery of version 1 — the pump, the prompts and their erasing, the
 countdown, the hand-rolled palette — went with the line.
 
+**homa opens the folder, never the file.** Looking at what somebody just sent meant leaving
+homa, and it need not: the machine already has something that opens a directory, the way it
+already has something that sets a clipboard and something that plays a sound. What it must
+not do is open the file. A file that arrived was chosen by somebody else, and handing it to
+whichever application the system picks for its extension would make homa the thing that
+opened it; today's promise is that an arriving file is written to disk with a checked digest
+and nothing runs it. Opening the folder keeps the choice with the person: they see what came
+and decide. It is refused over ssh for the same reason a sound is, and where nothing knows
+how to open a folder it says where the folder is, which is what somebody would do with it
+anyway.
+
 **A path is completed by Tab, and the arrows stay with the cursor.** The row above the
 input picks commands with the arrows, because there is nothing to edit inside a word a few
 letters long. A path is the opposite: it is long, and a character in the middle of one is

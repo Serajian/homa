@@ -49,6 +49,7 @@ var commands = []command{
 		{"[dir]", "list a directory, numbered"},
 		{"<n>", "list one from the last listing, .. included"},
 	}},
+	{name: "/open", uses: []use{{"", "open the folder files arrive in"}}},
 	{name: "/send", path: true, uses: []use{
 		{"<path>", "offer a file"},
 		{"<n>", "offer one from the last listing"},

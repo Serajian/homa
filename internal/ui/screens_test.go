@@ -596,3 +596,36 @@ func TestMOpensTheMePageAndAStillDoes(t *testing.T) {
 		t.Errorf("menu:\n%s", view)
 	}
 }
+
+// f at the menu opens the folder files arrive in, making it if it is not
+// there yet, and says where it is when it cannot be opened here.
+func TestFOpensTheFolderFilesArriveIn(t *testing.T) {
+	sandboxHome(t)
+	was := folderTool
+	folderTool = func() []string { return nil } // nothing of the developer's opens
+	t.Cleanup(func() { folderTool = was })
+
+	deps := testDeps(t)
+	m := sized(newModel(t.Context(), deps, newStyles(true)))
+	next, cmd := m.Update(key("f"))
+	m = next.(model)
+	if cmd == nil {
+		t.Fatal("f did nothing")
+	}
+	if _, err := os.Stat(deps.Cfg.DownloadDir); err != nil {
+		t.Errorf("the folder was not made: %v", err)
+	}
+
+	next, _ = m.Update(cmd())
+	m = next.(model)
+	if !m.warn || !strings.Contains(m.notice, deps.Cfg.DownloadDir) {
+		t.Errorf("notice %q warn %v", m.notice, m.warn)
+	}
+
+	// When it works, it says so quietly.
+	next, _ = m.Update(folderOpened{path: deps.Cfg.DownloadDir})
+	m = next.(model)
+	if m.warn || !strings.Contains(m.notice, "opened ") {
+		t.Errorf("notice %q warn %v", m.notice, m.warn)
+	}
+}

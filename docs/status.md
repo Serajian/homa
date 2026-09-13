@@ -59,6 +59,12 @@ version 3. The open front is version 3, in [todo.md](todo.md). Working today:
   PgUp/PgDn scroll what was said. Version 1's two warts, and the arrow keys
   that did nothing, went with the line-based interface they came from
 
+- the folder received files arrive in can be opened from homa: `f` at the menu
+  and `/open` in a conversation hand it to the machine's file manager. A folder
+  and never a file, because a file that arrived was chosen by somebody else;
+  refused over ssh, where the window would open on the wrong machine, and where
+  there is no opener it says where the folder is instead
+
 - Tab completes a path after `/send` and `/files`, against the directory being
   typed in, with the candidates in the row above the input, directories first
   and their separator included, so the next Tab looks inside

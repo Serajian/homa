@@ -24,6 +24,26 @@ tail -f homa.log
 
 If the toolchain itself misbehaves, check [traps.md](traps.md) first.
 
+## The card people see when they share the link
+
+A repository link pasted into a chat or a timeline is unfurled into a card, and
+by default GitHub draws that card from the owner's avatar and a few counts,
+which says nothing about homa. `docs/assets/social-preview.png` replaces it: the
+logo package's horizontal lockup on the ink background, the tagline, and one
+line, at 1280 by 640, which is the size GitHub asks for.
+
+It is set by hand, once, and stays set: **Settings → General → Social preview →
+Edit → Upload an image**. There is no API for it — the repository object has no
+such field — so it cannot be part of the release pipeline.
+
+`docs/assets/social-preview.svg` is where it comes from; it takes the mark and
+the wordmark straight out of `docs/assets/logo/homa-horisontal.svg`, so a change
+to the logo reaches the card by re-rendering rather than by redrawing:
+
+```sh
+rsvg-convert -w 1280 -h 640 docs/assets/social-preview.svg -o docs/assets/social-preview.png
+```
+
 ## Releasing
 
 A tag that starts with `v` is a release. `.github/workflows/release.yml` runs GoReleaser

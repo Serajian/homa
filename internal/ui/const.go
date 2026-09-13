@@ -76,6 +76,11 @@ const (
 // the others and is never built from anything that came over the network.
 const bell = "\a"
 
+// folderTimeout bounds the tool that opens a folder. It hands the path to
+// a file manager and returns; anything longer than this is a tool that is
+// not going to come back.
+const folderTimeout = 5 * time.Second
+
 // soundTimeout bounds the sound tool: a short system sound is over in a
 // second, and a player that hangs must not pile up.
 const soundTimeout = 5 * time.Second
